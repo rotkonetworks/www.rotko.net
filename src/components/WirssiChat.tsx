@@ -23,7 +23,7 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
   const [users, setUsers] = createSignal<{[key: string]: {[nick: string]: string}}>({})
 
   const server = props.server || 'wss://irc.rotko.net/webirc'
-  const channel = props.channel || '#support'
+  const channel = props.channel || '#rotko'
   const position = props.position || 'bottom-right'
 
   const positionClasses = {

@@ -10,12 +10,16 @@ const Header: Component = () => {
        <div class="flex items-center justify-between h-16">
          {/* Logo */}
          <A href="/" class="flex items-center space-x-3">
-           <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
-             <span class="text-white font-bold text-xl">{headerData.logo.initial}</span>
-           </div>
-           <span class="text-xl font-bold text-gray-100">
-             {headerData.logo.text}<span class="text-cyan-400">.</span>{headerData.logo.suffix}
-           </span>
+           <img 
+             src="/images/rotko-icon.svg" 
+             alt="Rotko Networks"
+             class="w-10 h-10"
+           />
+           <img 
+             src="/images/rotko-logo.svg" 
+             alt="Rotko Networks"
+             class="h-8 hidden sm:block"
+           />
          </A>
 
          {/* Navigation */}

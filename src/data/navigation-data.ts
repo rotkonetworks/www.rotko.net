@@ -49,7 +49,7 @@ export const footerData = {
      ]
    }
  ],
- copyright: "© 2024 Rotko Networks. AS211184.",
+ copyright: "© 2024 Rotko Networks. AS142108.",
  tagline: "Built with Linux, Rust, and stubbornness."
 }
 

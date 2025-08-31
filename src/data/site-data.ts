@@ -99,7 +99,7 @@ export const siteData = {
     email: "hq@rotko.net",
     irc: {
       server: "wss://irc.rotko.net/webirc",
-      channel: "#support"
+      channel: "#rotko"
     }
   }
 }

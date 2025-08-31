@@ -61,7 +61,7 @@ export const aboutData = {
    {
      category: "Network Layer",
      items: [
-       "AS211184 - Our own autonomous system",
+       "AS142108 - Our own autonomous system",
        "Direct peering with Tier 1 providers",
        "Anycast DNS with sub-10ms resolution",
        "DDoS mitigation at the edge"
@@ -80,7 +80,7 @@ export const aboutData = {
  
  metrics: [
    { label: "Founded", value: "2023" },
-   { label: "AS Number", value: "211184" },
+   { label: "AS Number", value: "142108" },
    { label: "Regions", value: "6" },
    { label: "Uptime", value: "99.995%" }
  ]
