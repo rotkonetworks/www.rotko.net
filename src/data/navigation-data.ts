@@ -6,12 +6,13 @@ export interface NavItem {
 
 export const navigationData: NavItem[] = [
  { label: "Home", href: "/" },
- { label: "About", href: "/about" },
- { label: "Team", href: "/team" },
  { label: "Services", href: "/services" },
+ { label: "Software", href: "/software" },
  { label: "Infrastructure", href: "/infrastructure" },
+ { label: "About", href: "/about" },
  { label: "Blog", href: "/blog" },
- { label: "Contact", href: "/contact" }
+ { label: "Team", href: "/team" },
+ { label: "Contact", href: "#" }
 ]
 
 export const footerData = {
@@ -37,7 +38,7 @@ export const footerData = {
      links: [
        { label: "GitHub", href: "https://github.com/rotkonetworks", external: true },
        { label: "Documentation", href: "/docs" },
-       { label: "Contact", href: "/contact" }
+       { label: "Software", href: "/software" }
      ]
    },
    {

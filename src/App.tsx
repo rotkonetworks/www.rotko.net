@@ -1,16 +1,18 @@
-// src/App.tsx
-import { Router, Route } from '@solidjs/router'
+import { Component } from 'solid-js'
+import { Route } from '@solidjs/router'
 import HomePage from './pages/HomePage'
+import AboutPage from './pages/AboutPage'
 import TeamPage from './pages/TeamPage'
-import './index.css'
+import InfrastructurePage from './pages/InfrastructurePage'
 
-function App() {
+const App: Component = () => {
   return (
-    <Router>
+    <>
       <Route path="/" component={HomePage} />
+      <Route path="/about" component={AboutPage} />
       <Route path="/team" component={TeamPage} />
-      {/* Add other routes as needed */}
-    </Router>
+      <Route path="/infrastructure" component={InfrastructurePage} />
+    </>
   )
 }
 
