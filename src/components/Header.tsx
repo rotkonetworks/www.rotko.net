@@ -1,44 +1,29 @@
-import { Component, For } from 'solid-js'
-import { siteData } from '../data/site-data'
+import { Component } from 'solid-js'
+import { A } from '@solidjs/router'
+import Navigation from './Navigation'
+import { headerData } from '../data/navigation-data'
 
-interface HeaderProps {
-  onChatToggle: () => void
-}
+const Header: Component = () => {
+ return (
+   <header class="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
+     <div class="max-w-7xl mx-auto px-6 lg:px-12">
+       <div class="flex items-center justify-between h-16">
+         {/* Logo */}
+         <A href="/" class="flex items-center space-x-3">
+           <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
+             <span class="text-white font-bold text-xl">{headerData.logo.initial}</span>
+           </div>
+           <span class="text-xl font-bold text-gray-100">
+             {headerData.logo.text}<span class="text-cyan-400">.</span>{headerData.logo.suffix}
+           </span>
+         </A>
 
-const Header: Component<HeaderProps> = (props) => {
-  return (
-    <header class="border-b border-gray-8 sticky top-0 bg-black/95 backdrop-blur z-40">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center">
-            <a href="/" class="flex items-center space-x-2">
-              <div class="text-cyan-3 text-2xl font-bold font-mono">ROTKO</div>
-              <div class="hidden sm:block text-gray-5 text-xs">AS142108</div>
-            </a>
-          </div>
-
-          <nav class="flex items-center space-x-6">
-            <For each={siteData.navigation}>
-              {(item) => (
-                <a 
-                  href={item.href}
-                  class="text-gray-4 hover:text-cyan-3 transition-colors text-sm font-mono"
-                >
-                  {item.label}
-                </a>
-              )}
-            </For>
-            <button
-              onClick={props.onChatToggle}
-              class="text-gray-4 hover:text-cyan-3 transition-colors text-sm font-mono"
-            >
-              IRC
-            </button>
-          </nav>
-        </div>
-      </div>
-    </header>
-  )
+         {/* Navigation */}
+         <Navigation />
+       </div>
+     </div>
+   </header>
+ )
 }
 
 export default Header
