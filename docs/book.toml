@@ -1,0 +1,6 @@
+[book]
+authors = ["hitchhooker"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Rotko Networks infrastructure"
