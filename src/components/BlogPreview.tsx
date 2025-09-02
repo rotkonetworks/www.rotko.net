@@ -48,7 +48,7 @@ const BlogPreview: Component<BlogPreviewProps> = (props) => {
                {(post) => (
                  <A 
                    href={`/blog/${post.slug}`}
-                   class="group block bg-gray-900/30 border border-gray-800 hover:border-gray-600 p-6 transition-all"
+                   class="group block bg-gray-900/30 h-full flex flex-col border border-gray-800 hover:border-gray-600 p-6 transition-all"
                  >
                    <div class="flex justify-between items-start mb-3">
                      <time class="text-xs text-gray-500">
@@ -58,7 +58,7 @@ const BlogPreview: Component<BlogPreviewProps> = (props) => {
                    <h3 class="text-xl font-bold mb-2 text-white group-hover:text-cyan-400 transition-colors">
                      {post.title}
                    </h3>
-                   <p class="text-gray-400 text-sm mb-4 line-clamp-3">
+                   <p class="text-gray-400 text-sm mb-4 line-clamp-3 flex-grow">
                      {post.description}
                    </p>
                    <div class="flex flex-wrap gap-2">

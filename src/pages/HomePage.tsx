@@ -33,13 +33,13 @@ const HomePage: Component = () => {
   return (
     <MainLayout>
       {/* Hero */}
-      <section class="min-h-screen md:min-h-[70vh] flex items-center px-4 sm:px-6 lg:px-8 py-20">
+      <section class="min-h-[90vh] md:min-h-[80vh] flex items-center px-4 sm:px-6 lg:px-8 py-20">
         <div class="max-w-6xl mx-auto w-full">
           <div class="mb-8 md:mb-12">
             <div class="text-xs font-mono text-cyan-400 mb-4 md:mb-6 tracking-wider uppercase">
               {siteData.company.tagline}
             </div>
-            <h1 class="text-4xl sm:text-5xl lg:text-7xl font-bold mb-6 md:mb-8 text-white leading-tight">
+            <h1 class="text-3xl sm:text-4xl lg:text-6xl font-bold mb-6 md:mb-8 text-white leading-tight">
               {siteData.hero.title}
             </h1>
             <p class="text-lg sm:text-xl text-gray-400 max-w-2xl leading-relaxed">

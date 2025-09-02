@@ -1,37 +1,37 @@
-// unocss.config.ts
 import { defineConfig } from '@unocss/vite';
 import { presetMini } from '@unocss/preset-mini';
+import { presetIcons } from '@unocss/preset-icons';
 
 export default defineConfig({
-  presets: [presetMini()],
+  presets: [
+    presetMini(),
+    presetIcons({
+      scale: 1.2,
+      warn: true,
+      extraProperties: {
+        'display': 'inline-block',
+        'vertical-align': 'middle'
+      }
+    })
+  ],
   theme: {
     fontFamily: {
       mono: ['monospace']
     }
   },
   rules: [
-    // 3D transform utilities
     ['perspective-1000', { 'perspective': '1000px' }],
     ['transform-style-preserve-3d', { 'transform-style': 'preserve-3d' }],
     ['backface-hidden', { 'backface-visibility': 'hidden' }],
-    ['rotate-y-180', { 'transform': 'rotateY(180deg)' }],
-    
-    // Float animation
-    ['animate-float', { 
-      'animation': 'float 3s ease-in-out infinite',
-      '@keyframes float': {
-        '0%, 100%': { transform: 'translateY(0px)' },
-        '50%': { transform: 'translateY(-10px)' }
-      }
-    }],
-    
-    // Pulse animation for cursor
-    ['animate-pulse', {
-      'animation': 'pulse 1s infinite',
-      '@keyframes pulse': {
-        '0%, 100%': { opacity: '1' },
-        '50%': { opacity: '0' }
-      }
-    }],
+    ['rotate-y-180', { 'transform': 'rotateY(180deg)' }]
+  ],
+  safelist: [
+    'i-mdi-github',
+    'i-mdi-linkedin',
+    'i-mdi-map-marker',
+    'i-mdi-code-braces',
+    'i-mdi-laptop',
+    'i-mdi-desktop-classic',
+    'i-mdi-console'
   ]
 });

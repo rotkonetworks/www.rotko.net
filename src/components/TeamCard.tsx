@@ -27,11 +27,11 @@ const TeamCard: Component<TeamCardProps> = (props) => {
   // Setup icons
   const getSetupIcon = (type: string) => {
     switch (type) {
-      case "editor": return "⌨"
-      case "os": return "💻"
-      case "de": return "🏢"
-      case "shell": return "🐚"
-      default: return "⌨"
+      case "editor": return "⚡"
+      case "os": return "🖥"
+      case "de": return "🎨"
+      case "shell": return "⚙"
+      default: return "📦"
     }
   }
 
@@ -47,7 +47,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
 
   return (
     <div 
-      class="relative w-full h-[520px] cursor-pointer perspective-1000"
+      class="relative w-full h-[540px] cursor-pointer perspective-1000"
       onClick={() => setIsFlipped(!isFlipped())}
     >
       <div 
@@ -87,7 +87,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
               class="relative w-48 h-48 rounded-lg overflow-hidden border-2 mb-3"
               style={{ 
                 "border-color": scheme.secondary,
-                "box-shadow": `0 0 15px ${scheme.secondary}60` 
+                "box-shadow": `0 4 15px ${scheme.secondary}60` 
               }}
             >
               <Show 
@@ -111,7 +111,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
             {/* Title and Location */}
             <div class="text-center space-y-2 mb-3">
               <div 
-                class="text-xs px-2 py-1 border-0 font-mono tracking-wider"
+                class="text-xs px-2 py-1 border-0 mb-2 font-mono tracking-wider"
                 style={{ 
                   "background-color": scheme.accent,
                   "color": "#000" 
@@ -120,7 +120,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                 {props.member.title.toUpperCase()}
               </div>
               <div class="flex items-center justify-center space-x-2 text-sm">
-                <span style={{ color: scheme.primary }}>📍</span>
+                <span class="i-mdi-map-marker w-4 h-4" style={{ color: scheme.primary }}></span>
                 <span style={{ color: scheme.primary }} class="font-mono">
                   {props.member.location}
                 </span>
@@ -128,13 +128,13 @@ const TeamCard: Component<TeamCardProps> = (props) => {
             </div>
 
             {/* Social Links */}
-            <div class="flex justify-center space-x-3 mb-3">
+            <div class="flex justify-center gap-5 mb-3">
               <Show when={props.member.github}>
                 <a
                   href={props.member.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="p-3 rounded-lg transition-transform hover:scale-110"
+                  class="p-2.5 rounded-lg transition-transform hover:scale-110"
                   style={{
                     "background-color": scheme.bg,
                     "color": scheme.primary,
@@ -142,7 +142,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span class="text-lg">🔗</span>
+                  <span class="i-mdi-github w-5 h-5"></span>
                 </a>
               </Show>
               <Show when={props.member.linkedin}>
@@ -150,7 +150,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   href={props.member.linkedin}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="p-3 rounded-lg transition-transform hover:scale-110"
+                  class="p-2.5 rounded-lg transition-transform hover:scale-110"
                   style={{
                     "background-color": scheme.bg,
                     "color": scheme.secondary,
@@ -158,13 +158,13 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span class="text-lg">💼</span>
+                  <span class="i-mdi-linkedin w-5 h-5"></span>
                 </a>
               </Show>
             </div>
 
             {/* Flip indicator */}
-            <div class="mt-auto text-center">
+            <div class="mt-auto mb-4 text-center">
               <div 
                 class="text-xs font-mono tracking-wider"
                 style={{ color: scheme.secondary }}
@@ -199,7 +199,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
           {/* Description */}
           <div class="flex-1 space-y-3">
             <div 
-              class="text-sm leading-relaxed font-mono p-3 rounded border h-44 overflow-y-auto"
+              class="text-sm leading-relaxed font-mono p-3 rounded border h-50 overflow-y-auto"
               style={{
                 color: "#e0e0e0",
                 "background-color": scheme.bg,
@@ -210,25 +210,25 @@ const TeamCard: Component<TeamCardProps> = (props) => {
             </div>
 
             {/* Setup */}
-            <div class="space-y-2">
+            <div class="space-y-2 mt-4">
               <div 
                 class="text-sm font-mono font-bold tracking-wider"
                 style={{ color: scheme.accent }}
               >
                 SYSTEM.CONFIG
               </div>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 gap-1.5">
                 <For each={Object.entries(props.member.setup)}>
                   {([key, value]) => (
                     <div 
-                      class="flex items-center space-x-2 p-2 rounded text-xs font-mono border"
+                      class="flex items-center gap-3 p-2 rounded text-xs font-mono border"
                       style={{
                         "background-color": "rgba(0, 0, 0, 0.3)",
                         "border-color": scheme.secondary
                       }}
                     >
                       <div style={{ color: scheme.secondary }}>
-                        {getSetupIcon(key)}
+                        <span class="text-sm">{getSetupIcon(key)}</span>
                       </div>
                       <div class="flex-1">
                         <div class="text-gray-400 text-xs">{key.toUpperCase()}</div>
@@ -247,7 +247,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
           </div>
 
           {/* Back indicator */}
-          <div class="mt-3 text-center">
+          <div class="mt-auto mb-4 text-center">
             <div 
               class="text-xs font-mono tracking-wider"
               style={{ color: scheme.secondary }}

@@ -108,3 +108,21 @@ export const teamData: TeamMember[] = [
     },
   },
 ]
+
+export const teamPageData = {
+  hero: {
+    title: "Team",
+    subtitle: "Engineers who ship. No consultants, no outsourcing."
+  },
+  stats: [
+    { label: "Combined Experience", value: "80+ years" },
+    { label: "Continents", value: "6" },
+    { label: "Vendor Lock-in", value: "Zero" }
+  ],
+  principles: [
+    "Nokia veterans + young blood = institutional knowledge with modern execution",
+    "Built infra before cloud existed. Know what actually matters.",
+    "Use our own products daily. Dogfooding isn't optional.",
+    "Remote-first since before COVID. Async by default."
+  ]
+}

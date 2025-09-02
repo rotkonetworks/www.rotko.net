@@ -13,7 +13,7 @@ const ServiceCard: Component<ServiceCardProps> = (props) => {
   }
 
   return (
-    <div class="border border-gray-800 hover:border-gray-600 transition-all p-8 bg-gray-900/30 h-full flex flex-col">
+    <div class="border border-gray-800 hover:border-gray-600 transition-all p-6 md:p-8 bg-gray-900/30 h-full flex flex-col">
       <div class="flex justify-between items-start mb-6">
         <h3 class="text-xl font-bold text-white">{props.service.name}</h3>
         <div class={`w-2 h-2 rounded-full ${statusColors[props.service.status]}`} />
