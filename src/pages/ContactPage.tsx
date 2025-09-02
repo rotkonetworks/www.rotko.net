@@ -103,7 +103,8 @@ const ContactPage: Component = () => {
 
           {/* Email fallback */}
           <div class="text-center text-sm text-gray-400 border-t border-gray-800 pt-6">
-            <p>Email fallback: hq@rotko.net</p>
+            <p>Email: noc@rotko.net</p>
+            <p>Matrix: @tommi:matrix.rotko.net</p>
             <p class="text-xs mt-2">IRC preferred for real-time support</p>
           </div>
         </div>

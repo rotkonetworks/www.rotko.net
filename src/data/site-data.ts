@@ -145,7 +145,7 @@ export const siteData = {
   ],
 
   contact: {
-    email: "hq@rotko.net",
+    email: "noc@rotko.net",
     irc: {
       server: "irc.rotko.net",
       channel: "#rotko"
