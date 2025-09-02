@@ -134,7 +134,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   href={props.member.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="p-2 rounded transition-transform hover:scale-110"
+                  class="p-3 rounded-lg transition-transform hover:scale-110"
                   style={{
                     "background-color": scheme.bg,
                     "color": scheme.primary,
@@ -142,7 +142,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span class="text-sm">🔗</span>
+                  <span class="text-lg">🔗</span>
                 </a>
               </Show>
               <Show when={props.member.linkedin}>
@@ -150,7 +150,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   href={props.member.linkedin}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="p-2 rounded transition-transform hover:scale-110"
+                  class="p-3 rounded-lg transition-transform hover:scale-110"
                   style={{
                     "background-color": scheme.bg,
                     "color": scheme.secondary,
@@ -158,7 +158,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span class="text-sm">💼</span>
+                  <span class="text-lg">💼</span>
                 </a>
               </Show>
             </div>

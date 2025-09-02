@@ -1,32 +1,77 @@
-import { Component, For } from 'solid-js'
+import { Component, For, onMount, createSignal } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import NetworkCard from '../components/NetworkCard'
 import ServiceCard from '../components/ServiceCard'
 import { siteData } from '../data/site-data'
+import { fetchCryptoPrices } from '../utils/fetchPrices'
 
 const HomePage: Component = () => {
+  const [networks, setNetworks] = createSignal(siteData.networks)
+  
+  onMount(async () => {
+    const ids = siteData.networks
+      .filter(n => n.coingeckoId)
+      .map(n => n.coingeckoId!)
+    
+    const prices = await fetchCryptoPrices(ids)
+    
+    setNetworks(siteData.networks.map(network => {
+      if (network.coingeckoId && prices[network.coingeckoId]) {
+        return {
+          ...network,
+          price: {
+            current: prices[network.coingeckoId].price,
+            change24h: parseFloat(prices[network.coingeckoId].change24h.toFixed(2))
+          }
+        }
+      }
+      return network
+    }))
+  })
+
   return (
     <MainLayout>
-      {/* Hero Section */}
-      <section class="py-20 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-4xl mx-auto text-center">
-          <h1 class="text-5xl md:text-7xl font-bold mb-6 text-cyan-3 font-mono">
-            {siteData.company.name.toUpperCase()}
-          </h1>
-          <p class="text-2xl text-gray-3 mb-4">{siteData.company.tagline}</p>
-          <p class="text-lg text-gray-5">{siteData.company.description}</p>
+      {/* Hero */}
+      <section class="min-h-[70vh] flex items-center px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto w-full">
+          <div class="mb-12">
+            <div class="text-xs font-mono text-cyan-400 mb-6 tracking-wider uppercase">
+              {siteData.company.tagline}
+            </div>
+            <h1 class="text-5xl lg:text-7xl font-bold mb-8 text-white leading-tight">
+              {siteData.hero.title}
+            </h1>
+            <p class="text-xl text-gray-400 max-w-2xl leading-relaxed">
+              {siteData.hero.subtitle}
+            </p>
+          </div>
+          
+          <div class="grid md:grid-cols-2 gap-x-12 gap-y-4 mt-16">
+            <For each={siteData.hero.points}>
+              {(point) => (
+                <div class="flex items-center gap-3">
+                  <span class="text-cyan-400 text-lg">•</span>
+                  <span class="text-gray-300">{point}</span>
+                </div>
+              )}
+            </For>
+          </div>
         </div>
       </section>
 
-      {/* Infrastructure Stats */}
-      <section class="py-16 px-4 sm:px-6 lg:px-8 border-y border-gray-8">
+      {/* Stats */}
+      <section class="py-24 px-6 lg:px-8 bg-gray-900/30">
         <div class="max-w-6xl mx-auto">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-12">
             <For each={Object.values(siteData.infrastructure)}>
               {(stat) => (
-                <div class="text-center">
-                  <div class="text-4xl font-bold text-cyan-3 mb-2">{stat.value}</div>
-                  <div class="text-sm text-gray-5 uppercase">{stat.label}</div>
+                <div>
+                  <div class="text-4xl font-bold text-white mb-2 font-mono">
+                    {stat.value}
+                  </div>
+                  <div class="text-xs text-gray-500 uppercase tracking-wider">
+                    {stat.label}
+                  </div>
                 </div>
               )}
             </For>
@@ -35,10 +80,12 @@ const HomePage: Component = () => {
       </section>
 
       {/* Services */}
-      <section class="py-20 px-4 sm:px-6 lg:px-8">
+      <section class="py-24 px-6 lg:px-8">
         <div class="max-w-6xl mx-auto">
-          <h2 class="text-3xl font-bold text-center mb-12 text-cyan-3">SERVICES</h2>
-          <div class="grid md:grid-cols-2 gap-8">
+          <h2 class="text-4xl font-bold mb-16 text-white">
+            {siteData.sections.services}
+          </h2>
+          <div class="grid lg:grid-cols-3 gap-8">
             <For each={siteData.services}>
               {(service) => <ServiceCard service={service} />}
             </For>
@@ -47,14 +94,34 @@ const HomePage: Component = () => {
       </section>
 
       {/* Networks */}
-      <section class="py-20 px-4 sm:px-6 lg:px-8 bg-gray-900/20">
+      <section class="py-24 px-6 lg:px-8 bg-gray-900/30">
         <div class="max-w-6xl mx-auto">
-          <h2 class="text-3xl font-bold text-center mb-12 text-cyan-3">SUPPORTED NETWORKS</h2>
+          <h2 class="text-4xl font-bold mb-16 text-white">
+            {siteData.sections.networks}
+          </h2>
           <div class="grid md:grid-cols-3 gap-8">
-            <For each={siteData.networks}>
+            <For each={networks()}>
               {(network) => <NetworkCard network={network} />}
             </For>
           </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section class="py-32 px-6 lg:px-8 border-t border-gray-800">
+        <div class="max-w-4xl mx-auto text-center">
+          <h2 class="text-3xl font-bold mb-6 text-white">
+            {siteData.cta.title}
+          </h2>
+          <p class="text-gray-400 mb-10 text-lg">
+            {siteData.cta.subtitle || `IRC: ${siteData.contact.irc.server} ${siteData.contact.irc.channel} | Email: ${siteData.contact.email}`}
+          </p>
+          <a 
+            href="/contact" 
+            class="px-8 py-4 bg-cyan-400 text-black font-bold hover:bg-cyan-300 transition-colors text-lg inline-block"
+          >
+            {siteData.cta.button}
+          </a>
         </div>
       </section>
     </MainLayout>
