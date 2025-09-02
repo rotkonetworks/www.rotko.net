@@ -1,0 +1,69 @@
+# .github/workflows/deploy.yaml
+name: Deploy to rotko.net
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Install mdBook
+        run: |
+          curl -LO https://github.com/rust-lang/mdBook/releases/download/v0.4.36/mdbook-v0.4.36-x86_64-unknown-linux-gnu.tar.gz
+          tar xzf mdbook-v0.4.36-x86_64-unknown-linux-gnu.tar.gz
+          sudo mv mdbook /usr/local/bin/
+      
+      - name: Build site
+        run: |
+          npm install
+          mdbook build docs
+          npm run build
+          mkdir -p dist/docs && mv docs/book/* dist/docs/
+          tar czf site.tar.gz dist/
+      
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /home/${{ secrets.DEPLOY_USER }}
+            rm -rf site.tar.gz dist/
+      
+      - name: Copy files
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          source: "site.tar.gz"
+          target: "/home/${{ secrets.DEPLOY_USER }}/"
+      
+      - name: Extract and deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /home/${{ secrets.DEPLOY_USER }}
+            tar xzf site.tar.gz
+            sudo podman stop rotko-net 2>/dev/null || true
+            sudo podman rm rotko-net 2>/dev/null || true
+            sudo podman run -d --name rotko-net \
+              -p 127.0.0.1:8080:80 \
+              -v /home/${{ secrets.DEPLOY_USER }}/dist:/usr/share/nginx/html:ro \
+              --restart unless-stopped \
+              docker.io/library/nginx:alpine
+            rm site.tar.gz
+            echo "Deployed rotko.net on port 8080"
