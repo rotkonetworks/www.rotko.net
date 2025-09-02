@@ -37,7 +37,7 @@ export const siteData = {
   },
   
   hero: {
-    title: "Infrastructure for networks that matter",
+    title: "Infra for resilient networks",
     subtitle: "Validators, RPC endpoints, and custom blockchain infrastructure. Built on our own AS, bare metal servers, and Linux expertise.",
     points: [
       "AS142108 with full BGP tables",

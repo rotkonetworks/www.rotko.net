@@ -1,14 +1,16 @@
-import { defineConfig } from 'vite';
-import solidPlugin from 'vite-plugin-solid';
-
-import UnocssPlugin from '@unocss/vite';
+import { defineConfig } from 'vite'
+import solidPlugin from 'vite-plugin-solid'
+import UnocssPlugin from '@unocss/vite'
 
 export default defineConfig({
   plugins: [
-    solidPlugin(),
-    UnocssPlugin({
-      // your config or in uno.config.ts
+    solidPlugin({
+      extensions: ['.tsx', '.jsx', '.ts', '.js'],
+      babel: {
+        plugins: []
+      }
     }),
+    UnocssPlugin()
   ],
   server: {
     port: 3000,
@@ -16,4 +18,8 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
-});
+  optimizeDeps: {
+    include: ['solid-js', 'marked', 'gray-matter']
+  },
+  assetsInclude: ['**/*.md']
+})
