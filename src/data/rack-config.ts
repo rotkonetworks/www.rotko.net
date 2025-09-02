@@ -21,7 +21,7 @@ export const rackConfiguration: RackConfig = {
  rack_width: 200,
  label_width: 50,
  devices: [
-   { name: "bkk07", bottom_u: 1, height_u: 2, color: "#00FFE5", type: "Server", details: "EPYC 9654 Storage/Compute" },
+   { name: "bkk07", bottom_u: 1, height_u: 2, color: "#00FFE5", details: "EPYC 9654 Storage/Compute" },
    { name: "bkk06", bottom_u: 3, height_u: 2, color: "#00FFE5", type: "Server", details: "EPYC 7713 Storage/Compute" },
    { name: "bkk08", bottom_u: 5, height_u: 2, color: "#00FFE5", type: "Server", details: "EPYC 7742 Storage/Compute" },
    { name: "bkk30", bottom_u: 7, height_u: 1, color: "#FFB366", type: "Switch", details: "Storage Network Switch A" },
