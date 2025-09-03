@@ -1,7 +1,7 @@
-// src/utils/posts.ts
 import matter from 'gray-matter'
 import { remark } from 'remark'
 import html from 'remark-html'
+import gfm from 'remark-gfm'
 
 export interface PostMeta {
   slug: string
@@ -12,18 +12,17 @@ export interface PostMeta {
   draft?: boolean
 }
 
-// Import all MDX files from posts directory
-const postModules = import.meta.glob('/src/posts/*.md', { 
+const postModules = import.meta.glob('/src/posts/*.mdx', {
   query: '?raw',
   import: 'default',
-  eager: true 
+  eager: true
 })
 
 export async function getAllPosts(): Promise<PostMeta[]> {
   const posts: PostMeta[] = []
   
   for (const [path, content] of Object.entries(postModules)) {
-    const slug = path.split('/').pop()?.replace('.md', '') || ''
+    const slug = path.split('/').pop()?.replace('.mdx', '') || ''
     const { data } = matter(content as string)
     
     if (!data.draft) {
@@ -38,22 +37,21 @@ export async function getAllPosts(): Promise<PostMeta[]> {
     }
   }
   
-  // Sort by date descending
   return posts.sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   )
 }
 
 export async function getPost(slug: string): Promise<{ meta: PostMeta; content: string } | null> {
-  const path = `/src/posts/${slug}.md`
-  const content = postModules[path]
+  const key = Object.keys(postModules).find(p => p.endsWith(`/${slug}.mdx`))
+  const content = key ? postModules[key] : undefined
   
   if (!content) return null
   
   const { data, content: markdown } = matter(content as string)
   
-  // Process markdown to HTML
   const processedContent = await remark()
+    .use(gfm)
     .use(html)
     .process(markdown)
   
@@ -70,14 +68,12 @@ export async function getPost(slug: string): Promise<{ meta: PostMeta; content: 
   }
 }
 
-// Helper to get related posts
 export async function getRelatedPosts(currentSlug: string, limit = 3): Promise<PostMeta[]> {
   const allPosts = await getAllPosts()
   const currentPost = allPosts.find(p => p.slug === currentSlug)
   
   if (!currentPost) return []
   
-  // Find posts with matching tags
   return allPosts
     .filter(p => p.slug !== currentSlug)
     .map(post => ({

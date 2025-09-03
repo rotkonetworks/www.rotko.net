@@ -1,6 +1,7 @@
 import { Component, For, Show, createSignal, onMount } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { getAllPosts, PostMeta } from '../utils/posts'
+import { A } from "@solidjs/router"
 
 const BlogPage: Component = () => {
   const [posts, setPosts] = createSignal<PostMeta[]>([])
@@ -28,7 +29,7 @@ const BlogPage: Component = () => {
               <For each={posts()}>
                 {(post) => (
                   <article class="border-b border-gray-800 pb-8">
-                    <a href={`/blog/${post.slug}`} class="group block">
+                    <A href={`/blog/${post.slug}`} class="group block">
                       <h2 class="text-2xl font-bold mb-2 text-white group-hover:text-cyan-400 transition-colors">
                         {post.title}
                       </h2>
@@ -45,7 +46,7 @@ const BlogPage: Component = () => {
                           )}
                         </For>
                       </div>
-                    </a>
+                    </A>
                   </article>
                 )}
               </For>
