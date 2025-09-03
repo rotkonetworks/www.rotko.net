@@ -1,18 +1,22 @@
 import { Component, For, Show, createSignal, onMount } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { getAllPosts, PostMeta } from '../utils/posts'
-import { A } from "@solidjs/router"
+import { A } from '@solidjs/router'
 
 const BlogPage: Component = () => {
   const [posts, setPosts] = createSignal<PostMeta[]>([])
   const [loading, setLoading] = createSignal(true)
+  const [error, setError] = createSignal<string>('')
 
   onMount(async () => {
     try {
+      console.log('Loading posts...')
       const loadedPosts = await getAllPosts()
+      console.log('Loaded posts:', loadedPosts)
       setPosts(loadedPosts)
-    } catch (error) {
-      console.error('Failed to load posts:', error)
+    } catch (err) {
+      console.error('Failed to load posts:', err)
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -22,6 +26,10 @@ const BlogPage: Component = () => {
     <MainLayout>
       <section class="py-24 px-6 lg:px-12 max-w-4xl mx-auto">
         <h1 class="text-4xl font-bold mb-12 text-white">Blog</h1>
+        
+        <Show when={error()}>
+          <div class="text-red-400">Error: {error()}</div>
+        </Show>
         
         <Show when={!loading()} fallback={<div class="text-gray-400">Loading...</div>}>
           <Show when={posts().length > 0} fallback={<div class="text-gray-400">No posts yet.</div>}>

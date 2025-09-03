@@ -14,5 +14,5 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
-  assetsInclude: ['**/*.md',]
+  assetsInclude: ['**/*.md,**/*.mdx']
 })

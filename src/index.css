@@ -56,3 +56,37 @@ code, pre {
   background-color: rgba(0, 0, 0, 0.3);
   color: #e0e0e0;
 }
+
+/* Blog readability improvements */
+.prose {
+  max-width: 65ch;
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.prose-invert {
+  color: #d1d5db;
+}
+
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3 {
+  color: #bae6fd; /* cyan-200 */
+  font-weight: 700;
+}
+
+.prose-invert a {
+  color: #22d3ee;
+  text-decoration: underline;
+}
+
+.prose-invert strong {
+  color: #fff;
+}
+
+.prose-invert code {
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  color: #fca5a5;
+}

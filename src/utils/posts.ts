@@ -1,4 +1,4 @@
-import matter from 'gray-matter'
+import fm from 'front-matter'
 import { remark } from 'remark'
 import html from 'remark-html'
 import gfm from 'remark-gfm'
@@ -17,13 +17,14 @@ const postModules = import.meta.glob('/src/posts/*.mdx', {
   import: 'default',
   eager: true
 })
+console.log("Post modules found:", Object.keys(postModules))
 
 export async function getAllPosts(): Promise<PostMeta[]> {
   const posts: PostMeta[] = []
   
   for (const [path, content] of Object.entries(postModules)) {
     const slug = path.split('/').pop()?.replace('.mdx', '') || ''
-    const { data } = matter(content as string)
+    const { attributes: data } = fm(content as string)
     
     if (!data.draft) {
       posts.push({
@@ -48,7 +49,7 @@ export async function getPost(slug: string): Promise<{ meta: PostMeta; content: 
   
   if (!content) return null
   
-  const { data, content: markdown } = matter(content as string)
+  const { attributes: data, body: markdown } = fm(content as string)
   
   const processedContent = await remark()
     .use(gfm)
