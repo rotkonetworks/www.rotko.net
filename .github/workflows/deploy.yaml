@@ -1,56 +1,59 @@
 name: Deploy to rotko.net
 on:
- push:
-   branches: [master]
- workflow_dispatch:
-
+  push:
+    branches: [master]
+  workflow_dispatch:
 env:
- CONTAINER_NAME: rotko-net
- CONTAINER_PORT: 55555
- PROJECT_DIR: www.rotko.net
- NODE_VERSION: '20'
- MDBOOK_VERSION: v0.4.52
-
+  CONTAINER_NAME: rotko-net
+  CONTAINER_PORT: 55555
+  PROJECT_DIR: www.rotko.net
+  NODE_VERSION: '20'
+  MDBOOK_VERSION: v0.4.52
 jobs:
- deploy:
-   runs-on: ubuntu-latest
-   steps:
-     - uses: actions/checkout@v3
-     
-     - uses: actions/setup-node@v3
-       with:
-         node-version: ${{ env.NODE_VERSION }}
-     
-     - run: |
-         curl -LO https://github.com/rust-lang/mdBook/releases/download/${{ env.MDBOOK_VERSION }}/mdbook-${{ env.MDBOOK_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
-         tar xzf mdbook-${{ env.MDBOOK_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
-         sudo mv mdbook /usr/local/bin/
-     
-     - run: |
-         npm install
-         mdbook build docs
-         npm run build
-         mkdir -p dist/docs && mv docs/book/* dist/docs/
-         tar czf site.tar.gz dist/
-     
-     - uses: appleboy/scp-action@v0.1.5
-       with:
-         host: ${{ secrets.DEPLOY_HOST }}
-         username: ${{ secrets.DEPLOY_USER }}
-         key: ${{ secrets.DEPLOY_KEY }}
-         source: site.tar.gz
-         target: /home/${{ secrets.DEPLOY_USER }}/
-     
-     - uses: appleboy/ssh-action@v1.0.0
-       with:
-         host: ${{ secrets.DEPLOY_HOST }}
-         username: ${{ secrets.DEPLOY_USER }}
-         key: ${{ secrets.DEPLOY_KEY }}
-         script: |
-           cd /home/${{ secrets.DEPLOY_USER }}
-           tar xzf site.tar.gz
-           mkdir -p ${{ env.PROJECT_DIR }}
-           rm -rf ${{ env.PROJECT_DIR }}/*
-           mv dist/* ${{ env.PROJECT_DIR }}/
-           ./deploy.sh deploy ${{ env.CONTAINER_NAME }} nginx:alpine ${{ env.CONTAINER_PORT }} "/home/${{ secrets.DEPLOY_USER }}/${{ env.PROJECT_DIR }}:/usr/share/nginx/html:ro"
-           rm -rf site.tar.gz dist/
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: |
+          curl -LO https://github.com/rust-lang/mdBook/releases/download/${{ env.MDBOOK_VERSION }}/mdbook-${{ env.MDBOOK_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+          tar xzf mdbook-${{ env.MDBOOK_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+          sudo mv mdbook /usr/local/bin/
+      - run: |
+          npm install
+          mdbook build docs
+          npm run build
+          mkdir -p dist/docs && mv docs/book/* dist/docs/
+          tar czf site.tar.gz dist/
+      - uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          source: site.tar.gz
+          target: /home/${{ secrets.DEPLOY_USER }}/
+      - uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /home/${{ secrets.DEPLOY_USER }}
+            tar xzf site.tar.gz
+            mkdir -p ${{ env.PROJECT_DIR }}
+            rm -rf ${{ env.PROJECT_DIR }}/*
+            mv dist/* ${{ env.PROJECT_DIR }}/
+            
+            # Redeploy with nginx config
+            sudo -H podman stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            sudo -H podman rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            sudo -H podman run -d --name ${{ env.CONTAINER_NAME }} \
+              -p 127.0.0.1:${{ env.CONTAINER_PORT }}:80 \
+              -v /home/${{ secrets.DEPLOY_USER }}/${{ env.PROJECT_DIR }}:/usr/share/nginx/html:ro \
+              -v /home/${{ secrets.DEPLOY_USER }}/nginx-spa.conf:/etc/nginx/conf.d/default.conf:ro \
+              --restart unless-stopped \
+              nginx:alpine
+            
+            rm -rf site.tar.gz dist/
