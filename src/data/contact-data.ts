@@ -1,15 +1,15 @@
 export const contactData = {
  hero: {
    title: "Contact",
-   subtitle: "IRC preferred. Matrix for the paranoid. Signal if you insist."
+   subtitle: "IRC preferred."
  },
  
  philosophy: {
    title: "Why IRC?",
    content: [
-     "Every chat application since IRC has been a degradation. Slack? Bloated IRC with vendor lock-in. Discord? IRC with tracking. Teams? Don't get us started.",
-     "IRC is text. IRC is simple. IRC has worked for 35+ years. No accounts, no tracking, no BS.",
-     "We run our own server because depending on others is how you end up with Teams."
+     "Every chat application since IRC has been a degradation. Slack? Bloated IRC with vendor lock-in. Discord? IRC with single client & tracking. Teams? No experience.",
+     "IRC is text. IRC is simple. IRC has worked for 35+ years. It feels good not to have accounts too.",
+     "Simplicity of protocol lets you join with 4 lines of commands into telnet."
    ]
  },
  
@@ -23,7 +23,7 @@ export const contactData = {
  },
  
  encrypted: {
-   title: "Encrypted Options",
+   title: "Encrypted",
    description: "For sensitive discussions:",
    matrix: "@tommi:matrix.rotko.net",
    note: "Signal available on request via IRC. We don't log encrypted channels."
@@ -38,7 +38,6 @@ export const contactData = {
      "No spam. Our bots are less forgiving than we are.",
      "English only. Not because we're monolingual, but because logs need to be searchable.",
      "Paste code somewhere else. Nobody wants to see your 500 line stack trace.",
-     "We use AI moderation. It's smarter than most trolls."
    ]
  },
  
@@ -56,10 +55,11 @@ export const contactData = {
  services: {
    title: "What We Can Help With",
    items: [
-     "RPC endpoints that actually work",
-     "Validator operations without the drama",
+     "Global high availability RPC endpoints",
+     "Validator operations",
      "Custom software in Rust/Go",
      "Linux infrastructure consulting",
+     "ISP-level network consulting",
      "AI/LLM hosting on real hardware",
      "Telling you why your current setup is broken"
    ]
