@@ -1,15 +1,11 @@
+// vite.config.ts
 import { defineConfig } from 'vite'
 import solidPlugin from 'vite-plugin-solid'
 import UnocssPlugin from '@unocss/vite'
 
 export default defineConfig({
   plugins: [
-    solidPlugin({
-      extensions: ['.tsx', '.jsx', '.ts', '.js'],
-      babel: {
-        plugins: []
-      }
-    }),
+    solidPlugin(),
     UnocssPlugin()
   ],
   server: {
@@ -18,8 +14,5 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
-  optimizeDeps: {
-    include: ['solid-js', 'marked', 'gray-matter']
-  },
-  assetsInclude: ['**/*.md']
+  assetsInclude: ['**/*.md',]
 })
