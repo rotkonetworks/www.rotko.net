@@ -7,7 +7,7 @@ env:
   CONTAINER_NAME: rotko-net
   CONTAINER_PORT: 55555
   PROJECT_DIR: www.rotko.net
-  NODE_VERSION: '20'
+  NODE_VERSION: "20"
   MDBOOK_VERSION: v0.4.52
 jobs:
   deploy:
@@ -47,9 +47,9 @@ jobs:
             mv dist/* ${{ env.PROJECT_DIR }}/
             
             # Redeploy with nginx config
-            sudo -H podman stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
-            sudo -H podman rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
-            sudo -H podman run -d --name ${{ env.CONTAINER_NAME }} \
+            podman stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            podman rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            podman run -d --name ${{ env.CONTAINER_NAME }} \
               -p 127.0.0.1:${{ env.CONTAINER_PORT }}:80 \
               -v /home/${{ secrets.DEPLOY_USER }}/${{ env.PROJECT_DIR }}:/usr/share/nginx/html:ro \
               -v /home/${{ secrets.DEPLOY_USER }}/nginx-spa.conf:/etc/nginx/conf.d/default.conf:ro \
