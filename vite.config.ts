@@ -2,17 +2,42 @@
 import { defineConfig } from 'vite'
 import solidPlugin from 'vite-plugin-solid'
 import UnocssPlugin from '@unocss/vite'
+import path from 'path'
 
 export default defineConfig({
   plugins: [
-    solidPlugin(),
+    solidPlugin({
+      ssr: true,
+      solid: {
+        hydratable: true
+      }
+    }),
     UnocssPlugin()
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    }
+  },
   server: {
     port: 3000,
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['solid-js', '@solidjs/router'],
+          utils: ['remark', 'remark-html', 'remark-gfm', 'front-matter']
+        }
+      }
+    }
   },
-  assetsInclude: ['**/*.md,**/*.mdx']
+  ssr: {
+    noExternal: ['@solidjs/router']
+  },
+  optimizeDeps: {
+    include: ['solid-js', '@solidjs/router', 'front-matter', 'remark', 'remark-html', 'remark-gfm']
+  },
+  assetsInclude: ['**/*.md', '**/*.mdx']
 })

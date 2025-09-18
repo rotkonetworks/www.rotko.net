@@ -6,6 +6,8 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "generate-llm": "tsx generate-llm.ts",
+    "prebuild": "npm run generate-llm",
     "build": "vite build",
     "serve": "vite preview"
   },

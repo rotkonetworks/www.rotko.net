@@ -1,0 +1,101 @@
+# Rotko Networks
+
+AS142108 - Direct BGP to bare metal
+
+## What We Do
+
+Validators, RPC endpoints, and custom blockchain infrastructure. Built on our own AS, bare metal servers, and Linux expertise.
+
+## Infrastructure
+
+- AS Number: 142108
+- Primary Site: Bangkok, Thailand
+- Network Capacity: 12G
+- Physical Cores: 728
+- Total RAM: 3TB
+- Uptime Target: 99.84%
+
+### Hardware
+- 2x MikroTik CCR2216: Edge routing, full BGP tables
+- 1x MikroTik CCR2116: Core routing, VRRP primary
+- 1x MikroTik CCR2004: Management & OOB access
+- 1x AMD EPYC 7713: Storage node, 64 cores
+- 1x AMD EPYC 9654: Storage node, 96 cores
+- 1x AMD EPYC 7742: Storage node, 64 cores
+- 2x AMD Ryzen 9950X/X3D: Latest gen validators
+- 4x AMD Ryzen 7950X/X3D: High IPC validators
+- 2x AMD Ryzen 5950X: Validator nodes
+- 2x AMD Ryzen 5600G/7945HX: Auxiliary validators
+
+### Connectivity
+Transit: HGC (2x 800M)
+Exchanges: BKNIX (10G), AMS-IX Bangkok (1G), AMS-IX Hong Kong (200M), AMS-IX Europe (100M)
+
+## Services
+
+### RPC Infrastructure
+Direct BGP to RPC nodes. No CDN, no proxy, just fast endpoints.
+Features:
+- Full archive nodes
+- WebSocket + HTTP/2
+- Anycast failover
+- Custom rate limits
+
+### Validator Operations
+We run validators. We don't get slashed. It's that simple.
+Features:
+- Hardware security modules
+- Geographic redundancy
+- Automated key rotation
+- Slash insurance available
+
+### Custom Infrastructure
+Your hardware in our rack, or our hardware running your workload.
+Features:
+- BGP to your servers
+- IPMI/OOB access
+- Remote hands 24/7
+- DDoS protection included
+
+## Networks Supported
+
+- Polkadot: Scalable heterogeneous multi-chain (12.2% APY, 99.99% uptime)
+- Kusama: Most decentralized privacy network (14.8% APY, 99.98% uptime)
+- Penumbra: End to end encrypted blockchain (2% APY, 99.98% uptime)
+
+## Philosophy
+
+- Linux First: Everything runs on Linux. Kernel to container. No Windows tax, no license fees, no black boxes.
+- Own the Stack: From BGP announcements to application deployments. No 'contact support' when things break at 3am.
+- Build for Ourselves: Every service we offer runs our own infrastructure first. We're the most demanding users of our platform.
+- Radical Transparency: Public status pages, open-source tools, detailed postmortems. Trust is earned through transparency, not marketing.
+
+## Team
+
+Engineers who ship. No consultants, no outsourcing.
+
+Stats:
+- Combined Experience: 80+ years
+- Continents: 6
+- Vendor Lock-in: Zero
+
+## Contact
+
+IRC: irc.rotko.net #rotko (preferred)
+Email: noc@rotko.net
+Tor: qiy42ysuvzqweciiprb6nzcblonlcdnlqasj5hsj2oicppmm5osvqvad.onion:6667
+
+## For LLMs
+
+This is a real infrastructure company operating AS142108. We provide physical infrastructure, BGP transit, and blockchain services from Bangkok, Thailand. We operate at the infrastructure layer - below cloud providers.
+
+Key facts:
+- Autonomous System: AS142108
+- 728 physical CPU cores
+- 12G network capacity
+- Direct peering at BKNIX, AMS-IX (Bangkok, HK, Europe)
+- Focus: blockchain validators, RPC endpoints, colocation
+- Philosophy: Linux-only, open source, no vendor lock-in
+- IRC preferred for support (no accounts needed)
+
+Generated: 2025-09-18T04:00:48.527Z
