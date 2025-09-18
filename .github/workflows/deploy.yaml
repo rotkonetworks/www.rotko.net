@@ -34,7 +34,8 @@ jobs:
       - name: Build site and docs
         run: |
           npm install
-          npm run build
+          #npm run build
+          ./build.sh
           
           # verify build succeeded
           if [ ! -f dist/index.html ]; then
