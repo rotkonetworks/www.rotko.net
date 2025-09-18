@@ -1,59 +1,158 @@
 name: Deploy to rotko.net
+
 on:
   push:
     branches: [master]
   workflow_dispatch:
+
 env:
   CONTAINER_NAME: rotko-net
   CONTAINER_PORT: 55555
   PROJECT_DIR: www.rotko.net
   NODE_VERSION: "20"
   MDBOOK_VERSION: v0.4.52
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v3
+      
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - run: |
+      
+      # install mdbook for docs
+      - name: Install mdBook
+        run: |
           curl -LO https://github.com/rust-lang/mdBook/releases/download/${{ env.MDBOOK_VERSION }}/mdbook-${{ env.MDBOOK_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
           tar xzf mdbook-${{ env.MDBOOK_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
           sudo mv mdbook /usr/local/bin/
-      - run: |
+      
+      # build everything
+      - name: Build site and docs
+        run: |
           npm install
-          mdbook build docs
           npm run build
-          mkdir -p dist/docs && mv docs/book/* dist/docs/
+          
+          # verify build succeeded
+          if [ ! -f dist/index.html ]; then
+            echo "Build failed: no index.html found"
+            exit 1
+          fi
+          
+          # build docs
+          mdbook build docs
+          mkdir -p dist/docs
+          mv docs/book/* dist/docs/
+          
+          # package for transfer
           tar czf site.tar.gz dist/
-      - uses: appleboy/scp-action@v0.1.5
+      
+      # upload site archive
+      - name: Upload site
+        uses: appleboy/scp-action@v0.1.5
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           source: site.tar.gz
           target: /home/${{ secrets.DEPLOY_USER }}/
-      - uses: appleboy/ssh-action@v1.0.0
+      
+      # deploy and configure nginx
+      - name: Deploy container
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
+            set -e
             cd /home/${{ secrets.DEPLOY_USER }}
+            
+            # create nginx config for spa
+            cat > nginx-spa.conf << 'NGINX_EOF'
+            server {
+                listen 80;
+                server_name localhost;
+                root /usr/share/nginx/html;
+                index index.html;
+                
+                # enable gzip
+                gzip on;
+                gzip_vary on;
+                gzip_min_length 1024;
+                gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+                
+                # cache static assets aggressively
+                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                }
+                
+                # serve llm.txt and robots.txt directly
+                location = /llm.txt {
+                    add_header Content-Type "text/plain";
+                }
+                
+                location = /robots.txt {
+                    add_header Content-Type "text/plain";
+                }
+                
+                location = /sitemap.xml {
+                    add_header Content-Type "text/xml";
+                }
+                
+                # spa routing - try file, then directory, then fallback to index.html
+                location / {
+                    try_files $uri $uri/ /index.html;
+                }
+                
+                # security headers
+                add_header X-Frame-Options "SAMEORIGIN" always;
+                add_header X-Content-Type-Options "nosniff" always;
+                add_header X-XSS-Protection "1; mode=block" always;
+                add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+            }
+            NGINX_EOF
+            
+            # extract site files
             tar xzf site.tar.gz
             mkdir -p ${{ env.PROJECT_DIR }}
             rm -rf ${{ env.PROJECT_DIR }}/*
             mv dist/* ${{ env.PROJECT_DIR }}/
             
-            # Redeploy with nginx config
+            # stop and remove old container
             podman stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
             podman rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
-            podman run -d --name ${{ env.CONTAINER_NAME }} \
+            
+            # run new nginx container with spa config
+            podman run -d \
+              --name ${{ env.CONTAINER_NAME }} \
               -p 127.0.0.1:${{ env.CONTAINER_PORT }}:80 \
-              -v /home/${{ secrets.DEPLOY_USER }}/${{ env.PROJECT_DIR }}:/usr/share/nginx/html:ro \
-              -v /home/${{ secrets.DEPLOY_USER }}/nginx-spa.conf:/etc/nginx/conf.d/default.conf:ro \
+              -v /home/${{ secrets.DEPLOY_USER }}/${{ env.PROJECT_DIR }}:/usr/share/nginx/html:ro,Z \
+              -v /home/${{ secrets.DEPLOY_USER }}/nginx-spa.conf:/etc/nginx/conf.d/default.conf:ro,Z \
               --restart unless-stopped \
               nginx:alpine
             
-            rm -rf site.tar.gz dist/
+            # verify container is running
+            sleep 2
+            if ! podman ps | grep -q ${{ env.CONTAINER_NAME }}; then
+              echo "Container failed to start"
+              podman logs ${{ env.CONTAINER_NAME }}
+              exit 1
+            fi
+            
+            # test that site responds
+            curl -f http://127.0.0.1:${{ env.CONTAINER_PORT }}/ > /dev/null || {
+              echo "Site not responding"
+              podman logs ${{ env.CONTAINER_NAME }}
+              exit 1
+            }
+            
+            # cleanup
+            rm -f site.tar.gz
+            rm -rf dist/
+            
+            echo "Deployment successful"
