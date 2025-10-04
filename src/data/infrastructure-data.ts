@@ -126,7 +126,6 @@ export const infrastructureData = {
  resilience: [
    "Anycast for internal load balancing",
    "2x 800M HGC transit with automatic failover",
-   "Geographic distribution across 4 continents",
    "VRRP redundancy for core routing",
    "Direct BGP to servers eliminates SPOF",
    "100G internal fabric for storage network"
