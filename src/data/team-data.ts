@@ -63,21 +63,6 @@ export const teamData: TeamMember[] = [
     },
   },
   {
-    name: "Walt",
-    title: "Frontend Developer",
-    description:
-      "Builds interfaces that work. When libraries break, reads their source instead of working around. Found critical bugs in major frameworks by actually looking. DEX frontends that handle real load. TypeScript for correctness. Automates everything worth automating. Debugs upstream when everyone else adds another abstraction layer.",
-    image: "walt.webp",
-    location: "Pacific Coast",
-    github: "https://github.com/71walceli",
-    setup: {
-      editor: "vscode",
-      os: "Ubuntu",
-      de: "GNOME",
-      shell: "bash",
-    },
-  },
-  {
     name: "Allan",
     title: "Fullstack Developer",
     description:
@@ -112,17 +97,17 @@ export const teamData: TeamMember[] = [
 export const teamPageData = {
   hero: {
     title: "Team",
-    subtitle: "Engineers who ship. No consultants, no outsourcing."
+    subtitle: "we build what we use. no third party dependencies."
   },
   stats: [
-    { label: "Combined Experience", value: "80+ years" },
-    { label: "Continents", value: "6" },
-    { label: "Vendor Lock-in", value: "Zero" }
+    { label: "timezones", value: "4" },
+    { label: "vim users", value: "3/5" },
+    { label: "corporate bs", value: "0" }
   ],
   principles: [
-    "Nokia veterans + young blood = institutional knowledge with modern execution",
-    "Built infra before cloud existed. Know what actually matters.",
-    "Use our own products daily. Dogfooding isn't optional.",
-    "Remote-first since before COVID. Async by default."
+    "infrastructure from first principles - BGP to browser",
+    "fix upstream instead of working around broken abstractions", 
+    "remote by default. results over meetings.",
+    "if it can't handle 3am failures on its own, it's not done"
   ]
 }
