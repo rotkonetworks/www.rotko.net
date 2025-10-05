@@ -1,5 +1,5 @@
 // src/components/TeamCard.tsx
-import { Component, createSignal, createEffect, Show, For } from 'solid-js'
+import { Component, createSignal, createEffect, Show, For, onMount, onCleanup } from 'solid-js'
 import type { TeamMember } from '../data/team-data'
 
 interface TeamCardProps {
@@ -11,234 +11,208 @@ const TeamCard: Component<TeamCardProps> = (props) => {
   const [isFlipped, setIsFlipped] = createSignal(false)
   const [isVisible, setIsVisible] = createSignal(false)
   const [imageLoaded, setImageLoaded] = createSignal(false)
-  
-  // Demoscene color schemes for each card
+
+  // terminal color schemes - more restrained, actual irssi-like
   const colorSchemes = [
-    { primary: "#ff0080", secondary: "#00ff80", accent: "#8000ff", bg: "rgba(255, 0, 128, 0.1)" },
-    { primary: "#00ffff", secondary: "#ff8000", accent: "#ff0040", bg: "rgba(0, 255, 255, 0.1)" },
-    { primary: "#80ff00", secondary: "#ff4080", accent: "#4080ff", bg: "rgba(128, 255, 0, 0.1)" },
-    { primary: "#ff4000", secondary: "#00ff40", accent: "#4000ff", bg: "rgba(255, 64, 0, 0.1)" },
-    { primary: "#ff8040", secondary: "#40ff80", accent: "#8040ff", bg: "rgba(255, 128, 64, 0.1)" },
-    { primary: "#4080ff", secondary: "#ff8040", accent: "#80ff40", bg: "rgba(64, 128, 255, 0.1)" },
+    { fg: "#00ff00", dim: "#008800", bg: "#001100" },
+    { fg: "#00ffff", dim: "#008888", bg: "#001111" },
+    { fg: "#ffff00", dim: "#888800", bg: "#111100" },
+    { fg: "#ff00ff", dim: "#880088", bg: "#110011" },
+    { fg: "#ffffff", dim: "#888888", bg: "#111111" },
+    { fg: "#ff8800", dim: "#884400", bg: "#110800" },
   ]
 
   const scheme = colorSchemes[props.index % colorSchemes.length]
 
-  // Setup icons
-  const getSetupIcon = (type: string) => {
-    switch (type) {
-      case "editor": return "⚡"
-      case "os": return "🖥"
-      case "de": return "🎨"
-      case "shell": return "⚙"
-      default: return "📦"
-    }
-  }
-
   createEffect(() => {
-    // Preload image
     const img = new Image()
     img.onload = () => setImageLoaded(true)
     img.src = `/images/team/${props.member.image}`
-
-    // Staggered entrance animation
     setTimeout(() => setIsVisible(true), props.index * 100)
   })
 
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'q' && isFlipped()) {
+      e.preventDefault()
+      setIsFlipped(false)
+    }
+  }
+
+  onMount(() => {
+    document.addEventListener('keydown', handleKeyDown)
+  })
+
+  onCleanup(() => {
+    document.removeEventListener('keydown', handleKeyDown)
+  })
+
   return (
-    <div 
-      class="relative w-full h-[540px] cursor-pointer perspective-1000"
+    <div
+      class="relative w-full h-[420px] cursor-pointer font-mono text-sm"
       onClick={() => setIsFlipped(!isFlipped())}
     >
-      <div 
-        class={`absolute inset-0 w-full h-full transition-transform duration-500 transform-style-preserve-3d ${
-          isFlipped() ? 'rotate-y-180' : ''
-        } ${isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+      <div
+        class={`absolute inset-0 w-full h-full transition-all duration-300 ${
+          isFlipped() ? 'opacity-0' : 'opacity-100'
+        } ${isVisible() ? 'translate-y-0' : 'translate-y-4'}`}
         style={{
-          "border-color": scheme.primary,
-          "box-shadow": `0 0 20px ${scheme.primary}40`,
-          "border-width": "2px",
-          "border-style": "solid",
-          "border-radius": "0.5rem",
-          "background-color": "#00181e"
+          "background-color": scheme.bg,
+          "border": `1px solid ${scheme.fg}`,
+          "color": scheme.fg
         }}
       >
-        {/* Front Side */}
-        <div 
-          class="absolute inset-0 w-full h-full backface-hidden flex flex-col"
-          style={{ "backface-visibility": "hidden" }}
-        >
-          {/* Header */}
-          <div 
-            class="relative h-14 flex items-center justify-center"
-            style={{ 
-              background: `linear-gradient(90deg, ${scheme.primary}, ${scheme.secondary})` 
-            }}
-          >
-            <h3 class="text-lg font-bold text-black tracking-wider font-mono">
-              {props.member.name.toUpperCase()}
-            </h3>
+        {/* front side - terminal window aesthetic */}
+        <div class="flex flex-col h-full">
+          {/* title bar with box drawing chars */}
+          <div class="px-2 py-1 border-b" style={{ "border-color": scheme.fg }}>
+            <div class="flex items-center justify-between">
+              <span>┌─[{props.member.name}]</span>
+              <span>@rotko─┐</span>
+            </div>
           </div>
 
-          {/* Content */}
-          <div class="relative flex-1 p-4 flex flex-col items-center">
-            {/* Portrait */}
-            <div 
-              class="relative w-48 h-48 rounded-lg overflow-hidden border-2 mb-3"
-              style={{ 
-                "border-color": scheme.secondary,
-                "box-shadow": `0 4 15px ${scheme.secondary}60` 
-              }}
-            >
-              <Show 
-                when={imageLoaded()} 
-                fallback={
-                  <div class="w-full h-full bg-gray-600/30 rounded-lg flex items-center justify-center">
-                    <div class="text-gray-400 text-sm font-mono">Loading...</div>
-                  </div>
-                }
-              >
-                <img 
-                  src={`/images/team/${props.member.image}`}
-                  alt={props.member.name}
-                  class="w-full h-full object-cover"
-                />
-              </Show>
-              {/* CRT effect */}
-              <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black opacity-10" />
-            </div>
-
-            {/* Title and Location */}
-            <div class="text-center space-y-2 mb-3">
-              <div 
-                class="text-xs px-2 py-1 border-0 mb-2 font-mono tracking-wider"
-                style={{ 
-                  "background-color": scheme.accent,
-                  "color": "#000" 
-                }}
-              >
-                {props.member.title.toUpperCase()}
-              </div>
-              <div class="flex items-center justify-center space-x-2 text-sm">
-                <span class="i-mdi-map-marker w-4 h-4" style={{ color: scheme.primary }}></span>
-                <span style={{ color: scheme.primary }} class="font-mono">
-                  {props.member.location}
-                </span>
-              </div>
-            </div>
-
-            {/* Social Links */}
-            <div class="flex justify-center gap-5 mb-3">
-              <Show when={props.member.github}>
-                <a
-                  href={props.member.github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="p-2.5 rounded-lg transition-transform hover:scale-110"
-                  style={{
-                    "background-color": scheme.bg,
-                    "color": scheme.primary,
-                    "border": `1px solid ${scheme.primary}`
-                  }}
-                  onClick={(e) => e.stopPropagation()}
+          {/* main content area */}
+          <div class="flex-1 p-2 flex flex-col">
+            {/* ascii-bordered image - square aspect ratio */}
+            <div class="mb-2 flex justify-center flex-1">
+              <div class="border aspect-square w-48 max-w-full" style={{ "border-color": scheme.dim }}>
+                <Show
+                  when={imageLoaded()}
+                  fallback={
+                    <div class="w-full h-full flex items-center justify-center">
+                      <span style={{ color: scheme.dim }}>[ loading... ]</span>
+                    </div>
+                  }
                 >
-                  <span class="i-mdi-github w-5 h-5"></span>
-                </a>
-              </Show>
-              <Show when={props.member.linkedin}>
-                <a
-                  href={props.member.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="p-2.5 rounded-lg transition-transform hover:scale-110"
-                  style={{
-                    "background-color": scheme.bg,
-                    "color": scheme.secondary,
-                    "border": `1px solid ${scheme.secondary}`
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span class="i-mdi-linkedin w-5 h-5"></span>
-                </a>
-              </Show>
+                  <img
+                    src={`/images/team/${props.member.image}`}
+                    alt={props.member.name}
+                    class="w-full h-full object-contain"
+                    style={{ filter: "contrast(1.1) saturate(0.8)" }}
+                  />
+                </Show>
+              </div>
             </div>
 
-            {/* Flip indicator */}
-            <div class="mt-auto mb-4 text-center">
-              <div 
-                class="text-xs font-mono tracking-wider"
-                style={{ color: scheme.secondary }}
-              >
-                [CLICK TO VIEW PROFILE]
+            {/* compact info block */}
+            <div class="space-y-1 text-xs">
+              <div class="flex">
+                <span style={{ color: scheme.dim }}>role:</span>
+                <span class="ml-2 truncate">{props.member.title}</span>
               </div>
+              <div class="flex">
+                <span style={{ color: scheme.dim }}>loc:</span>
+                <span class="ml-2 truncate">{props.member.location}</span>
+              </div>
+              {/* terminal-style contact links */}
+              <div class="flex items-center gap-3 mt-2 pt-1" style={{ "border-top": `1px solid ${scheme.dim}` }}>
+                <Show when={props.member.github}>
+                  <a
+                    href={props.member.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hover:underline"
+                    style={{ color: scheme.dim }}
+                    onClick={(e) => e.stopPropagation()}
+                    title="GitHub"
+                  >
+                    gh
+                  </a>
+                </Show>
+                <Show when={props.member.linkedin}>
+                  <a
+                    href={props.member.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hover:underline"
+                    style={{ color: scheme.dim }}
+                    onClick={(e) => e.stopPropagation()}
+                    title="LinkedIn"
+                  >
+                    li
+                  </a>
+                </Show>
+              </div>
+            </div>
+
+            {/* prompt at bottom */}
+            <div class="mt-2 pt-2 border-t" style={{ "border-color": scheme.dim }}>
+              <span style={{ color: scheme.dim }}>&gt;&gt;&gt; </span>
+              <span class="animate-pulse text-xs">cat profile.txt</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Back Side */}
-        <div 
-          class="absolute inset-0 w-full h-full backface-hidden rotate-y-180 p-4 flex flex-col"
-          style={{ "backface-visibility": "hidden", transform: "rotateY(180deg)" }}
-        >
-          {/* Header */}
-          <div class="text-center mb-4">
-            <h3 
-              class="text-lg font-bold font-mono tracking-wider"
-              style={{ color: scheme.primary }}
-            >
-              {props.member.name.toUpperCase()}
-            </h3>
-            <div 
-              class="text-sm font-mono"
-              style={{ color: scheme.secondary }}
-            >
-              SYSTEM.PROFILE
+      {/* back side */}
+      <div
+        class={`absolute inset-0 w-full h-full transition-all duration-300 ${
+          isFlipped() ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        style={{
+          "background-color": scheme.bg,
+          "border": `1px solid ${scheme.fg}`,
+          "color": scheme.fg
+        }}
+      >
+        <div class="flex flex-col h-full font-mono text-xs">
+          {/* header */}
+          <div class="px-2 py-1 border-b" style={{ "border-color": scheme.fg }}>
+            <div class="flex items-center justify-between">
+              <span>┌─[profile.txt]</span>
+              <span>({props.member.name})─┐</span>
             </div>
           </div>
 
-          {/* Description */}
-          <div class="flex-1 space-y-3">
-            <div 
-              class="text-sm leading-relaxed font-mono p-3 rounded border h-50 overflow-y-auto"
-              style={{
-                color: "#e0e0e0",
-                "background-color": scheme.bg,
-                "border-color": scheme.primary
-              }}
-            >
-              {props.member.description}
+          <div class="flex-1 p-3 overflow-y-auto space-y-3">
+            {/* description as code block */}
+            <div>
+              <div style={{ color: scheme.dim }}>/* about */</div>
+              <div class="pl-2 leading-relaxed whitespace-pre-wrap">
+                {props.member.description}
+              </div>
             </div>
 
-            {/* Setup */}
-            <div class="space-y-2 mt-4">
-              <div 
-                class="text-sm font-mono font-bold tracking-wider"
-                style={{ color: scheme.accent }}
-              >
-                SYSTEM.CONFIG
+            {/* social links */}
+            <div class="mt-4">
+              <div style={{ color: scheme.dim }}>/* links */</div>
+              <div class="pl-2 space-y-1">
+                <Show when={props.member.github}>
+                  <a
+                    href={props.member.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="block hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span style={{ color: scheme.dim }}>github:</span>
+                    <span class="ml-2">{props.member.github?.split('/').pop()}</span>
+                  </a>
+                </Show>
+                <Show when={props.member.linkedin}>
+                  <a
+                    href={props.member.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="block hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span style={{ color: scheme.dim }}>linkedin:</span>
+                    <span class="ml-2">{props.member.linkedin?.split('/').pop()}</span>
+                  </a>
+                </Show>
               </div>
-              <div class="grid grid-cols-2 gap-1.5">
+            </div>
+
+            {/* setup config */}
+            <div class="mt-4">
+              <div style={{ color: scheme.dim }}>/* config */</div>
+              <div class="pl-2 space-y-1">
                 <For each={Object.entries(props.member.setup)}>
                   {([key, value]) => (
-                    <div 
-                      class="flex items-center gap-3 p-2 rounded text-xs font-mono border"
-                      style={{
-                        "background-color": "rgba(0, 0, 0, 0.3)",
-                        "border-color": scheme.secondary
-                      }}
-                    >
-                      <div style={{ color: scheme.secondary }}>
-                        <span class="text-sm">{getSetupIcon(key)}</span>
-                      </div>
-                      <div class="flex-1">
-                        <div class="text-gray-400 text-xs">{key.toUpperCase()}</div>
-                        <div 
-                          style={{ color: scheme.primary }}
-                          class="font-bold text-xs"
-                        >
-                          {value}
-                        </div>
-                      </div>
+                    <div>
+                      <span style={{ color: scheme.dim }}>{key}:</span>
+                      <span class="ml-2">{value}</span>
                     </div>
                   )}
                 </For>
@@ -246,14 +220,10 @@ const TeamCard: Component<TeamCardProps> = (props) => {
             </div>
           </div>
 
-          {/* Back indicator */}
-          <div class="mt-auto mb-4 text-center">
-            <div 
-              class="text-xs font-mono tracking-wider"
-              style={{ color: scheme.secondary }}
-            >
-              [CLICK TO RETURN]
-            </div>
+          {/* prompt */}
+          <div class="px-3 pb-3 border-t pt-2" style={{ "border-color": scheme.dim }}>
+            <span style={{ color: scheme.dim }}>&gt;&gt;&gt; </span>
+            <span class="animate-pulse">q to exit</span>
           </div>
         </div>
       </div>

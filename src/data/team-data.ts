@@ -100,8 +100,6 @@ export const teamPageData = {
     subtitle: "we build what we use. no third party dependencies."
   },
   stats: [
-    { label: "timezones", value: "4" },
-    { label: "vim users", value: "3/5" },
     { label: "corporate bs", value: "0" }
   ],
   principles: [
