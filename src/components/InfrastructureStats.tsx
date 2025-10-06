@@ -13,7 +13,7 @@ const InfrastructureStats: Component = () => {
    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
      <For each={stats}>
        {(stat) => (
-         <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-4 text-center">
+         <div class="bg-gray-900/50 border border-gray-700 p-4 text-center">
            <div class="text-3xl font-bold text-cyan-400 font-mono">{stat.value}</div>
            <div class="text-sm text-gray-400">{stat.label}</div>
          </div>

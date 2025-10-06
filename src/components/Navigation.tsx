@@ -6,8 +6,8 @@ const Navigation: Component = () => {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = createSignal(false)
   
-  const navClass = 'px-4 py-2 text-sm font-medium transition-colors duration-200 rounded-md text-gray-300 hover:text-cyan-400 hover:bg-gray-800/50'
-  const activeClass = 'px-4 py-2 text-sm font-medium transition-colors duration-200 rounded-md text-cyan-400 bg-cyan-400/10'
+  const navClass = 'px-4 py-2 text-sm font-medium transition-colors duration-200 text-gray-300 hover:text-cyan-400 hover:bg-gray-800/50'
+  const activeClass = 'px-4 py-2 text-sm font-medium transition-colors duration-200 text-cyan-400 bg-cyan-400/10'
   
   const getClass = (href: string) => location.pathname === href ? activeClass : navClass
 

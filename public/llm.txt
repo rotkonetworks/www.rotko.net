@@ -59,9 +59,9 @@ Features:
 
 ## Networks Supported
 
-- Polkadot: Scalable heterogeneous multi-chain (12.2% APY, 99.99% uptime)
-- Kusama: Most decentralized privacy network (14.8% APY, 99.98% uptime)
-- Penumbra: End to end encrypted blockchain (2% APY, 99.98% uptime)
+- Polkadot: Scalable heterogeneous multi-chain (12.2% APY, 99.97% uptime)
+- Kusama: Most decentralized privacy network (14.8% APY, 99.96% uptime)
+- Penumbra: End to end encrypted blockchain (9.34% APY, 99.98% uptime)
 
 ## Philosophy
 
@@ -72,12 +72,10 @@ Features:
 
 ## Team
 
-Engineers who ship. No consultants, no outsourcing.
+we build what we use. no third party dependencies.
 
 Stats:
-- Combined Experience: 80+ years
-- Continents: 6
-- Vendor Lock-in: Zero
+- corporate bs: 0
 
 ## Contact
 
@@ -98,4 +96,4 @@ Key facts:
 - Philosophy: Linux-only, open source, no vendor lock-in
 - IRC preferred for support (no accounts needed)
 
-Generated: 2025-09-18T07:04:17.839Z
+Generated: 2025-10-06T13:38:43.365Z

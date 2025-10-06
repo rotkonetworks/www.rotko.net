@@ -1,196 +1,208 @@
-import { Component, For, createSignal, onMount } from 'solid-js'
+import { Component, For } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { infrastructureData } from '../data/infrastructure-data'
 import InfrastructureStats from '../components/InfrastructureStats'
 import RackDiagram from '../components/RackDiagram'
 
 const InfrastructurePage: Component = () => {
- const [visible, setVisible] = createSignal(false)
- 
- onMount(() => {
-   setTimeout(() => setVisible(true), 100)
- })
+  return (
+    <MainLayout>
+      <section class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
+        {/* Header */}
+        <div class="mb-8 border-b border-gray-700 pb-4">
+          <h1 class="text-3xl font-bold text-cyan-400 mb-2">
+            {infrastructureData.hero.title}
+          </h1>
+          <p class="text-gray-300">
+            {infrastructureData.hero.subtitle}
+          </p>
+        </div>
 
- return (
-   <MainLayout>
-     <section class="py-24 px-6 lg:px-12 max-w-7xl mx-auto">
-       <div class={`transition-all duration-700 ${visible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-         
-         {/* Header */}
-         <div class="mb-16">
-           <h1 class="text-4xl lg:text-5xl font-bold mb-6 text-gray-100 font-mono">
-             {infrastructureData.hero.title}
-           </h1>
-           <p class="text-xl text-gray-400">
-             {infrastructureData.hero.subtitle}
-           </p>
-         </div>
+        {/* Stats */}
+        <InfrastructureStats />
 
-         {/* Stats */}
-         <InfrastructureStats />
+        {/* Network Info */}
+        <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
+          <h2 class="text-xl font-bold text-cyan-400 mb-4">Network Information</h2>
+          <div class="grid md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-400">ASN:</span>
+              <span class="text-gray-300 ml-2">AS{infrastructureData.network.asn}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Organization:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.network.organization}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Primary Site:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.network.primarySite}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Peering Policy:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.network.policy}</span>
+            </div>
+          </div>
+          <div class="mt-4 flex gap-4">
+            <a
+              href={infrastructureData.network.peeringDb}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-cyan-400 hover:text-cyan-300 underline text-sm"
+            >
+              [PeeringDB]
+            </a>
+            <a
+              href={infrastructureData.network.peeringInfo}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-cyan-400 hover:text-cyan-300 underline text-sm"
+            >
+              [Peering Info]
+            </a>
+          </div>
+        </div>
 
-         {/* IBP Section */}
-         <div class="mb-16 bg-gray-900/50 border border-gray-700 rounded-lg p-8">
-           <h2 class="text-2xl font-bold mb-4 text-cyan-400">{infrastructureData.ibpStats.title}</h2>
-           <p class="text-gray-300 mb-6">{infrastructureData.ibpStats.description}</p>
-           <div class="grid md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-             <For each={infrastructureData.ibpStats.metrics}>
-               {(metric) => (
-                 <div class="text-center">
-                   <div class="text-2xl font-bold text-cyan-400">{metric.value}</div>
-                   <div class="text-xs text-gray-400">{metric.label}</div>
-                 </div>
-               )}
-             </For>
-           </div>
-           <a href={infrastructureData.ibpStats.dashboard} target="_blank" class="text-cyan-400 hover:text-cyan-300 text-sm">
-             View Live Dashboard →
-           </a>
-         </div>
+        {/* Rack Diagram and Hardware Inventory Side by Side */}
+        <div class="grid lg:grid-cols-2 gap-8 mb-8">
+          {/* Rack Diagram Box */}
+          <div class="border border-gray-700 bg-gray-900 p-6 flex flex-col items-center justify-center">
+            <RackDiagram />
+          </div>
 
-         {/* Rack & Hardware */}
-         <div class="grid lg:grid-cols-2 gap-12 mb-16">
-           <div>
-             <RackDiagram />
-           </div>
-           <div>
-             <h2 class="text-2xl font-bold mb-6 text-cyan-400">Hardware Specifications</h2>
-             
-             {/* Routers */}
-             <div class="mb-6">
-               <h3 class="text-lg font-bold mb-3 text-gray-200">Routing Equipment</h3>
-               <div class="space-y-2">
-                 <For each={infrastructureData.hardware.routers}>
-                   {(router) => (
-                     <div class="text-sm text-gray-400">
-                       <span class="text-gray-300">{router.count}x {router.model}</span> - {router.role}
-                     </div>
-                   )}
-                 </For>
-               </div>
-             </div>
+          {/* Hardware Inventory */}
+          <div class="border border-gray-700 bg-gray-900 p-6">
+            <h2 class="text-xl font-bold text-cyan-400 mb-4">Hardware Inventory</h2>
 
-             {/* Compute */}
-             <div class="mb-6">
-               <h3 class="text-lg font-bold mb-3 text-gray-200">Compute Nodes</h3>
-               <div class="space-y-2">
-                 <For each={infrastructureData.hardware.compute}>
-                   {(server) => (
-                     <div class="text-sm text-gray-400">
-                       <span class="text-gray-300">{server.count}x {server.model}</span> - {server.role}
-                     </div>
-                   )}
-                 </For>
-               </div>
-             </div>
+            <div class="space-y-4">
+              <div>
+                <h3 class="text-cyan-400 font-bold mb-2">Routers</h3>
+                <div class="space-y-1 text-sm">
+                  <For each={infrastructureData.hardware.routers}>
+                    {(item) => (
+                      <div class="text-gray-300">
+                        <span class="text-gray-400">{item.count}x</span> {item.model} -
+                        <span class="text-gray-400 ml-1">{item.role}</span>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
 
-             {/* Datacenter */}
-             <div>
-               <h3 class="text-lg font-bold mb-3 text-gray-200">Datacenter</h3>
-               <dl class="space-y-1 text-sm">
-                 <For each={Object.entries(infrastructureData.datacenter)}>
-                   {([key, value]) => (
-                     <div class="flex justify-between">
-                       <dt class="text-gray-400 capitalize">{key}:</dt>
-                       <dd class="text-gray-300">{value}</dd>
-                     </div>
-                   )}
-                 </For>
-               </dl>
-             </div>
-           </div>
-         </div>
+              <div>
+                <h3 class="text-cyan-400 font-bold mb-2">Switches</h3>
+                <div class="space-y-1 text-sm">
+                  <For each={infrastructureData.hardware.switches}>
+                    {(item) => (
+                      <div class="text-gray-300">
+                        <span class="text-gray-400">{item.count}x</span> {item.model} -
+                        <span class="text-gray-400 ml-1">{item.role}</span>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
 
-         {/* Connectivity */}
-         <div class="mb-16">
-           <h2 class="text-2xl font-bold mb-6 text-gray-100">Network Connectivity</h2>
-           <div class="grid lg:grid-cols-2 gap-8">
-             <div>
-               <h3 class="text-lg font-bold mb-4 text-cyan-400">Transit Providers</h3>
-               <div class="space-y-2">
-                 <For each={infrastructureData.connectivity.transit}>
-                   {(transit) => (
-                     <div class="flex justify-between text-sm">
-                       <span class="text-gray-300">{transit.provider}</span>
-                       <span class="text-gray-400">{transit.speed}</span>
-                     </div>
-                   )}
-                 </For>
-               </div>
-             </div>
-             <div>
-               <h3 class="text-lg font-bold mb-4 text-cyan-400">Exchange Points</h3>
-               <div class="space-y-2">
-                 <For each={infrastructureData.connectivity.exchanges}>
-                   {(ix) => (
-                     <div class="flex justify-between text-sm">
-                       <span class="text-gray-300">{ix.name}</span>
-                       <span class="text-gray-400">{ix.speed} • {ix.type}</span>
-                     </div>
-                   )}
-                 </For>
-               </div>
-             </div>
-           </div>
-         </div>
+              <div>
+                <h3 class="text-cyan-400 font-bold mb-2">Compute</h3>
+                <div class="space-y-1 text-sm">
+                  <For each={infrastructureData.hardware.compute}>
+                    {(item) => (
+                      <div class="text-gray-300">
+                        <span class="text-gray-400">{item.count}x</span> {item.model} -
+                        <span class="text-gray-400 ml-1">{item.role}</span>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-         {/* Services */}
-         <div class="mb-16">
-           <h2 class="text-2xl font-bold mb-6 text-gray-100">Services</h2>
-           <div class="grid md:grid-cols-3 gap-6">
-             <For each={infrastructureData.services}>
-               {(service) => (
-                 <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-6">
-                   <h3 class="text-lg font-bold mb-2 text-cyan-400">{service.name}</h3>
-                   <p class="text-gray-400 text-sm mb-4">{service.description}</p>
-                   <ul class="space-y-1">
-                     <For each={service.features}>
-                       {(feature) => (
-                         <li class="text-gray-500 text-sm">• {feature}</li>
-                       )}
-                     </For>
-                   </ul>
-                 </div>
-               )}
-             </For>
-           </div>
-         </div>
+        {/* Datacenter */}
+        <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
+          <h2 class="text-xl font-bold text-cyan-400 mb-4">Datacenter</h2>
+          <div class="grid md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-400">Location:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.datacenter.location}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Facility:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.datacenter.facility}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Power:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.datacenter.power}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Cooling:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.datacenter.cooling}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Connectivity:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.datacenter.connectivity}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Rack:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.datacenter.rack}</span>
+            </div>
+          </div>
+        </div>
 
-         {/* Routing Philosophy */}
-         <div class="mb-16 bg-gray-900/50 border border-gray-700 rounded-lg p-8">
-           <h2 class="text-2xl font-bold mb-4 text-cyan-400">{infrastructureData.routing.title}</h2>
-           <p class="text-gray-300 mb-6">{infrastructureData.routing.description}</p>
-           <div class="grid md:grid-cols-2 gap-4">
-             <For each={infrastructureData.routing.features}>
-               {(feature) => (
-                 <div class="flex items-start gap-2">
-                   <span class="text-cyan-400 mt-1">•</span>
-                   <span class="text-gray-400 text-sm">{feature}</span>
-                 </div>
-               )}
-             </For>
-           </div>
-         </div>
+        {/* Connectivity and Resilience Side by Side */}
+        <div class="grid lg:grid-cols-2 gap-8">
+          {/* Connectivity */}
+          <div class="border border-gray-700 bg-gray-900 p-6">
+            <h2 class="text-xl font-bold text-cyan-400 mb-4">Connectivity</h2>
 
-         {/* Resilience */}
-         <div>
-           <h2 class="text-2xl font-bold mb-6 text-gray-100">Resilience & Redundancy</h2>
-           <div class="grid md:grid-cols-2 gap-4">
-             <For each={infrastructureData.resilience}>
-               {(item) => (
-                 <div class="flex items-start gap-2">
-                   <span class="text-cyan-400 mt-1">✓</span>
-                   <span class="text-gray-300">{item}</span>
-                 </div>
-               )}
-             </For>
-           </div>
-         </div>
+            <div class="space-y-4">
+              <div>
+                <h3 class="text-cyan-400 font-bold mb-2">Transit</h3>
+                <div class="space-y-1 text-sm">
+                  <For each={infrastructureData.connectivity.transit}>
+                    {(item) => (
+                      <div class="text-gray-300">
+                        {item.provider} - <span class="text-gray-400">{item.speed}</span>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
 
-       </div>
-     </section>
-   </MainLayout>
- )
+              <div>
+                <h3 class="text-cyan-400 font-bold mb-2">Internet Exchanges</h3>
+                <div class="space-y-1 text-sm">
+                  <For each={infrastructureData.connectivity.exchanges}>
+                    {(item) => (
+                      <div class="text-gray-300">
+                        {item.name} - <span class="text-gray-400">{item.speed}</span>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Resilience */}
+          <div class="border border-gray-700 bg-gray-900 p-6">
+            <h2 class="text-xl font-bold text-cyan-400 mb-4">Resilience & Redundancy</h2>
+            <div class="space-y-1 text-sm">
+              <For each={infrastructureData.resilience}>
+                {(item) => (
+                  <div class="flex items-start text-gray-300">
+                    <span class="i-mdi-check-circle text-cyan-400 mr-2 mt-0.5"></span>
+                    {item}
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+        </div>
+      </section>
+    </MainLayout>
+  )
 }
 
 export default InfrastructurePage

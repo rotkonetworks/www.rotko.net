@@ -8,21 +8,22 @@ import BlogPreview from '../components/BlogPreview'
 
 const HomePage: Component = () => {
   const [networks, setNetworks] = createSignal(siteData.networks)
-  
+
   onMount(async () => {
     const ids = siteData.networks
       .filter(n => n.coingeckoId)
       .map(n => n.coingeckoId!)
-    
+
     const prices = await fetchCryptoPrices(ids)
-    
+
     setNetworks(siteData.networks.map(network => {
       if (network.coingeckoId && prices[network.coingeckoId]) {
         return {
           ...network,
           price: {
             current: prices[network.coingeckoId].price,
-            change24h: parseFloat(prices[network.coingeckoId].change24h.toFixed(2))
+            change24h: parseFloat(prices[network.coingeckoId].change24h.toFixed(2)),
+            change30d: parseFloat(prices[network.coingeckoId].change30d.toFixed(2))
           }
         }
       }
@@ -33,46 +34,41 @@ const HomePage: Component = () => {
   return (
     <MainLayout>
       {/* Hero */}
-      <section class="min-h-[90vh] md:min-h-[80vh] flex items-center px-4 sm:px-6 lg:px-8 py-20">
-        <div class="max-w-6xl mx-auto w-full">
-          <div class="mb-8 md:mb-12">
-            <div class="text-xs font-mono text-cyan-400 mb-4 md:mb-6 tracking-wider uppercase">
-              {siteData.company.tagline}
-            </div>
-            <h1 class="text-3xl sm:text-4xl lg:text-6xl font-bold mb-6 md:mb-8 text-white leading-tight">
-              {siteData.hero.title}
-            </h1>
-            <p class="text-lg sm:text-xl text-gray-400 max-w-2xl leading-relaxed">
-              {siteData.hero.subtitle}
-            </p>
+      <section class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
+        <div class="mb-8 border-b border-gray-700 pb-8">
+          <div class="text-xs font-mono text-cyan-400 mb-2 uppercase">
+            {siteData.company.tagline}
           </div>
-          
-          <div class="grid sm:grid-cols-2 gap-4 sm:gap-x-12 sm:gap-y-4 mt-8 md:mt-16">
-            <For each={siteData.hero.points}>
-              {(point) => (
-                <div class="flex items-center gap-3">
-                  <span class="text-cyan-400 text-lg">•</span>
-                  <span class="text-gray-300 text-sm sm:text-base">{point}</span>
-                </div>
-              )}
-            </For>
-          </div>
+          <h1 class="text-3xl font-bold mb-4 text-cyan-400">
+            {siteData.hero.title}
+          </h1>
+          <p class="text-gray-300">
+            {siteData.hero.subtitle}
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-2 text-sm">
+          <For each={siteData.hero.points}>
+            {(point) => (
+              <div class="flex items-start">
+                <span class="text-cyan-500 mr-2">•</span>
+                <span class="text-gray-300">{point}</span>
+              </div>
+            )}
+          </For>
         </div>
       </section>
 
       {/* Stats */}
-      <section class="py-16 md:py-24 px-4 sm:px-6 lg:px-8 bg-gray-900/30">
-        <div class="max-w-6xl mx-auto">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-12">
+      <section class="py-8 px-4 max-w-6xl mx-auto">
+        <div class="border border-gray-700 bg-gray-900 p-6">
+          <h2 class="text-xl font-bold text-cyan-400 mb-4">Infrastructure</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <For each={Object.values(siteData.infrastructure)}>
               {(stat) => (
                 <div>
-                  <div class="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 font-mono">
-                    {stat.value}
-                  </div>
-                  <div class="text-xs text-gray-500 uppercase tracking-wider">
-                    {stat.label}
-                  </div>
+                  <span class="text-cyan-400 font-mono font-bold">{stat.value}</span>
+                  <span class="text-gray-400 ml-2">{stat.label}</span>
                 </div>
               )}
             </For>
@@ -81,50 +77,100 @@ const HomePage: Component = () => {
       </section>
 
       {/* Services */}
-      <section class="py-16 md:py-24 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-6xl mx-auto">
-          <h2 class="text-3xl md:text-4xl font-bold mb-8 md:mb-16 text-white">
-            {siteData.sections.services}
-          </h2>
-          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            <For each={siteData.services}>
-              {(service) => <ServiceCard service={service} />}
-            </For>
-          </div>
+      <section class="py-8 px-4 max-w-6xl mx-auto">
+        <h2 class="text-xl font-bold text-cyan-400 mb-4 border-b border-gray-700 pb-2">
+          {siteData.sections.services}
+        </h2>
+        <div class="grid md:grid-cols-3 gap-4">
+          <For each={siteData.services}>
+            {(service) => <ServiceCard service={service} />}
+          </For>
         </div>
       </section>
 
       {/* Networks */}
-      <section class="py-16 md:py-24 px-4 sm:px-6 lg:px-8 bg-gray-900/30">
-        <div class="max-w-6xl mx-auto">
-          <h2 class="text-3xl md:text-4xl font-bold mb-8 md:mb-16 text-white">
-            {siteData.sections.networks}
-          </h2>
-          <div class="grid md:grid-cols-3 gap-6 md:gap-8">
-            <For each={networks()}>
-              {(network) => <NetworkCard network={network} />}
-            </For>
-          </div>
+      <section class="py-8 px-4 max-w-6xl mx-auto">
+        <h2 class="text-xl font-bold text-cyan-400 mb-4 border-b border-gray-700 pb-2">
+          {siteData.sections.networks}
+        </h2>
+        <div class="grid md:grid-cols-3 gap-4">
+          <For each={networks()}>
+            {(network) => <NetworkCard network={network} />}
+          </For>
         </div>
       </section>
 
       {/* Blog Preview */}
       <BlogPreview limit={3} />
 
+      {/* Links & Contact */}
+      <section class="py-8 px-4 max-w-6xl mx-auto">
+        <h2 class="text-xl font-bold text-cyan-400 mb-4 border-b border-gray-700 pb-2">
+          Links & Contact
+        </h2>
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="border border-gray-700 bg-gray-900 p-4">
+            <h3 class="text-cyan-400 font-bold mb-3">Get in Touch</h3>
+            <div class="space-y-2 font-mono text-sm">
+              <div>
+                <span class="text-gray-400">email:</span>
+                <a href={`mailto:${siteData.contact.email}`} class="text-cyan-400 hover:text-cyan-300 ml-2 underline">
+                  {siteData.contact.email}
+                </a>
+              </div>
+              <div>
+                <span class="text-gray-400">irc:</span>
+                <span class="text-gray-300 ml-2">
+                  {siteData.contact.irc.server} {siteData.contact.irc.channel}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-gray-700 bg-gray-900 p-4">
+            <h3 class="text-cyan-400 font-bold mb-3">External Links</h3>
+            <div class="space-y-2 font-mono text-sm">
+              <div>
+                <a
+                  href="https://github.com/rotkonetworks"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-cyan-400 hover:text-cyan-300 underline"
+                >
+                  [GitHub]
+                </a>
+                <span class="text-gray-400 ml-2">rotkonetworks</span>
+              </div>
+              <div>
+                <a
+                  href="https://www.linkedin.com/company/rotko-networks"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-cyan-400 hover:text-cyan-300 underline"
+                >
+                  [LinkedIn]
+                </a>
+                <span class="text-gray-400 ml-2">rotko-networks</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section class="py-20 md:py-32 px-4 sm:px-6 lg:px-8 border-t border-gray-800">
-        <div class="max-w-4xl mx-auto text-center">
-          <h2 class="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-white">
+      <section class="py-8 px-4 max-w-6xl mx-auto">
+        <div class="border border-gray-700 bg-gray-900 p-8 text-center">
+          <h2 class="text-xl font-bold text-cyan-400 mb-2">
             {siteData.cta.title}
           </h2>
-          <p class="text-gray-400 mb-8 md:mb-10 text-base md:text-lg">
+          <p class="text-gray-400 mb-4 text-sm">
             {siteData.cta.subtitle}
           </p>
-          <a 
-            href="/contact" 
-            class="px-6 sm:px-8 py-3 sm:py-4 bg-cyan-400 text-black font-bold hover:bg-cyan-300 transition-colors text-base sm:text-lg inline-block"
+          <a
+            href="/contact"
+            class="text-cyan-400 hover:text-cyan-300 underline"
           >
-            {siteData.cta.button}
+            [{siteData.cta.button}]
           </a>
         </div>
       </section>

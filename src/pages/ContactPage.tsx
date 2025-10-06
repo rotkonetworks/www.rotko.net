@@ -1,15 +1,10 @@
-import { Component, createSignal, onMount, For } from 'solid-js'
+import { Component, createSignal, For } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { contactData } from '../data/contact-data'
 import WirssiChat from '../components/WirssiChat'
 
 const ContactPage: Component = () => {
-  const [visible, setVisible] = createSignal(false)
   const [copied, setCopied] = createSignal<string | null>(null)
-
-  onMount(() => {
-    setTimeout(() => setVisible(true), 100)
-  })
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -19,8 +14,8 @@ const ContactPage: Component = () => {
 
   return (
     <MainLayout>
-      <section class="py-24 px-6 lg:px-12 max-w-4xl mx-auto">
-        <div class={`transition-all duration-700 ${visible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+      <section class="pt-28 pb-24 px-6 lg:px-12 max-w-4xl mx-auto">
+        <div>
           
           {/* Header */}
           <div class="mb-16">
@@ -33,7 +28,7 @@ const ContactPage: Component = () => {
           </div>
 
           {/* Connection Info */}
-          <div class="mb-12 bg-gray-900/50 border border-gray-700 rounded-lg p-6">
+          <div class="mb-12 bg-gray-900/50 border border-gray-700 p-6">
             <h2 class="text-xl font-bold mb-4 text-cyan-400 font-mono">IRC Server</h2>
             <div class="space-y-3 font-mono text-sm">
               <div class="flex justify-between items-center">
@@ -43,7 +38,7 @@ const ContactPage: Component = () => {
                   class="text-cyan-400 hover:text-cyan-300 transition-colors"
                 >
                   {contactData.connection.server}
-                  {copied() === 'server' && <span class="text-xs ml-2">✓</span>}
+                  {copied() === 'server' && <span class="i-mdi-check text-xs ml-2"></span>}
                 </button>
               </div>
               <div class="flex justify-between">
@@ -61,7 +56,7 @@ const ContactPage: Component = () => {
                   class="text-cyan-400 text-xs hover:text-cyan-300 bg-transparent transition-colors text-right break-all max-w-xs"
                 >
                   {contactData.connection.tor}
-                  {copied() === 'tor' && <span class="text-xs ml-2">✓</span>}
+                  {copied() === 'tor' && <span class="i-mdi-check text-xs ml-2"></span>}
                 </button>
               </div>
             </div>
@@ -94,7 +89,7 @@ const ContactPage: Component = () => {
               <ul class="space-y-2 text-sm">
                 <For each={contactData.expectations.items}>
                   {(item) => (
-                    <li class="text-gray-300">✓ {item}</li>
+                    <li class="text-gray-300 flex items-center"><span class="i-mdi-check-circle text-cyan-400 mr-2"></span>{item}</li>
                   )}
                 </For>
               </ul>

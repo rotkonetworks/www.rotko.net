@@ -10,9 +10,7 @@ const BlogPage: Component = () => {
 
   onMount(async () => {
     try {
-      console.log('Loading posts...')
       const loadedPosts = await getAllPosts()
-      console.log('Loaded posts:', loadedPosts)
       setPosts(loadedPosts)
     } catch (err) {
       console.error('Failed to load posts:', err)
@@ -24,32 +22,34 @@ const BlogPage: Component = () => {
 
   return (
     <MainLayout>
-      <section class="py-24 px-6 lg:px-12 max-w-4xl mx-auto">
-        <h1 class="text-4xl font-bold mb-12 text-white">Blog</h1>
-        
+      <section class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
+        <div class="mb-8 border-b border-gray-700 pb-4">
+          <h1 class="text-3xl font-bold text-cyan-400">Blog</h1>
+        </div>
+
         <Show when={error()}>
-          <div class="text-red-400">Error: {error()}</div>
+          <div class="text-red-400 mb-4">Error: {error()}</div>
         </Show>
-        
+
         <Show when={!loading()} fallback={<div class="text-gray-400">Loading...</div>}>
           <Show when={posts().length > 0} fallback={<div class="text-gray-400">No posts yet.</div>}>
-            <div class="space-y-8">
+            <div class="space-y-6">
               <For each={posts()}>
                 {(post) => (
-                  <article class="border-b border-gray-800 pb-8">
-                    <A href={`/blog/${post.slug}`} class="group block">
-                      <h2 class="text-2xl font-bold mb-2 text-white group-hover:text-cyan-400 transition-colors">
+                  <article class="border border-gray-700 bg-gray-900 p-6">
+                    <A href={`/blog/${post.slug}`} class="block">
+                      <h2 class="text-xl font-bold text-cyan-400 hover:text-cyan-300 mb-2">
                         {post.title}
                       </h2>
-                      <div class="text-sm text-gray-500 mb-3">
+                      <div class="text-xs text-gray-500 mb-2 font-mono">
                         {new Date(post.date).toLocaleDateString()}
                       </div>
-                      <p class="text-gray-400 mb-3">{post.description}</p>
+                      <p class="text-gray-400 text-sm mb-3">{post.description}</p>
                       <div class="flex flex-wrap gap-2">
                         <For each={post.tags}>
                           {(tag) => (
-                            <span class="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded">
-                              {tag}
+                            <span class="text-xs text-gray-400">
+                              [{tag}]
                             </span>
                           )}
                         </For>

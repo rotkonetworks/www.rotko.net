@@ -26,12 +26,12 @@ const BlogPostPage: Component = () => {
 
   return (
     <MainLayout>
-      <article class="py-24 px-6 lg:px-12 max-w-4xl mx-auto">
+      <article class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
         <Show when={!loading()} fallback={<div class="text-gray-400">Loading...</div>}>
           <Show when={post()} fallback={<div class="text-gray-400">Post not found.</div>}>
-            <header class="mb-12">
-              <h1 class="text-4xl font-bold mb-4 text-white">{post().meta.title}</h1>
-              <div class="flex items-center gap-4 text-sm text-gray-500 mb-4">
+            <header class="mb-8 border-b border-gray-700 pb-4">
+              <h1 class="text-3xl font-bold text-cyan-400 mb-2">{post().meta.title}</h1>
+              <div class="flex items-center gap-4 text-sm text-gray-400 mb-2">
                 <time>{new Date(post().meta.date).toLocaleDateString()}</time>
                 <span>•</span>
                 <span>{Math.ceil(post().content.split(' ').length / 200)} min read</span>
@@ -39,39 +39,53 @@ const BlogPostPage: Component = () => {
               <div class="flex gap-2">
                 <For each={post().meta.tags}>
                   {(tag) => (
-                    <span class="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded">
-                      {tag}
+                    <span class="text-xs text-gray-400">
+                      [{tag}]
                     </span>
                   )}
                 </For>
               </div>
             </header>
-            
-            <div 
-              class="prose prose-invert max-w-none prose-headings:text-cyan-400 prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:text-cyan-300 prose-strong:text-white prose-code:text-cyan-400 prose-code:bg-gray-800 prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-700"
-              innerHTML={post().content}
-            />
-            
+
+            <div class="border border-gray-700 bg-gray-900 p-6 mb-8">
+              <div
+                class="prose prose-invert prose-lg prose-max-w-none prose-headings:text-cyan-400 prose-a:text-cyan-400 prose-a:no-underline hover:prose-a:text-cyan-300 prose-strong:text-white prose-code:text-cyan-400 prose-code:bg-gray-800 prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-700"
+                style="max-width: 85ch"
+                innerHTML={post().content}
+              />
+            </div>
+
             <Show when={related().length > 0}>
-              <div class="mt-16 pt-8 border-t border-gray-800">
-                <h2 class="text-2xl font-bold mb-6 text-white">Related Posts</h2>
-                <div class="grid gap-4">
+              <div class="border border-gray-700 bg-gray-900 p-6">
+                <h2 class="text-xl font-bold text-cyan-400 mb-4">Related Posts</h2>
+                <div class="space-y-2">
                   <For each={related()}>
-                    {(relPost) => (
-                      <A 
-                        href={`/blog/${relPost.slug}`}
-                        class="block bg-gray-900/30 border border-gray-800 hover:border-gray-600 p-4 transition-all"
-                      >
-                        <h3 class="font-bold text-white hover:text-cyan-400 transition-colors">
-                          {relPost.title}
-                        </h3>
-                        <p class="text-sm text-gray-400 mt-1">{relPost.description}</p>
-                      </A>
+                    {(relatedPost) => (
+                      <div>
+                        <A
+                          href={`/blog/${relatedPost.slug}`}
+                          class="text-cyan-400 hover:text-cyan-300 underline text-sm"
+                        >
+                          {relatedPost.title}
+                        </A>
+                        <span class="text-gray-500 text-xs ml-2">
+                          ({new Date(relatedPost.date).toLocaleDateString()})
+                        </span>
+                      </div>
                     )}
                   </For>
                 </div>
               </div>
             </Show>
+
+            <div class="mt-8 pt-4 border-t border-gray-700">
+              <A
+                href="/blog"
+                class="text-cyan-400 hover:text-cyan-300 underline"
+              >
+                [← Back to Blog]
+              </A>
+            </div>
           </Show>
         </Show>
       </article>

@@ -12,6 +12,7 @@ export interface Network {
   price?: {
     current: number
     change24h: number
+    change30d: number
   }
 }
 
@@ -61,8 +62,8 @@ export const siteData = {
       description: "Scalable heterogeneous multi-chain",
       type: "mainnet" as const,
       coingeckoId: "polkadot",
-      stats: { apy: 12.2, uptime: 99.99, staked: 68 },
-      price: { current: 0, change24h: 0 }
+      stats: { apy: 12.2, uptime: 99.97, staked: 68 },
+      price: { current: 0, change24h: 0, change30d: 0 }
     },
     {
       id: "kusama",
@@ -70,8 +71,8 @@ export const siteData = {
       description: "Most decentralized privacy network",
       type: "mainnet" as const,
       coingeckoId: "kusama",
-      stats: { apy: 14.8, uptime: 99.98, staked: 45 },
-      price: { current: 0, change24h: 0 }
+      stats: { apy: 14.8, uptime: 99.96, staked: 45 },
+      price: { current: 0, change24h: 0, change30d: 0 }
     },
     {
       id: "penumbra",
@@ -79,8 +80,8 @@ export const siteData = {
       description: "End to end encrypted blockchain",
       type: "mainnet" as const,
       coingeckoId: "penumbra",
-      stats: { apy: 2.0, uptime: 99.98, staked: 52 },
-      price: { current: 0, change24h: 0 }
+      stats: { apy: 9.34, uptime: 99.98, staked: 52 },
+      price: { current: 0, change24h: 0, change30d: 0 }
     }
   ] as Network[],
 

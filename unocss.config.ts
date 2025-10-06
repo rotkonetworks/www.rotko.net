@@ -32,6 +32,14 @@ export default defineConfig({
     'i-mdi-code-braces',
     'i-mdi-laptop',
     'i-mdi-desktop-classic',
-    'i-mdi-console'
+    'i-mdi-console',
+    'i-mdi-shield-lock',
+    'i-mdi-lightning-bolt',
+    'i-mdi-web',
+    'i-mdi-bookshelf',
+    'i-mdi-lock',
+    'i-mdi-lightbulb',
+    'i-mdi-check',
+    'i-mdi-check-circle'
   ]
 });

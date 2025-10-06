@@ -1,0 +1,237 @@
+---
+title: "Quicnet"
+repo: "https://github.com/rotkonetworks/quicnet"
+website: "https://github.com/rotkonetworks/quicnet"
+description: "Minimal peer-to-peer network protocol using QUIC transport and Ed25519 identities."
+---
+
+# Quicnet
+
+**Minimal peer-to-peer network protocol** — Built on QUIC transport with Ed25519 identity-based authentication. No certificate authorities, just cryptographic identities.
+
+## Key Features
+
+- **Identity-based Authentication** — Ed25519 keypairs serve as network identities
+- **No Certificate Authorities** — Self-signed certificates bound to cryptographic identities
+- **QUIC Transport** — Fast, secure, and reliable modern transport protocol
+- **Symmetric Design** — Single peer type handles both client and server roles
+- **SSH Key Compatible** — Reuses existing Ed25519 SSH keys when available
+- **WebTransport Support** — Optional browser compatibility for web applications
+
+## Architecture
+
+Quicnet binds cryptographic identities directly to the TLS layer, eliminating the need for certificate authorities. Each peer is identified by their 32-byte Ed25519 public key, encoded in base256 format for visual distinctiveness.
+
+### Core Components
+
+- **PeerId**: 32-byte Ed25519 public key (base256 encoded)
+- **Identity**: Ed25519 keypair stored in SSH-compatible format
+- **TLS Binding**: SPKI in X.509 certificate equals PeerId
+- **Auth Protocol**: Symmetric challenge-response at application layer
+
+## Installation
+
+```bash
+# Install from crates.io
+cargo install quicnet
+
+# Or build from source
+git clone https://github.com/rotkonetworks/quicnet
+cd quicnet
+cargo build --release
+```
+
+## Quick Start
+
+### Generate Identity (or reuse SSH key)
+```bash
+# Automatically generates ~/.quicnet/id_ed25519 if not present
+# Or reuses ~/.ssh/id_ed25519 if available
+quicnet -l
+```
+
+### Listen for Connections
+```bash
+# Listen on default port 4433
+quicnet -l
+
+# Listen on specific port
+quicnet -l -p 8080
+
+# Echo mode (for testing)
+quicnet -l --echo
+```
+
+### Connect to Peer
+```bash
+# Connect to host
+quicnet localhost
+
+# Connect with specific peer identity
+quicnet ՀօȺե@localhost
+
+# Connect to specific port
+quicnet localhost -p 8080
+```
+
+## Examples
+
+### Shell Server
+```rust
+// examples/shell.rs - Remote shell over quicnet
+use quicnet::{AuthenticatedStream, Identity, ServerBuilder};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let server = ServerBuilder::new()
+        .identity(Identity::load_or_generate()?)
+        .bind("[::]:4433")
+        .authorized_peers_file(".quicnet/shell_authorized")
+        .rate_limit(10, Duration::from_secs(60))
+        .audit_log("/var/log/quicnet-shell.log")
+        .build()?;
+
+    while let Some(stream) = server.accept_authenticated().await {
+        tokio::spawn(handle_shell(stream));
+    }
+    Ok(())
+}
+```
+
+### Chat Server
+```rust
+// examples/chat.rs - Multi-user chat
+use quicnet::{AuthenticatedStream, ServerBuilder};
+
+let server = ServerBuilder::new()
+    .identity(identity)
+    .bind("[::]:4433")
+    .build()?;
+
+while let Some(stream) = server.accept_authenticated().await {
+    let peer_id = stream.peer_id();
+    let nick = peer_id.short();
+
+    // Handle chat messages
+    broadcast(format!("{}: {}", nick, message));
+}
+```
+
+### WebTransport Chat
+```bash
+# Build with WebTransport support
+cargo build --features webtransport
+
+# Run WebTransport-enabled server
+cargo run --features webtransport --example webtransport_chat
+```
+
+## Security Features
+
+### Rate Limiting
+```rust
+ServerBuilder::new()
+    .rate_limit(10, Duration::from_secs(60)) // 10 attempts per minute
+```
+
+### Authorization
+```rust
+ServerBuilder::new()
+    .authorized_peers_file(".quicnet/authorized_peers")
+```
+
+### Audit Logging
+```rust
+ServerBuilder::new()
+    .audit_log("/var/log/quicnet.log")
+```
+
+### Trust On First Use (TOFU)
+```bash
+# First connection saves peer identity
+quicnet example.com
+> new peer: ՀօȺե (203.0.113.1:4433)
+
+# Subsequent connections verify identity
+quicnet example.com
+> connected to ՀօȺե
+```
+
+## Protocol Flow
+
+1. Peer initiates QUIC connection with self-signed Ed25519 certificate
+2. Remote accepts with its own Ed25519 certificate
+3. Both verify peer's SPKI matches expected PeerId (if provided)
+4. Symmetric challenge-response confirms mutual authentication
+5. First bi-stream opened for data exchange
+
+## API Usage
+
+```rust
+use quicnet::{Identity, Peer, PeerId};
+
+// Create peer
+let identity = Identity::load_or_generate()?;
+let peer = Peer::new("[::]:4433".parse()?, identity)?;
+
+// Accept connections
+while let Some(incoming) = peer.accept().await {
+    let (conn, peer_id) = incoming.accept().await?;
+    println!("Connected: {}", peer_id);
+}
+
+// Dial remote peer
+let (conn, peer_id) = peer.dial(addr, expected_peer).await?;
+```
+
+## Design Philosophy
+
+- **No Central Authority**: Identities are keys, not certificates from a CA
+- **Symmetric Protocol**: No client/server distinction at protocol level
+- **Secure by Default**: MITM prevention through TLS binding
+- **Developer Friendly**: Reuse existing SSH infrastructure
+- **Visual Security**: Base256 encoding prevents typosquatting
+
+## Module Structure
+
+### Core (`src/`)
+- `identity.rs` — Ed25519 keypair management
+- `peer.rs` — Unified peer implementation
+- `auth.rs` — Challenge-response authentication
+
+### Transport (`src/transport/`)
+- `stream.rs` — Authenticated streams
+- `builder.rs` — Configuration builders
+- `web_compat.rs` — WebTransport layer
+
+### Security (`src/security/`)
+- `rate_limit.rs` — Connection throttling
+- `audit.rs` — Security event logging
+
+## Building & Development
+
+```bash
+# Debug build
+cargo build
+
+# Release build with optimizations
+cargo build --release
+
+# With WebTransport support
+cargo build --features webtransport
+
+# Run tests
+cargo test
+
+# Run examples
+cargo run --example shell
+cargo run --example chat
+```
+
+## License
+
+MIT OR Apache-2.0
+
+## Built by Rotko Networks
+
+Quicnet is developed by [Rotko Networks](https://rotko.net), specializing in secure networking protocols and distributed systems.

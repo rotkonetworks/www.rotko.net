@@ -7,44 +7,46 @@ interface ServiceCardProps {
 
 const ServiceCard: Component<ServiceCardProps> = (props) => {
   const statusColors = {
-    operational: 'bg-green-400',
-    degraded: 'bg-yellow-400',
-    maintenance: 'bg-red-400'
+    operational: 'text-green-400',
+    degraded: 'text-yellow-400',
+    maintenance: 'text-red-400'
   }
 
   return (
-    <div class="border border-gray-800 hover:border-gray-600 transition-all p-6 md:p-8 bg-gray-900/30 h-full flex flex-col">
-      <div class="flex justify-between items-start mb-6">
-        <h3 class="text-xl font-bold text-white">{props.service.name}</h3>
-        <div class={`w-2 h-2 rounded-full ${statusColors[props.service.status]}`} />
+    <div class="border border-gray-700 p-4 bg-gray-900">
+      <div class="flex justify-between items-start mb-2">
+        <h3 class="text-cyan-400 font-bold">{props.service.name}</h3>
+        <span class={`${statusColors[props.service.status]} text-xs`}>
+          [{props.service.status}]
+        </span>
       </div>
 
-      <p class="text-gray-400 mb-6 flex-grow">{props.service.description}</p>
+      <p class="text-gray-400 text-sm mb-3">{props.service.description}</p>
 
-      <ul class="space-y-3 mb-6">
+      <ul class="text-sm space-y-1">
         <For each={props.service.features}>
           {(feature) => (
-            <li class="flex items-start text-sm text-gray-300">
-              <span class="text-cyan-400 mr-3 mt-1">→</span>
-              <span>{feature}</span>
+            <li class="text-gray-300">
+              <span class="text-cyan-500 mr-1">•</span>
+              {feature}
             </li>
           )}
         </For>
       </ul>
 
       <Show when={props.service.metrics}>
-        <div class="pt-6 border-t border-gray-800 grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <div class="text-gray-500 text-xs uppercase">24h Requests</div>
-            <div class="text-white font-bold text-lg">
+        <div class="mt-3 pt-3 border-t border-gray-700 text-xs">
+          <div class="flex justify-between">
+            <span class="text-gray-400">Requests/24h:</span>
+            <span class="text-cyan-400 font-mono">
               {(props.service.metrics!.requests24h / 1000000).toFixed(1)}M
-            </div>
+            </span>
           </div>
-          <div>
-            <div class="text-gray-500 text-xs uppercase">Latency</div>
-            <div class="text-white font-bold text-lg">
+          <div class="flex justify-between">
+            <span class="text-gray-400">Latency:</span>
+            <span class="text-cyan-400 font-mono">
               {props.service.metrics!.latency}ms
-            </div>
+            </span>
           </div>
         </div>
       </Show>

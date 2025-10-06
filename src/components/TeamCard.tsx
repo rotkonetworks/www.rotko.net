@@ -28,7 +28,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
     const img = new Image()
     img.onload = () => setImageLoaded(true)
     img.src = `/images/team/${props.member.image}`
-    setTimeout(() => setIsVisible(true), props.index * 100)
+    setIsVisible(true)
   })
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,7 +52,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
       onClick={() => setIsFlipped(!isFlipped())}
     >
       <div
-        class={`absolute inset-0 w-full h-full transition-all duration-300 ${
+        class={`absolute inset-0 w-full h-full transition-all duration-100 ${
           isFlipped() ? 'opacity-0' : 'opacity-100'
         } ${isVisible() ? 'translate-y-0' : 'translate-y-4'}`}
         style={{
@@ -74,8 +74,8 @@ const TeamCard: Component<TeamCardProps> = (props) => {
           {/* main content area */}
           <div class="flex-1 p-2 flex flex-col">
             {/* ascii-bordered image - square aspect ratio */}
-            <div class="mb-2 flex justify-center flex-1">
-              <div class="border aspect-square w-48 max-w-full" style={{ "border-color": scheme.dim }}>
+            <div class="mb-2 flex justify-center">
+              <div class="border relative w-48 h-48 max-w-full" style={{ "border-color": scheme.dim }}>
                 <Show
                   when={imageLoaded()}
                   fallback={
@@ -87,7 +87,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
                   <img
                     src={`/images/team/${props.member.image}`}
                     alt={props.member.name}
-                    class="w-full h-full object-contain"
+                    class="absolute inset-0 w-full h-full object-cover"
                     style={{ filter: "contrast(1.1) saturate(0.8)" }}
                   />
                 </Show>
@@ -95,7 +95,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
             </div>
 
             {/* compact info block */}
-            <div class="space-y-1 text-xs">
+            <div class="space-y-1 text-xs flex-1">
               <div class="flex">
                 <span style={{ color: scheme.dim }}>role:</span>
                 <span class="ml-2 truncate">{props.member.title}</span>
@@ -136,7 +136,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
             </div>
 
             {/* prompt at bottom */}
-            <div class="mt-2 pt-2 border-t" style={{ "border-color": scheme.dim }}>
+            <div class="mt-auto pt-2 border-t" style={{ "border-color": scheme.dim }}>
               <span style={{ color: scheme.dim }}>&gt;&gt;&gt; </span>
               <span class="animate-pulse text-xs">cat profile.txt</span>
             </div>
@@ -146,7 +146,7 @@ const TeamCard: Component<TeamCardProps> = (props) => {
 
       {/* back side */}
       <div
-        class={`absolute inset-0 w-full h-full transition-all duration-300 ${
+        class={`absolute inset-0 w-full h-full transition-all duration-100 ${
           isFlipped() ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         style={{

@@ -1,0 +1,172 @@
+---
+title: "Githem"
+repo: "https://github.com/rotkonetworks/githem"
+website: "https://githem.com"
+description: "Repository to LLM-ready text converter. A powertool for feeding git repositories to Large Language Models."
+---
+
+# Githem
+
+**Repository to LLM-ready text** — A high-performance tool for converting git repositories into optimized text formats for Large Language Models.
+
+## Features
+
+- **Smart Filtering** — Automatically removes build artifacts, node_modules, and other noise
+- **60-80% Size Reduction** — Optimized presets reduce token usage significantly
+- **Fast Performance** — Built for speed with intelligent caching
+- **Multiple Input Methods** — Support for local repos, GitHub URLs, and direct API access
+- **Flexible Output** — Choose presets or customize with include/exclude patterns
+
+## Installation
+
+### Unix/Linux/macOS
+```bash
+curl -fsSL get.githem.com | sh
+```
+
+### Windows
+```powershell
+iwr -useb get.githem.com/install.ps1 | iex
+```
+
+## Quick Start
+
+```bash
+# Process any GitHub repository
+githem owner/repo
+
+# Process current directory
+githem .
+
+# Process with full URL
+githem https://github.com/owner/repo
+```
+
+## Options
+
+```
+-o FILE       output to file
+-i PATTERN    include patterns (use / for directories)
+-e PATTERN    exclude patterns
+-b BRANCH     branch
+--preset NAME filter preset
+--stats       show statistics
+```
+
+## Presets
+
+- **`raw`** — No filtering, complete repository contents
+- **`standard`** — Default smart filtering (recommended)
+- **`code-only`** — Source code files only, no docs or configs
+- **`minimal`** — Basic filtering for smaller output
+
+## Examples
+
+### Basic Usage
+```bash
+# Process any GitHub repository
+githem owner/repo
+
+# Process current directory
+githem .
+
+# Process with full URL
+githem https://github.com/owner/repo
+```
+
+### Advanced Options
+```bash
+# Use specific preset for code-only output
+githem owner/repo --preset code-only
+
+# Include only specific patterns (use / for directories)
+githem . -i "src/, api/, core/"
+
+# Include specific file types
+githem . -i "*.rs" -e "tests/*"
+
+# Output to file instead of stdout
+githem owner/repo -o output.txt
+
+# Process specific branch
+githem owner/repo -b develop
+
+# Compare branches
+githem owner/repo/compare/main...feature
+
+# Show token statistics
+githem owner/repo --stats
+```
+
+## Cache Management
+
+```bash
+# View cache statistics
+githem --cache-stats
+
+# Clear entire cache
+githem --clear-cache
+
+# Bypass cache for fresh fetch
+githem owner/repo --no-cache
+```
+
+## Web API
+
+Githem provides a RESTful API for programmatic access:
+
+```bash
+# Basic repository fetch
+curl https://githem.com/owner/repo
+
+# With preset
+curl "https://githem.com/owner/repo?preset=code-only"
+
+# Include specific patterns
+curl "https://githem.com/owner/repo?include=core/,api/"
+```
+
+### Available Endpoints
+
+- **`GET /owner/repo`** — Fetch repository content
+- **`GET /owner/repo/tree/branch/path`** — Browse repository tree
+- **`GET /owner/repo/compare/base...head`** — Compare branches
+- **`POST /api/ingest`** — Submit repository for processing
+- **`GET /api/result/{id}`** — Retrieve processed result
+- **`GET /api/download/{id}`** — Download as file
+- **`GET /health`** — Service health check
+
+## Frequently Asked Questions
+
+### What files are filtered by default?
+The standard preset filters out:
+- Package directories: `node_modules/`, `vendor/`, `.venv/`
+- Build artifacts: `dist/`, `build/`, `target/`, `*.pyc`
+- Media files: images, videos, fonts
+- Binary files: executables, compiled objects
+- Lock files: `package-lock.json`, `yarn.lock`, `Cargo.lock`
+
+### How do I process private repositories?
+For private repos, use SSH authentication:
+```bash
+githem git@github.com:company/private-repo.git
+```
+
+### What's the typical size reduction?
+- **Standard preset**: 60-80% reduction
+- **Code-only preset**: 70-90% reduction
+- **Minimal preset**: 40-60% reduction
+
+### How are tokens estimated?
+Approximately 1 token per 4 characters. Use `--stats` flag to see exact counts for your content.
+
+### Can I use it programmatically?
+Yes! Use our REST API at `https://githem.com` or integrate the CLI into your scripts.
+
+## Try It Online
+
+Visit [githem.com](https://githem.com) to try the web interface without installing anything. Perfect for quick repository exploration and sharing.
+
+## Built by Rotko Networks
+
+Githem is proudly developed and maintained by [Rotko Networks](https://rotko.net), focusing on developer tools that enhance productivity and streamline workflows.

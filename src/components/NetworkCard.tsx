@@ -7,55 +7,56 @@ interface NetworkCardProps {
 
 const NetworkCard: Component<NetworkCardProps> = (props) => {
   const typeColors = {
-    mainnet: 'text-cyan-400 border-cyan-400',
-    canary: 'text-yellow-400 border-yellow-400',
-    testnet: 'text-green-400 border-green-400'
+    mainnet: 'text-cyan-400',
+    canary: 'text-yellow-400',
+    testnet: 'text-green-400'
   }
 
   return (
-    <div class="border border-gray-800 hover:border-gray-600 transition-all p-6 bg-gray-900/30">
-      <div class="flex justify-between items-start mb-4">
-        <h3 class="text-xl font-bold text-white">{props.network.name}</h3>
-        <span class={`text-xs px-2 py-1 border ${typeColors[props.network.type]}`}>
-          {props.network.type.toUpperCase()}
+    <div class="border border-gray-700 p-4 bg-gray-900">
+      <div class="flex justify-between items-start mb-2">
+        <h3 class="text-cyan-400 font-bold">{props.network.name}</h3>
+        <span class={`text-xs ${typeColors[props.network.type]}`}>
+          [{props.network.type}]
         </span>
       </div>
-      
-      <p class="text-gray-400 mb-4">{props.network.description}</p>
+
+      <p class="text-gray-400 text-sm mb-3">{props.network.description}</p>
 
       <Show when={props.network.price}>
-        <div class="mb-4">
-          <div class="flex justify-between items-center">
-            <span class="text-2xl font-bold text-white">
-              ${props.network.price?.current.toFixed(2)}
-            </span>
-            <span class={props.network.price?.change24h! > 0 ? 'text-green-400' : 'text-red-400'}>
-              {props.network.price?.change24h! > 0 ? '+' : ''}{props.network.price?.change24h}%
-            </span>
-          </div>
+        <div class="mb-3 text-sm">
+          <span class="text-gray-400">Price: </span>
+          <span class="text-white font-mono">
+            ${props.network.price?.current.toFixed(2)}
+          </span>
+          <span class={`ml-2 text-xs ${props.network.price?.change30d! > 0 ? 'text-green-400' : 'text-red-400'}`}>
+            ({props.network.price?.change30d! > 0 ? '+' : ''}{props.network.price?.change30d.toFixed(1)}% 30d)
+          </span>
         </div>
       </Show>
 
-      <div class="space-y-2 text-sm">
+      <div class="space-y-1 text-xs border-t border-gray-700 pt-3">
         <div class="flex justify-between">
-          <span class="text-gray-500">APY</span>
-          <span class="text-cyan-400 font-bold">{props.network.stats.apy}%</span>
+          <span class="text-gray-400">APY:</span>
+          <span class="text-cyan-400 font-mono">{props.network.stats.apy}%</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-500">Uptime</span>
-          <span class="text-green-400">{props.network.stats.uptime}%</span>
+          <span class="text-gray-400">Uptime:</span>
+          <span class="text-green-400 font-mono">{props.network.stats.uptime}%</span>
         </div>
         <Show when={props.network.stats.staked > 0}>
           <div class="flex justify-between">
-            <span class="text-gray-500">Staked</span>
-            <span class="text-white">{props.network.stats.staked}%</span>
+            <span class="text-gray-400">Staked:</span>
+            <span class="text-gray-300 font-mono">{props.network.stats.staked}%</span>
           </div>
         </Show>
       </div>
 
-      <button class="w-full mt-6 py-2 bg-cyan-400 text-black font-bold hover:bg-cyan-500 transition-colors">
-        {props.network.type === 'testnet' ? 'START FREE' : 'STAKE NOW'}
-      </button>
+      <div class="mt-3 pt-3 border-t border-gray-700">
+        <a href="/services" class="text-cyan-400 hover:text-cyan-300 underline text-sm">
+          [{props.network.type === 'testnet' ? 'Start Free' : 'Stake Now'}]
+        </a>
+      </div>
     </div>
   )
 }
