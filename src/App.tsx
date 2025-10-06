@@ -9,6 +9,7 @@ import BlogPostPage from './pages/BlogPostPage'
 import SoftwarePage from './pages/SoftwarePage'
 import SoftwarePostPage from './pages/SoftwarePostPage'
 import ContactPage from './pages/ContactPage'
+import ValidatorPage from './pages/ValidatorPage'
 
 const App: Component = () => {
   return (
@@ -18,6 +19,7 @@ const App: Component = () => {
       <Route path="/blog" component={BlogPage} />
       <Route path="/blog/:slug" component={BlogPostPage} />
       <Route path="/software" component={SoftwarePage} />
+      <Route path="/software/vctl" component={ValidatorPage} />
       <Route path="/software/:slug" component={SoftwarePostPage} />
       <Route path="/team" component={TeamPage} />
       <Route path="/infrastructure" component={InfrastructurePage} />

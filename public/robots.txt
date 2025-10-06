@@ -1,0 +1,12 @@
+# Robots.txt for rotko.net
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Sitemap location
+Sitemap: https://rotko.net/sitemap.xml
+
+# Crawl-delay (seconds between requests)
+Crawl-delay: 1

@@ -3,6 +3,7 @@ export interface WirssiChatProps {
  channel?: string
  nick?: string
  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+ onClose?: () => void
 }
 
 export interface ChatBox {

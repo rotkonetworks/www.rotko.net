@@ -12,6 +12,12 @@ const NetworkCard: Component<NetworkCardProps> = (props) => {
     testnet: 'text-green-400'
   }
 
+  const stakingLinks: Record<string, string> = {
+    penumbra: 'https://explorer.penumbra.zone/validators',
+    polkadot: 'https://staking.polkadot.cloud/#/validators',
+    kusama: 'https://staking.polkadot.cloud/#/validators'
+  }
+
   return (
     <div class="border border-gray-700 p-4 bg-gray-900">
       <div class="flex justify-between items-start mb-2">
@@ -53,7 +59,12 @@ const NetworkCard: Component<NetworkCardProps> = (props) => {
       </div>
 
       <div class="mt-3 pt-3 border-t border-gray-700">
-        <a href="/services" class="text-cyan-400 hover:text-cyan-300 underline text-sm">
+        <a
+          href={stakingLinks[props.network.id] || '/services'}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-cyan-400 hover:text-cyan-300 underline text-sm"
+        >
           [{props.network.type === 'testnet' ? 'Start Free' : 'Stake Now'}]
         </a>
       </div>

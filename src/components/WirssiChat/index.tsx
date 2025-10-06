@@ -255,13 +255,21 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
    if (socket && id.startsWith('#')) {
      socket.send(`PART ${id}\r\n`)
    }
-   setBoxes(b => b.filter(box => box.id !== id))
+
+   // Update boxes and check if this was the last one
+   const updatedBoxes = boxes().filter(box => box.id !== id)
+   setBoxes(updatedBoxes)
    scrollRefs.delete(id)
    setUsers(u => {
      const newUsers = {...u}
      delete newUsers[id]
      return newUsers
    })
+
+   // If all boxes are now closed, call the onClose callback
+   if (updatedBoxes.length === 0 && props.onClose) {
+     props.onClose()
+   }
  }
 
  createEffect(() => {
@@ -296,7 +304,7 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
  })
 
  return (
-   <div class={`fixed ${positionClasses[position]} flex items-end gap-1 p-2 z-50`}>
+   <div class={`fixed ${positionClasses[position]} flex items-end gap-1 pr-2 pt-2 z-50`}>
      <For each={boxes()}>
        {(box) => (
          <ChatBox

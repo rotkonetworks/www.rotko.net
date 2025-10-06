@@ -6,12 +6,12 @@ export interface SoftwareMeta {
   repo: string
   website?: string
   description?: string
+  tags?: string[]
 }
 
 const softwareModules = import.meta.glob('/src/pages/software/*.mdx', {
   query: '?raw',
-  import: 'default',
-  eager: true
+  import: 'default'
 })
 
 export async function getAllSoftware(): Promise<{ meta: SoftwareMeta; content: string }[]> {
@@ -20,7 +20,8 @@ export async function getAllSoftware(): Promise<{ meta: SoftwareMeta; content: s
     title: data.title,
     repo: data.repo,
     website: data.website,
-    description: data.description
+    description: data.description,
+    tags: data.tags
   }))
 
   return software
@@ -28,7 +29,10 @@ export async function getAllSoftware(): Promise<{ meta: SoftwareMeta; content: s
 
 export async function getSoftware(slug: string): Promise<{ meta: SoftwareMeta; content: string } | null> {
   const key = Object.keys(softwareModules).find(p => p.endsWith(`/${slug}.mdx`))
-  const content = key ? softwareModules[key] : undefined
+  if (!key) return null
+
+  const loader = softwareModules[key]
+  const content = await loader()
 
   if (!content) return null
 
@@ -37,7 +41,8 @@ export async function getSoftware(slug: string): Promise<{ meta: SoftwareMeta; c
     title: data.title,
     repo: data.repo,
     website: data.website,
-    description: data.description
+    description: data.description,
+    tags: data.tags
   }))
 
   return {

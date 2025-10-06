@@ -11,8 +11,7 @@ export interface PostMeta {
 
 const postModules = import.meta.glob('/src/posts/*.mdx', {
   query: '?raw',
-  import: 'default',
-  eager: true
+  import: 'default'
 })
 
 export async function getAllPosts(): Promise<PostMeta[]> {
@@ -35,7 +34,10 @@ export async function getAllPosts(): Promise<PostMeta[]> {
 
 export async function getPost(slug: string): Promise<{ meta: PostMeta; content: string } | null> {
   const key = Object.keys(postModules).find(p => p.endsWith(`/${slug}.mdx`))
-  const content = key ? postModules[key] : undefined
+  if (!key) return null
+
+  const loader = postModules[key]
+  const content = await loader()
 
   if (!content) return null
 

@@ -2,6 +2,7 @@ import { Component, For, Show, createSignal, onMount } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { getAllPosts, PostMeta } from '../utils/posts'
 import { A } from '@solidjs/router'
+import { blogPageData } from '../data/blog-data'
 
 const BlogPage: Component = () => {
   const [posts, setPosts] = createSignal<PostMeta[]>([])
@@ -24,15 +25,15 @@ const BlogPage: Component = () => {
     <MainLayout>
       <section class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
         <div class="mb-8 border-b border-gray-700 pb-4">
-          <h1 class="text-3xl font-bold text-cyan-400">Blog</h1>
+          <h1 class="text-3xl font-bold text-cyan-400">{blogPageData.hero.title}</h1>
         </div>
 
         <Show when={error()}>
-          <div class="text-red-400 mb-4">Error: {error()}</div>
+          <div class="text-red-400 mb-4">{blogPageData.messages.error} {error()}</div>
         </Show>
 
-        <Show when={!loading()} fallback={<div class="text-gray-400">Loading...</div>}>
-          <Show when={posts().length > 0} fallback={<div class="text-gray-400">No posts yet.</div>}>
+        <Show when={!loading()} fallback={<div class="text-gray-400">{blogPageData.messages.loading}</div>}>
+          <Show when={posts().length > 0} fallback={<div class="text-gray-400">{blogPageData.messages.noPosts}</div>}>
             <div class="space-y-6">
               <For each={posts()}>
                 {(post) => (

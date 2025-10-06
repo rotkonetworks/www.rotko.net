@@ -29,11 +29,11 @@ export const ChatBox: Component<ChatBoxProps> = (props) => {
  }
 
  return (
-   <div class={`bg-gray-900 border border-gray-700 rounded-t shadow-lg ${
+   <div class={`bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-t shadow-lg ${
      props.box.type === 'channel' ? 'w-96' : 'w-64'
    }`}>
      {/* Header */}
-     <div class="bg-gray-800 px-2 py-0.5 flex items-center justify-between cursor-pointer h-6"
+     <div class="bg-gray-800/90 px-2 py-0.5 flex items-center justify-between cursor-pointer h-6"
        onClick={() => props.onMinimize(props.box.id)}>
        <span class="text-white font-mono text-xs flex items-center gap-1">
          {props.box.id}
@@ -90,7 +90,7 @@ export const ChatBox: Component<ChatBoxProps> = (props) => {
            {/* Input */}
            <div class="border-t border-gray-700">
              <Show when={props.showNickChange === props.box.id}>
-               <div class="bg-gray-800 px-2 py-1 flex items-center gap-1">
+               <div class="bg-gray-800/90 px-2 py-1 flex items-center gap-1">
                  <span class="text-xs text-gray-400">Nick:</span>
                  <input
                    type="text"
@@ -110,7 +110,7 @@ export const ChatBox: Component<ChatBoxProps> = (props) => {
              <div class="flex">
                <input
                  type="text"
-                 class="flex-1 bg-gray-800 text-white px-2 py-1 text-xs font-mono outline-none"
+                 class="flex-1 bg-gray-800/90 text-white px-2 py-1 text-xs font-mono outline-none"
                  placeholder="Type message..."
                  onKeyPress={(e) => {
                    if (e.key === 'Enter') {
@@ -123,7 +123,7 @@ export const ChatBox: Component<ChatBoxProps> = (props) => {
                  onClick={() => props.onToggleNickChange(
                    props.showNickChange === props.box.id ? null : props.box.id
                  )}
-                 class="px-2 bg-gray-800 text-gray-400 hover:text-cyan-300 text-xs"
+                 class="px-2 bg-gray-800/90 text-gray-400 hover:text-cyan-300 text-xs"
                  title="Change nickname"
                >
                  {props.nick}

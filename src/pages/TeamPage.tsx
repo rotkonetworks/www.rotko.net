@@ -45,21 +45,22 @@ const TeamPage: Component = () => {
 
         {/* Careers */}
         <div class="border border-gray-700 bg-gray-900 p-6">
-          <h2 class="text-xl font-bold text-cyan-400 mb-4">Careers at Rotko</h2>
+          <h2 class="text-xl font-bold text-cyan-400 mb-4">{teamPageData.careers.title}</h2>
           <div class="text-gray-300 text-sm mb-4">
-            <p class="mb-3">
-              Interested in joining our team? We're always looking for talented individuals who share our passion for innovation and quality.
-            </p>
-            <p>
-              Connect with us on IRC to discuss opportunities, ask questions, or just chat about technology.
-            </p>
+            <For each={teamPageData.careers.description}>
+              {(paragraph, index) => (
+                <p class={index() === 0 ? "mb-3" : ""}>
+                  {paragraph}
+                </p>
+              )}
+            </For>
           </div>
           <div class="text-sm">
             <a
-              href="/contact"
+              href={teamPageData.careers.contactLink.href}
               class="text-cyan-400 hover:text-cyan-300 underline"
             >
-              [Contact Us]
+              {teamPageData.careers.contactLink.text}
             </a>
           </div>
         </div>

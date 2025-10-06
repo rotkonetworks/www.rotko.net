@@ -46,7 +46,7 @@ const RackDiagram: Component = () => {
             </div>
 
             {/* Rack Units */}
-            <div class="relative bg-gray-900 overflow-visible" style={{ height: `${rack_u * unit_height}px` }}>
+            <div class="relative bg-gray-900 overflow-hidden" style={{ height: `${rack_u * unit_height}px` }}>
               {/* U slot lines */}
               <For each={uNumbers}>
                 {(u) => (
@@ -67,30 +67,27 @@ const RackDiagram: Component = () => {
               {/* Devices */}
               <For each={devices}>
                 {(device) => (
-                  <div class="group relative">
+                  <div
+                    class="absolute left-2 right-2 group"
+                    style={{
+                      bottom: `${(device.bottom_u - 1) * unit_height}px`,
+                      height: `${device.height_u * unit_height - 2}px`
+                    }}
+                  >
                     <div
-                      class="absolute left-2 right-2 flex items-center justify-center text-[11px] font-mono font-bold cursor-pointer border border-gray-700 hover:border-cyan-400 transition-colors"
+                      class="w-full h-full flex items-center justify-center text-[11px] font-mono font-bold cursor-pointer border border-gray-700 hover:border-cyan-400 transition-colors"
                       style={{
-                        bottom: `${(device.bottom_u - 1) * unit_height}px`,
-                        height: `${device.height_u * unit_height - 2}px`,
                         "background-color": device.color,
                         color: "#000"
                       }}
                     >
                       <span class="truncate px-2">{device.name}</span>
                     </div>
-                    {/* Tooltip - positioned to be fully visible */}
+                    {/* Tooltip */}
                     <Show when={device.details}>
-                      <div
-                        class="absolute left-2 right-2 hidden group-hover:block bg-black text-white text-xs whitespace-nowrap z-50 pointer-events-none"
-                        style={{
-                          bottom: `${(device.bottom_u - 1 + device.height_u) * unit_height + 4}px`,
-                        }}
-                      >
-                        <div class="relative bg-black border border-cyan-400 px-2 py-1">
+                      <div class="absolute left-0 bottom-full mb-1 hidden group-hover:block z-10 pointer-events-none">
+                        <div class="bg-black border border-cyan-400 px-2 py-1 text-xs text-white whitespace-nowrap">
                           {device.details}
-                          {/* Arrow pointing down */}
-                          <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-1 bg-black border-l border-b border-cyan-400 rotate-45"></div>
                         </div>
                       </div>
                     </Show>

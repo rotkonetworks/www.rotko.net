@@ -50,7 +50,7 @@ export const footerData = {
   //   }
   ],
   copyright: "© 2025 Rotko Networks. AS142108.",
-  tagline: "Built with Linux, Rust, and stubbornness."
+  tagline: "Where bits flow through iron will."
 }
 
 export const headerData = {

@@ -15,9 +15,20 @@ export async function parseMDXFiles<T>(
 ): Promise<ParsedMDX<T>[]> {
   const results: ParsedMDX<T>[] = []
 
-  for (const [path, content] of Object.entries(modules)) {
+  for (const [path, moduleLoader] of Object.entries(modules)) {
     const slug = path.split('/').pop()?.replace('.mdx', '') || ''
-    const { attributes, body: markdown } = fm(content as string)
+
+    // Handle both eager-loaded content and lazy-loaded functions
+    let content: string
+    if (typeof moduleLoader === 'function') {
+      // Lazy-loaded module
+      content = await moduleLoader() as string
+    } else {
+      // Eager-loaded module
+      content = moduleLoader as string
+    }
+
+    const { attributes, body: markdown } = fm(content)
 
     const processedContent = await remark()
       .use(remarkGfm)

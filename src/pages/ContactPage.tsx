@@ -1,10 +1,16 @@
-import { Component, createSignal, For } from 'solid-js'
+import { Component, createSignal, For, onMount } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { contactData } from '../data/contact-data'
-import WirssiChat from '../components/WirssiChat'
+import { useChat } from '../contexts/ChatProvider'
 
 const ContactPage: Component = () => {
   const [copied, setCopied] = createSignal<string | null>(null)
+  const { openChat } = useChat()
+
+  // Auto-open chat when contact page loads
+  onMount(() => {
+    openChat()
+  })
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -14,22 +20,22 @@ const ContactPage: Component = () => {
 
   return (
     <MainLayout>
-      <section class="pt-28 pb-24 px-6 lg:px-12 max-w-4xl mx-auto">
+      <section class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
         <div>
           
           {/* Header */}
-          <div class="mb-16">
-            <h1 class="text-4xl lg:text-5xl font-bold mb-4 text-cyan-400 font-mono">
+          <div class="mb-8 border-b border-gray-700 pb-4">
+            <h1 class="text-3xl font-bold text-cyan-400 mb-2">
               {contactData.hero.title}
             </h1>
-            <p class="text-xl text-gray-400">
+            <p class="text-gray-300">
               {contactData.hero.subtitle}
             </p>
           </div>
 
           {/* Connection Info */}
-          <div class="mb-12 bg-gray-900/50 border border-gray-700 p-6">
-            <h2 class="text-xl font-bold mb-4 text-cyan-400 font-mono">IRC Server</h2>
+          <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
+            <h2 class="text-xl font-bold mb-4 text-cyan-400">{contactData.connection.title}</h2>
             <div class="space-y-3 font-mono text-sm">
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Server:</span>
@@ -63,7 +69,7 @@ const ContactPage: Component = () => {
           </div>
 
           {/* Why IRC */}
-          <div class="mb-12">
+          <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
             <h2 class="text-xl font-bold mb-4 text-cyan-400">{contactData.philosophy.title}</h2>
             <div class="space-y-3 text-gray-300 text-sm">
               <For each={contactData.philosophy.content}>
@@ -73,8 +79,8 @@ const ContactPage: Component = () => {
           </div>
 
           {/* Rules & Expectations */}
-          <div class="grid md:grid-cols-2 gap-8 mb-12">
-            <div>
+          <div class="grid md:grid-cols-2 gap-8 mb-8">
+            <div class="border border-gray-700 bg-gray-900 p-6">
               <h3 class="text-lg font-bold mb-3 text-cyan-400">{contactData.rules.title}</h3>
               <ul class="space-y-2 text-sm">
                 <For each={contactData.rules.items}>
@@ -84,7 +90,7 @@ const ContactPage: Component = () => {
                 </For>
               </ul>
             </div>
-            <div>
+            <div class="border border-gray-700 bg-gray-900 p-6">
               <h3 class="text-lg font-bold mb-3 text-cyan-400">{contactData.expectations.title}</h3>
               <ul class="space-y-2 text-sm">
                 <For each={contactData.expectations.items}>
@@ -97,20 +103,16 @@ const ContactPage: Component = () => {
           </div>
 
           {/* Email fallback */}
-          <div class="text-center text-sm text-gray-400 border-t border-gray-800 pt-6">
-            <p>Email: noc@rotko.net</p>
-            <p>Matrix: @tommi:matrix.rotko.net</p>
-            <p class="text-xs mt-2">IRC preferred for real-time support</p>
+          <div class="border border-gray-700 bg-gray-900 p-6">
+            <h2 class="text-xl font-bold text-cyan-400 mb-4">{contactData.alternativeContact.title}</h2>
+            <div class="text-sm text-gray-300">
+              <p class="mb-2">Email: {contactData.alternativeContact.email}</p>
+              <p class="mb-3">Matrix: {contactData.alternativeContact.matrix}</p>
+              <p class="text-xs text-gray-400">{contactData.alternativeContact.note}</p>
+            </div>
           </div>
         </div>
       </section>
-
-      {/* Auto-open IRC widget */}
-      <WirssiChat
-        server="wss://irc.rotko.net/webirc"
-        channel="#rotko"
-        position="bottom-right"
-      />
     </MainLayout>
   )
 }

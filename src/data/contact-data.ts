@@ -3,7 +3,7 @@ export const contactData = {
    title: "Contact",
    subtitle: "IRC preferred."
  },
- 
+
  philosophy: {
    title: "Why IRC?",
    content: [
@@ -12,23 +12,23 @@ export const contactData = {
      "Simplicity of protocol lets you join with 4 lines of commands into telnet."
    ]
  },
- 
+
  connection: {
-   title: "Connection Details",
+   title: "IRC Server",
    server: "irc.rotko.net",
    ports: "6667 (plain) / 6697 (TLS)",
    tor: "qiy42ysuvzqweciiprb6nzcblonlcdnlqasj5hsj2oicppmm5osvqvad.onion:6667",
    channel: "#rotko",
    webchat: "wss://irc.rotko.net/webirc"
  },
- 
+
  encrypted: {
    title: "Encrypted",
    description: "For sensitive discussions:",
    matrix: "@tommi:matrix.rotko.net",
    note: "Signal available on request via IRC. We don't log encrypted channels."
  },
- 
+
  rules: {
    title: "Channel Rules",
    subtitle: "Keep it civil or the bots will handle you.",
@@ -40,7 +40,7 @@ export const contactData = {
      "Paste code somewhere else. Nobody wants to see your 500 line stack trace.",
    ]
  },
- 
+
  expectations: {
    title: "What to Expect",
    items: [
@@ -51,7 +51,7 @@ export const contactData = {
      "No data harvesting, no CRM, no follow-up emails"
    ]
  },
- 
+
  services: {
    title: "What We Can Help With",
    items: [
@@ -63,5 +63,12 @@ export const contactData = {
      "AI/LLM hosting on real hardware",
      "Telling you why your current setup is broken"
    ]
+ },
+
+ alternativeContact: {
+   title: "Alternative Contact Methods",
+   email: "noc@rotko.net",
+   matrix: "@tommi:matrix.rotko.net",
+   note: "Note: IRC preferred for real-time support"
  }
 }

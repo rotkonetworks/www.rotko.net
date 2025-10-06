@@ -5,6 +5,7 @@ export const infrastructureData = {
  },
  
  network: {
+   title: "Network Information",
    asn: "142108",
    organization: "Rotko Networks",
    irrAsSet: "AS142108:AS-ROTKONETWORKS",
@@ -69,6 +70,7 @@ export const infrastructureData = {
  ],
  
  hardware: {
+   title: "Hardware Inventory",
    routers: [
      { model: "MikroTik CCR2216", count: 2, role: "Edge routing, full BGP tables" },
      { model: "MikroTik CCR2116", count: 1, role: "Core routing, VRRP primary" },
@@ -90,6 +92,7 @@ export const infrastructureData = {
  },
  
  datacenter: {
+   title: "Datacenter",
    location: "Bangkok, Thailand",
    facility: "Tier III certified",
    power: "N+1 redundancy, dual feeds",
@@ -112,6 +115,7 @@ export const infrastructureData = {
  },
  
  connectivity: {
+   title: "Connectivity",
    transit: [
      { provider: "HGC", speed: "2x 800M", type: "IP Transit" }
    ],
@@ -123,11 +127,14 @@ export const infrastructureData = {
    ]
  },
  
- resilience: [
+ resilience: {
+   title: "Resilience & Redundancy",
+   items: [
    "Anycast for internal load balancing",
    "2x 800M HGC transit with automatic failover",
    "VRRP redundancy for core routing",
    "Direct BGP to servers eliminates SPOF",
    "100G internal fabric for storage network"
  ]
+ }
 }

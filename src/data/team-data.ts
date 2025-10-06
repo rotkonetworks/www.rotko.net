@@ -104,8 +104,19 @@ export const teamPageData = {
   ],
   principles: [
     "infrastructure from first principles - BGP to browser",
-    "fix upstream instead of working around broken abstractions", 
+    "fix upstream instead of working around broken abstractions",
     "remote by default. results over meetings.",
     "if it can't handle 3am failures on its own, it's not done"
-  ]
+  ],
+  careers: {
+    title: "Careers at Rotko",
+    description: [
+      "Interested in joining our team? We're always looking for talented individuals who share our passion for innovation and quality.",
+      "Connect with us on IRC to discuss opportunities, ask questions, or just chat about technology."
+    ],
+    contactLink: {
+      text: "[Contact Us]",
+      href: "/contact"
+    }
+  }
 }

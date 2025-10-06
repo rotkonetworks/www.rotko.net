@@ -8,9 +8,9 @@ interface MainLayoutProps {
 
 const MainLayout: Component<MainLayoutProps> = (props) => {
  return (
-   <div class="min-h-screen bg-gray-950 text-gray-100">
+   <div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
      <Header />
-     <main class="pt-16">
+     <main class="pt-16 flex-1">
        {props.children}
      </main>
      <Footer />

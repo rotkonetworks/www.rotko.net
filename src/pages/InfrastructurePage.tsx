@@ -23,7 +23,7 @@ const InfrastructurePage: Component = () => {
 
         {/* Network Info */}
         <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
-          <h2 class="text-xl font-bold text-cyan-400 mb-4">Network Information</h2>
+          <h2 class="text-xl font-bold text-cyan-400 mb-4">{infrastructureData.network.title}</h2>
           <div class="grid md:grid-cols-2 gap-4 text-sm">
             <div>
               <span class="text-gray-400">ASN:</span>
@@ -65,13 +65,13 @@ const InfrastructurePage: Component = () => {
         {/* Rack Diagram and Hardware Inventory Side by Side */}
         <div class="grid lg:grid-cols-2 gap-8 mb-8">
           {/* Rack Diagram Box */}
-          <div class="border border-gray-700 bg-gray-900 p-6 flex flex-col items-center justify-center">
+          <div class="border border-gray-700 bg-gray-900 p-6">
             <RackDiagram />
           </div>
 
           {/* Hardware Inventory */}
           <div class="border border-gray-700 bg-gray-900 p-6">
-            <h2 class="text-xl font-bold text-cyan-400 mb-4">Hardware Inventory</h2>
+            <h2 class="text-xl font-bold text-cyan-400 mb-4">{infrastructureData.hardware.title}</h2>
 
             <div class="space-y-4">
               <div>
@@ -121,7 +121,7 @@ const InfrastructurePage: Component = () => {
 
         {/* Datacenter */}
         <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
-          <h2 class="text-xl font-bold text-cyan-400 mb-4">Datacenter</h2>
+          <h2 class="text-xl font-bold text-cyan-400 mb-4">{infrastructureData.datacenter.title}</h2>
           <div class="grid md:grid-cols-2 gap-4 text-sm">
             <div>
               <span class="text-gray-400">Location:</span>
@@ -154,7 +154,7 @@ const InfrastructurePage: Component = () => {
         <div class="grid lg:grid-cols-2 gap-8">
           {/* Connectivity */}
           <div class="border border-gray-700 bg-gray-900 p-6">
-            <h2 class="text-xl font-bold text-cyan-400 mb-4">Connectivity</h2>
+            <h2 class="text-xl font-bold text-cyan-400 mb-4">{infrastructureData.connectivity.title}</h2>
 
             <div class="space-y-4">
               <div>
@@ -187,9 +187,9 @@ const InfrastructurePage: Component = () => {
 
           {/* Resilience */}
           <div class="border border-gray-700 bg-gray-900 p-6">
-            <h2 class="text-xl font-bold text-cyan-400 mb-4">Resilience & Redundancy</h2>
+            <h2 class="text-xl font-bold text-cyan-400 mb-4">{infrastructureData.resilience.title}</h2>
             <div class="space-y-1 text-sm">
-              <For each={infrastructureData.resilience}>
+              <For each={infrastructureData.resilience.items}>
                 {(item) => (
                   <div class="flex items-start text-gray-300">
                     <span class="i-mdi-check-circle text-cyan-400 mr-2 mt-0.5"></span>

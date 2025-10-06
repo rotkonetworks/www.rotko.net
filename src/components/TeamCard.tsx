@@ -12,17 +12,8 @@ const TeamCard: Component<TeamCardProps> = (props) => {
   const [isVisible, setIsVisible] = createSignal(false)
   const [imageLoaded, setImageLoaded] = createSignal(false)
 
-  // terminal color schemes - more restrained, actual irssi-like
-  const colorSchemes = [
-    { fg: "#00ff00", dim: "#008800", bg: "#001100" },
-    { fg: "#00ffff", dim: "#008888", bg: "#001111" },
-    { fg: "#ffff00", dim: "#888800", bg: "#111100" },
-    { fg: "#ff00ff", dim: "#880088", bg: "#110011" },
-    { fg: "#ffffff", dim: "#888888", bg: "#111111" },
-    { fg: "#ff8800", dim: "#884400", bg: "#110800" },
-  ]
-
-  const scheme = colorSchemes[props.index % colorSchemes.length]
+  // Use only cyan/turquoise color scheme for all cards
+  const scheme = { fg: "#00ffff", dim: "#008888", bg: "#001111" }
 
   createEffect(() => {
     const img = new Image()
@@ -32,7 +23,13 @@ const TeamCard: Component<TeamCardProps> = (props) => {
   })
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'q' && isFlipped()) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === document.activeElement) {
+      e.preventDefault()
+      setIsFlipped(!isFlipped())
+    } else if (e.key === 'Escape' && isFlipped()) {
+      e.preventDefault()
+      setIsFlipped(false)
+    } else if (e.key === 'q' && isFlipped()) {
       e.preventDefault()
       setIsFlipped(false)
     }
@@ -48,8 +45,18 @@ const TeamCard: Component<TeamCardProps> = (props) => {
 
   return (
     <div
-      class="relative w-full h-[420px] cursor-pointer font-mono text-sm"
+      class="relative w-full h-[420px] cursor-pointer font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
       onClick={() => setIsFlipped(!isFlipped())}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setIsFlipped(!isFlipped())
+        }
+      }}
+      tabindex="0"
+      role="button"
+      aria-label={`${props.member.name} - ${props.member.title}. Press Enter to flip card`}
+      aria-pressed={isFlipped()}
     >
       <div
         class={`absolute inset-0 w-full h-full transition-all duration-100 ${
