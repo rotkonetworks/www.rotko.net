@@ -12,6 +12,7 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
  const [historyWs, setHistoryWs] = createSignal<WebSocket | null>(null)
  const [users, setUsers] = createSignal<Users>({})
  const [showNickChange, setShowNickChange] = createSignal<string | null>(null)
+ const [activeTabIndex, setActiveTabIndex] = createSignal(0)
  const messageSet = new Set<string>()
  const scrollRefs = new Map<string, HTMLDivElement>()
 
@@ -20,9 +21,9 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
  const position = props.position || 'bottom-right'
 
  const positionClasses = {
-   'bottom-right': 'bottom-0 right-0 flex-row-reverse',
+   'bottom-right': 'bottom-0 right-0 sm:flex-row-reverse',
    'bottom-left': 'bottom-0 left-0',
-   'top-right': 'top-0 right-0 flex-row-reverse',
+   'top-right': 'top-0 right-0 sm:flex-row-reverse',
    'top-left': 'top-0 left-0'
  }
 
@@ -37,14 +38,17 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
 
  const addBox = (id: string, type: 'channel' | 'query') => {
    if (!boxes().find(b => b.id === id)) {
-     setBoxes(b => [...b, { 
-       id, 
-       type, 
-       messages: [], 
+     const newBoxes = [...boxes(), {
+       id,
+       type,
+       messages: [],
        minimized: false,
        historyLoaded: false,
        showUsers: type === 'channel'
-     }])
+     }]
+     setBoxes(newBoxes)
+     // Set active tab to the new box on mobile
+     setActiveTabIndex(newBoxes.length - 1)
      if (type === 'channel') {
        loadHistory(id)
      }
@@ -256,8 +260,12 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
      socket.send(`PART ${id}\r\n`)
    }
 
+   // Find the index of the box being closed
+   const currentBoxes = boxes()
+   const closedIndex = currentBoxes.findIndex(box => box.id === id)
+
    // Update boxes and check if this was the last one
-   const updatedBoxes = boxes().filter(box => box.id !== id)
+   const updatedBoxes = currentBoxes.filter(box => box.id !== id)
    setBoxes(updatedBoxes)
    scrollRefs.delete(id)
    setUsers(u => {
@@ -265,6 +273,16 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
      delete newUsers[id]
      return newUsers
    })
+
+   // Adjust active tab index if needed
+   if (updatedBoxes.length > 0) {
+     const currentActiveIndex = activeTabIndex()
+     if (closedIndex <= currentActiveIndex && currentActiveIndex > 0) {
+       setActiveTabIndex(currentActiveIndex - 1)
+     } else if (currentActiveIndex >= updatedBoxes.length) {
+       setActiveTabIndex(updatedBoxes.length - 1)
+     }
+   }
 
    // If all boxes are now closed, call the onClose callback
    if (updatedBoxes.length === 0 && props.onClose) {
@@ -304,30 +322,110 @@ export const WirssiChat: Component<WirssiChatProps> = (props) => {
  })
 
  return (
-   <div class={`fixed ${positionClasses[position]} flex items-end gap-1 pr-2 pt-2 z-50`}>
-     <For each={boxes()}>
-       {(box) => (
-         <ChatBox
-           box={box}
-           nick={nick()}
-           connected={connected()}
-           defaultChannel={channel}
-           users={users()}
-           showNickChange={showNickChange()}
-           onMinimize={(id) => setBoxes(boxes => boxes.map(b => 
-             b.id === id ? {...b, minimized: !b.minimized} : b
-           ))}
-           onClose={closeBox}
-           onToggleUsers={(id) => setBoxes(boxes => boxes.map(b => 
-             b.id === id ? {...b, showUsers: !b.showUsers} : b
-           ))}
-           onSendMessage={sendMessage}
-           onToggleNickChange={setShowNickChange}
-           onOpenQuery={(user) => addBox(user, 'query')}
-           scrollRef={(el) => scrollRefs.set(box.id, el)}
-         />
-       )}
-     </For>
+   <div class={`fixed ${positionClasses[position]} flex flex-col sm:flex-row items-end gap-1 pr-2 pt-2 z-50 max-h-screen overflow-y-auto sm:overflow-visible`}>
+     {/* Mobile Tab Bar */}
+     <Show when={boxes().length > 0}>
+       <div class="sm:hidden w-[calc(100vw-1rem)] mb-1">
+         <div class="bg-gray-800/90 backdrop-blur-sm border border-gray-700 rounded flex overflow-x-auto scrollbar-hide">
+           <For each={boxes()}>
+             {(box, index) => (
+               <button
+                 onClick={() => setActiveTabIndex(index())}
+                 class={`px-3 py-1 text-xs font-mono whitespace-nowrap transition-all duration-200 flex-shrink-0 relative ${
+                   index() === activeTabIndex()
+                     ? 'bg-gray-600 text-white shadow-lg'
+                     : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                 }`}
+               >
+                 {/* Active tab indicator */}
+                 <Show when={index() === activeTabIndex()}>
+                   <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-300 rounded-t"></div>
+                 </Show>
+                 {box.id}
+                 <Show when={box.type === 'channel'}>
+                   <span class={`ml-1 ${index() === activeTabIndex() ? 'text-gray-300' : 'text-gray-500'}`}>
+                     ({Object.keys(users()[box.id] || {}).length + 1})
+                   </span>
+                 </Show>
+               </button>
+             )}
+           </For>
+         </div>
+       </div>
+     </Show>
+
+     {/* Desktop: All boxes side by side, Mobile: Only active box */}
+     <div class="hidden sm:flex flex-row items-end gap-1">
+       <For each={boxes()}>
+         {(box) => (
+           <ChatBox
+             box={box}
+             nick={nick()}
+             connected={connected()}
+             defaultChannel={channel}
+             users={users()}
+             showNickChange={showNickChange()}
+             onMinimize={(id) => setBoxes(boxes => boxes.map(b =>
+               b.id === id ? {...b, minimized: !b.minimized} : b
+             ))}
+             onClose={closeBox}
+             onToggleUsers={(id) => setBoxes(boxes => boxes.map(b =>
+               b.id === id ? {...b, showUsers: !b.showUsers} : b
+             ))}
+             onSendMessage={sendMessage}
+             onToggleNickChange={setShowNickChange}
+             onOpenQuery={(user) => addBox(user, 'query')}
+             scrollRef={(el) => scrollRefs.set(box.id, el)}
+             isMobile={false}
+           />
+         )}
+       </For>
+     </div>
+
+     {/* Mobile: Card stack with smooth transitions */}
+     <Show when={boxes().length > 0}>
+       <div class="sm:hidden relative w-[calc(100vw-1rem)] min-h-[20rem]">
+         <For each={boxes()}>
+           {(box, index) => (
+             <div
+               class={`absolute inset-0 transition-all duration-300 ease-in-out transform-gpu ${
+                 index() === activeTabIndex()
+                   ? 'opacity-100 translate-x-0 scale-100 z-20'
+                   : index() < activeTabIndex()
+                   ? 'opacity-0 -translate-x-8 scale-95 z-0'
+                   : 'opacity-0 translate-x-8 scale-95 z-0'
+               }`}
+               style={{
+                 // Add subtle shadow and transform for card stack effect
+                 'transform-origin': 'center center',
+                 'backface-visibility': 'hidden',
+               }}
+             >
+               <ChatBox
+                 box={box}
+                 nick={nick()}
+                 connected={connected()}
+                 defaultChannel={channel}
+                 users={users()}
+                 showNickChange={showNickChange()}
+                 onMinimize={(id) => setBoxes(boxes => boxes.map(b =>
+                   b.id === id ? {...b, minimized: !b.minimized} : b
+                 ))}
+                 onClose={closeBox}
+                 onToggleUsers={(id) => setBoxes(boxes => boxes.map(b =>
+                   b.id === id ? {...b, showUsers: !b.showUsers} : b
+                 ))}
+                 onSendMessage={sendMessage}
+                 onToggleNickChange={setShowNickChange}
+                 onOpenQuery={(user) => addBox(user, 'query')}
+                 scrollRef={(el) => scrollRefs.set(box.id, el)}
+                 isMobile={true}
+               />
+             </div>
+           )}
+         </For>
+       </div>
+     </Show>
    </div>
  )
 }

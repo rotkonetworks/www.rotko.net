@@ -15,6 +15,7 @@ interface ChatBoxProps {
  onToggleNickChange: (boxId: string | null) => void
  onOpenQuery: (user: string) => void
  scrollRef: (el: HTMLDivElement) => void
+ isMobile: boolean
 }
 
 export const ChatBox: Component<ChatBoxProps> = (props) => {
@@ -29,42 +30,71 @@ export const ChatBox: Component<ChatBoxProps> = (props) => {
  }
 
  return (
-   <div class={`bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-t shadow-lg ${
-     props.box.type === 'channel' ? 'w-96' : 'w-64'
-   }`}>
-     {/* Header */}
-     <div class="bg-gray-800/90 px-2 py-0.5 flex items-center justify-between cursor-pointer h-6"
-       onClick={() => props.onMinimize(props.box.id)}>
-       <span class="text-white font-mono text-xs flex items-center gap-1">
-         {props.box.id}
-         <Show when={props.box.type === 'channel'}>
-           <span class="text-gray-500">
-             ({Object.keys(props.users[props.box.id] || {}).length + 1})
-           </span>
-         </Show>
-       </span>
-       <div class="flex gap-1 items-center">
-         <Show when={props.box.type === 'channel'}>
-           <button onClick={(e) => { 
-             e.stopPropagation() 
-             props.onToggleUsers(props.box.id)
+   <div class={`bg-gray-900/90 backdrop-blur-sm border border-gray-700 shadow-lg
+     w-[calc(100vw-1rem)] sm:w-auto
+     ${props.box.type === 'channel' ? 'sm:w-96' : 'sm:w-64'}
+     max-w-full
+     ${props.isMobile ? 'rounded' : 'rounded-t'}
+   `}>
+     {/* Header - Hidden on mobile when used in card stack */}
+     <Show when={!props.isMobile}>
+       <div class="bg-gray-800/90 px-2 py-0.5 flex items-center justify-between cursor-pointer h-6"
+         onClick={() => props.onMinimize(props.box.id)}>
+         <span class="text-white font-mono text-xs flex items-center gap-1">
+           {props.box.id}
+           <Show when={props.box.type === 'channel'}>
+             <span class="text-gray-500">
+               ({Object.keys(props.users[props.box.id] || {}).length + 1})
+             </span>
+           </Show>
+         </span>
+         <div class="flex gap-1 items-center">
+           <Show when={props.box.type === 'channel'}>
+             <button onClick={(e) => {
+               e.stopPropagation()
+               props.onToggleUsers(props.box.id)
+             }}
+               class="text-gray-400 hover:text-white text-xs">
+               {props.box.showUsers ? '▶' : '◀'}
+             </button>
+           </Show>
+           <button onClick={(e) => {
+             e.stopPropagation()
+             props.onClose(props.box.id)
            }}
-             class="text-gray-400 hover:text-white text-xs">
-             {props.box.showUsers ? '▶' : '◀'}
-           </button>
-         </Show>
-         <button onClick={(e) => { 
-           e.stopPropagation()
-           props.onClose(props.box.id)
-         }}
-           class="text-gray-400 hover:text-white text-sm">✕</button>
+             class="text-gray-400 hover:text-white text-sm">✕</button>
+         </div>
        </div>
-     </div>
+     </Show>
+
+     {/* Mobile Header with just close button */}
+     <Show when={props.isMobile}>
+       <div class="bg-gray-800/90 px-2 py-0.5 flex items-center justify-between h-6">
+         <span class="text-white font-mono text-xs flex items-center gap-1">
+           {props.box.id}
+           <Show when={props.box.type === 'channel'}>
+             <span class="text-gray-500">
+               ({Object.keys(props.users[props.box.id] || {}).length + 1})
+             </span>
+           </Show>
+         </span>
+         <div class="flex gap-1 items-center">
+           <Show when={props.box.type === 'channel'}>
+             <button onClick={() => props.onToggleUsers(props.box.id)}
+               class="text-gray-400 hover:text-white text-xs">
+               {props.box.showUsers ? '▶' : '◀'}
+             </button>
+           </Show>
+           <button onClick={() => props.onClose(props.box.id)}
+             class="text-gray-400 hover:text-white text-sm">✕</button>
+         </div>
+       </div>
+     </Show>
 
      <Show when={!props.box.minimized}>
        <div class="flex">
          {/* Messages */}
-         <div class="flex-1 h-80 flex flex-col">
+         <div class="flex-1 h-48 sm:h-80 flex flex-col">
            <div 
              ref={props.scrollRef}
              class="flex-1 overflow-y-auto p-1 bg-black"
@@ -134,19 +164,19 @@ export const ChatBox: Component<ChatBoxProps> = (props) => {
 
          {/* User list */}
          <Show when={props.box.type === 'channel' && props.box.showUsers}>
-           <div class="w-20 bg-gray-900 border-l border-gray-800 overflow-y-auto">
+           <div class={`w-20 bg-gray-900 border-l border-gray-800 overflow-y-auto ${props.isMobile ? 'block' : 'hidden sm:block'}`}>
              <div class="px-1 py-0.5 text-cyan-300 text-xs font-mono border-b border-gray-800">
                {props.nick}
              </div>
              <For each={getSortedUsers()}>
                {([user, prefix]) => (
-                 <div 
+                 <div
                    class="px-1 py-0.5 hover:bg-gray-800 cursor-pointer text-xs font-mono text-white truncate"
                    onClick={() => props.onOpenQuery(user)}
                    title={user}
                  >
                    <span class={
-                     prefix === '@' ? 'text-yellow-400' : 
+                     prefix === '@' ? 'text-yellow-400' :
                      prefix === '+' ? 'text-green-400' : ''
                    }>
                      {prefix}

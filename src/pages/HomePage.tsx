@@ -39,7 +39,7 @@ const HomePage: Component = () => {
           <div class="text-xs font-mono text-cyan-400 mb-2 uppercase">
             {siteData.company.tagline}
           </div>
-          <h1 class="text-3xl font-bold mb-4 text-cyan-400">
+          <h1 class="text-3xl font-bold mb-2 text-cyan-400">
             {siteData.hero.title}
           </h1>
           <p class="text-gray-300">

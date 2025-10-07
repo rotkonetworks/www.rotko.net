@@ -293,11 +293,25 @@ export class MultiChainServicePapi {
     if (!client) throw new Error('Not connected to staking chain')
 
     const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.bond({
-      controller: controllerAddress,
-      value: amount,
-      payee
-    })
+
+    // Format payee based on the type
+    let formattedPayee: any
+    if (payee === 'Staked') {
+      formattedPayee = { type: 'Staked' }
+    } else if (payee === 'Stash') {
+      formattedPayee = { type: 'Stash' }
+    } else if (payee === 'Controller') {
+      formattedPayee = { type: 'Controller' }
+    } else {
+      // Account address
+      formattedPayee = { type: 'Account', value: payee }
+    }
+
+    const tx = api.tx.Staking.bond(
+      controllerAddress,
+      amount,
+      formattedPayee
+    )
 
     // Sign and submit transaction
     return await tx.signAndSubmit(signer)
@@ -311,7 +325,7 @@ export class MultiChainServicePapi {
     if (!client) throw new Error('Not connected to staking chain')
 
     const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.unbond({ value: amount })
+    const tx = api.tx.Staking.unbond(amount)
     return await tx.signAndSubmit(signer)
   }
 
@@ -323,7 +337,7 @@ export class MultiChainServicePapi {
     if (!client) throw new Error('Not connected to staking chain')
 
     const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.nominate({ targets })
+    const tx = api.tx.Staking.nominate(targets)
     return await tx.signAndSubmit(signer)
   }
 
@@ -339,13 +353,13 @@ export class MultiChainServicePapi {
     return await tx.signAndSubmit(signer)
   }
 
-  async setKeys(signer: any, keys: string, proof: Uint8Array) {
+  async setKeys(signer: any, keys: string, proof: string) {
     // Session keys are always on relay chain
     const client = this.clients.relay
     if (!client) throw new Error('Not connected to relay chain')
 
     const api = await client.getUnsafeApi()
-    const tx = api.tx.Session.setKeys({ keys, proof })
+    const tx = api.tx.Session.setKeys(keys, proof)
     return await tx.signAndSubmit(signer)
   }
 
@@ -357,7 +371,7 @@ export class MultiChainServicePapi {
     if (!client) throw new Error('Not connected to staking chain')
 
     const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.withdrawUnbonded({ num_slashing_spans: numSlashingSpans })
+    const tx = api.tx.Staking.withdrawUnbonded(numSlashingSpans)
     return await tx.signAndSubmit(signer)
   }
 
@@ -369,10 +383,33 @@ export class MultiChainServicePapi {
     if (!client) throw new Error('Not connected to staking chain')
 
     const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.payoutStakers({
-      validator_stash: validatorStash,
-      era
-    })
+    const tx = api.tx.Staking.payoutStakers(validatorStash, era)
+    return await tx.signAndSubmit(signer)
+  }
+
+  // Add rebond method
+  async rebond(signer: any, amount: bigint) {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) throw new Error('Not connected to staking chain')
+
+    const api = await client.getUnsafeApi()
+    const tx = api.tx.Staking.rebond(amount)
+    return await tx.signAndSubmit(signer)
+  }
+
+  // Add validate method
+  async validate(signer: any, prefs: {commission: number, blocked: boolean}) {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) throw new Error('Not connected to staking chain')
+
+    const api = await client.getUnsafeApi()
+    const tx = api.tx.Staking.validate(prefs)
     return await tx.signAndSubmit(signer)
   }
 

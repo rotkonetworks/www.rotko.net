@@ -72,6 +72,8 @@ const ValidatorToolContent: Component = () => {
   const [modalOperation, setModalOperation] = createSignal<OperationType | null>(null)
   const [modalAccount, setModalAccount] = createSignal<InjectedAccountWithMeta | null>(null)
   const [txStatus, setTxStatus] = createSignal<{message: string, type: 'success' | 'error' | 'pending'} | null>(null)
+  const [currentEra, setCurrentEra] = createSignal<number | null>(null)
+  const [currentSession, setCurrentSession] = createSignal<number | null>(null)
 
   // Keyboard shortcuts
   onMount(() => {
@@ -271,7 +273,7 @@ const ValidatorToolContent: Component = () => {
     console.log(`Executing ${action} on ${account.address}`)
 
     // For operations that need modals
-    if (['bond', 'unbond', 'nominate', 'setKeys', 'rebond'].includes(action)) {
+    if (['bond', 'unbond', 'nominate', 'setKeys', 'rebond', 'withdrawUnbonded'].includes(action)) {
       setModalAccount(account)
       setModalOperation(action as OperationType)
       return
@@ -302,10 +304,9 @@ const ValidatorToolContent: Component = () => {
           break
 
         case 'validate':
-          // Start validating - needs validator preferences
-          const commission = 50000000 // 5% commission as example
-          const blocked = false
-          console.log('Start validating with commission:', commission)
+          // Start validating with default commission
+          const prefs = { commission: 50000000, blocked: false } // 5% commission
+          await multiChainServicePapi.validate(signer, prefs)
           setTxStatus({ message: 'Validation started', type: 'success' })
           break
 
@@ -313,11 +314,6 @@ const ValidatorToolContent: Component = () => {
           // Stop validating/nominating
           await multiChainServicePapi.chill(signer)
           setTxStatus({ message: 'Successfully chilled', type: 'success' })
-          break
-
-        case 'withdrawUnbonded':
-          await multiChainServicePapi.withdrawUnbonded(signer, 0)
-          setTxStatus({ message: 'Unbonded funds withdrawn', type: 'success' })
           break
 
         default:
@@ -370,13 +366,23 @@ const ValidatorToolContent: Component = () => {
           setTxStatus({ message: 'Unbonding initiated', type: 'success' })
           break
 
+        case 'rebond':
+          await multiChainServicePapi.rebond(signer, data.amount)
+          setTxStatus({ message: 'Tokens rebonded successfully', type: 'success' })
+          break
+
+        case 'withdrawUnbonded':
+          await multiChainServicePapi.withdrawUnbonded(signer, data.numSlashingSpans || 0)
+          setTxStatus({ message: 'Unbonded tokens withdrawn', type: 'success' })
+          break
+
         case 'nominate':
           await multiChainServicePapi.nominate(signer, data.validators)
           setTxStatus({ message: 'Nominations submitted', type: 'success' })
           break
 
         case 'setKeys':
-          await multiChainServicePapi.setKeys(signer, data.keys, data.proof)
+          await multiChainServicePapi.setKeys(signer, data.keys, data.proof || '0x')
           setTxStatus({ message: 'Session keys updated', type: 'success' })
           break
       }
@@ -414,6 +420,14 @@ const ValidatorToolContent: Component = () => {
           map.set(account.address, stakingData)
           return map
         })
+
+        // Update current era and session if available
+        if (stakingData.era !== null) {
+          setCurrentEra(stakingData.era)
+        }
+        if (stakingData.sessionIndex !== null) {
+          setCurrentSession(stakingData.sessionIndex)
+        }
       }
     } catch (error) {
       console.error(`Failed to load data for ${account.address}:`, error)
@@ -474,14 +488,23 @@ const ValidatorToolContent: Component = () => {
     const balance = accountBalances().get(account.address)
     const staking = accountStaking().get(account.address)
 
+    // Calculate total unlocking amount
+    const unlockingTotal = staking?.unlocking?.reduce((sum, unlock) => sum + unlock.value, 0n) || 0n
+
     return {
       balance: balance ? `${multiChainServicePapi.formatBalance(balance.free, decimals)} ${token}` : `0.0000 ${token}`,
       bonded: staking ? `${multiChainServicePapi.formatBalance(staking.bonded, decimals)} ${token}` : `0.0000 ${token}`,
       active: staking ? `${multiChainServicePapi.formatBalance(staking.active, decimals)} ${token}` : `0.0000 ${token}`,
+      unlocking: unlockingTotal > 0n ? `${multiChainServicePapi.formatBalance(unlockingTotal, decimals)} ${token}` : null,
+      unlockingChunks: staking?.unlocking?.length || 0,
       rewards: '0.0000 ' + token, // TODO: Calculate pending rewards
+      rewardDestination: staking?.rewardDestination || null,
       commission: staking?.commission ? `${(staking.commission / 10000000).toFixed(2)}%` : null,
       nominators: staking?.nominators ? staking.nominators.length.toString() : null,
-      status: staking ? (staking.validators ? 'Validating' : staking.nominators ? 'Nominating' : 'Inactive') : null
+      nominatedValidators: staking?.nominators?.length || 0,
+      status: staking ? (staking.validators ? 'Validating' : staking.nominators ? 'Nominating' : 'Inactive') : null,
+      era: staking?.era || null,
+      sessionIndex: staking?.sessionIndex || null
     }
   }
 
@@ -566,6 +589,27 @@ const ValidatorToolContent: Component = () => {
                     )}
                   </For>
                 </div>
+
+                {/* Era and Session Info */}
+                <Show when={currentEra() !== null || currentSession() !== null}>
+                  <div class="mt-4 pt-4 border-t border-gray-700">
+                    <div class="text-sm text-gray-400 mb-2">Network Status:</div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                      <Show when={currentEra() !== null}>
+                        <div class="bg-gray-800 rounded px-2 py-1">
+                          <span class="text-gray-500">Era:</span>
+                          <span class="text-cyan-400 font-mono ml-1">{currentEra()}</span>
+                        </div>
+                      </Show>
+                      <Show when={currentSession() !== null}>
+                        <div class="bg-gray-800 rounded px-2 py-1">
+                          <span class="text-gray-500">Session:</span>
+                          <span class="text-green-400 font-mono ml-1">{currentSession()}</span>
+                        </div>
+                      </Show>
+                    </div>
+                  </div>
+                </Show>
 
                 {/* Connection Status */}
                 <div class="mt-4 pt-4 border-t border-gray-700">
@@ -818,9 +862,28 @@ const ValidatorToolContent: Component = () => {
                               </span>
                             </div>
                           </Show>
+                          <Show when={accountData.unlocking}>
+                            <div>
+                              <span class="text-gray-500">Unlocking:</span>
+                              <span class="text-yellow-400 ml-1 font-mono">
+                                {accountData.unlocking}
+                              </span>
+                              <Show when={accountData.unlockingChunks > 0}>
+                                <span class="text-gray-500 ml-1 text-xs">
+                                  ({accountData.unlockingChunks} chunks)
+                                </span>
+                              </Show>
+                            </div>
+                          </Show>
+                          <Show when={accountData.rewardDestination}>
+                            <div>
+                              <span class="text-gray-500">Rewards to:</span>
+                              <span class="text-purple-400 ml-1 text-xs">{accountData.rewardDestination}</span>
+                            </div>
+                          </Show>
                           <Show when={accountData.rewards && !accountData.rewards.startsWith('0.0000')}>
                             <div>
-                              <span class="text-gray-500">Rewards:</span>
+                              <span class="text-gray-500">Pending:</span>
                               <span class="text-cyan-400 ml-1 font-mono">{accountData.rewards}</span>
                             </div>
                           </Show>
@@ -834,6 +897,12 @@ const ValidatorToolContent: Component = () => {
                             <div>
                               <span class="text-gray-500">Nominators:</span>
                               <span class="text-white ml-1">{accountData.nominators}</span>
+                            </div>
+                          </Show>
+                          <Show when={accountData.nominatedValidators > 0}>
+                            <div>
+                              <span class="text-gray-500">Nominating:</span>
+                              <span class="text-blue-400 ml-1">{accountData.nominatedValidators} validators</span>
                             </div>
                           </Show>
                         </div>
