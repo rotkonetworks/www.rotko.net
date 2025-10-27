@@ -1,0 +1,134 @@
+---
+title: "Post-Mortem: 2x Storage Performance Loss from LXC Directory-Backed Storage"
+description: "One Kusama validator was running 2x slower due to Proxmox LXC directory storage using ext4 over ext4. Moving to LVM fixed it."
+date: "2025-10-27"
+tags: ["infrastructure", "performance", "validators", "lxc", "storage", "polkadot"]
+draft: false
+---
+
+## tl;dr
+
+One of our Kusama validators (val-kusama-03) was experiencing 2x slower storage performance. The
+issue: Proxmox LXC directory-backed storage with ext4-over-ext4 configuration. Moving to LVM
+resolved it immediately.
+
+## the problem
+
+Proxmox LXC defaults to directory-backed storage. This creates an architecture that's convenient for
+setup but disastrous for fsync-heavy workloads:
+
+```
+Container filesystem (ext4)
+    ↓
+Loop device (/dev/loop0)
+    ↓
+.raw disk image file
+    ↓
+Host filesystem (ext4)
+    ↓
+Physical disk (NVMe)
+```
+
+Every write passes through two complete filesystem layers. The kernel translates block I/O → file
+I/O → block I/O. Each fsync triggers metadata updates at multiple levels. The container can't use
+O_DIRECT effectively through these abstraction layers.
+
+For our validator running RocksDB, this was measured in real latency:
+- **Directory storage (ext4/ext4)**: 40.8ms average fsync, ~50 IOPS
+- **LVM logical volume**: 18.9ms average fsync, ~108 IOPS
+
+That's **2.15x slower** on identical hardware.
+
+## confirming the issue
+
+Simple fio benchmark simulating RocksDB workload:
+
+| Storage Type | Fsync Latency | IOPS |
+|--------------|---------------|------|
+| Directory (ext4/ext4) | 40.8ms avg | ~50 |
+| LVM | 18.9ms avg | ~108 |
+
+**2.15x performance difference** on identical hardware.
+
+## the fix: migrate to lvm
+
+LVM provides direct block device access - one filesystem layer instead of two:
+
+### migration process
+
+```bash
+# Create physical volume on your dedicated disk
+pvcreate /dev/nvme1n1
+
+# Create volume group
+vgcreate vg-containers /dev/nvme1n1
+
+# Create thin pool for efficient space usage
+lvcreate -L 1.6T -n thinpool vg-containers
+lvconvert --type thin-pool vg-containers/thinpool
+
+# Add to Proxmox storage configuration
+pvesm add lvmthin lvmthin-containers \
+  --vgname vg-containers \
+  --thinpool thinpool \
+  --content rootdir,images
+```
+
+### Migrating existing containers
+
+For our production Kusama validator, we used the safe backup-and-restore method:
+
+```bash
+# Backup current container
+vzdump 32006 --storage local --mode stop
+
+# Restore to LVM storage
+pct restore 32006 /var/lib/vz/dump/vzdump-lxc-32006-*.tar.lzo \
+  --storage lvmthin-containers
+
+# Verify performance, then cleanup old storage
+```
+
+For containers with large databases, direct copying with `dd` can be faster, but requires more
+careful configuration management.
+
+Important: add `noatime` mount option in `/etc/pve/lxc/<VMID>.conf`:
+
+```bash
+rootfs: lvmthin-containers:vm-100-disk-0,size=32G,mountoptions=noatime
+```
+
+This prevents access time updates on every file read, which can add 10-15% performance for
+RocksDB workloads with thousands of SSTable files.
+
+## results
+
+After migrating val-kusama-03 to LVM:
+- fsync latency: 40.8ms → 18.9ms (2.15x improvement)
+- IOPS: ~50 → ~108 (2x improvement)
+- Stable performance, no more 100ms+ spikes
+
+## lessons learned
+
+**Proxmox assumes ZFS, not ext4**: Directory-backed storage with ZFS host filesystem doesn't have
+the same double-ext4-journaling problem. If you're running ext4 on the host, use LVM instead.
+
+**Only one validator affected**: This was specific to val-kusama-03 which was provisioned with
+directory storage. Our other validators were already on LVM and didn't have the issue.
+
+**Check your storage backend**: If you're running validators in LXC containers, verify your storage
+configuration:
+
+```bash
+pct config <VMID> | grep rootfs
+```
+
+If it shows a path like `/data/images/...`, you're on directory storage and should migrate to LVM
+for database workloads.
+
+---
+
+**Configuration**: val-kusama-03 at bkk03, Proxmox VE 8.x, Debian 12, NVMe SSD
+**Performance gain**: 2.15x faster fsync (40.8ms → 18.9ms)
+**Migration effort**: 3 hours including validation
+**Downtime**: None (backup validator handled duties during migration)
