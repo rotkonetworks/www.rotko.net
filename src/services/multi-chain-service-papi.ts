@@ -155,12 +155,41 @@ export class MultiChainServicePapi {
         return null
       }
 
-      const [bonded, ledger, payee, nominators, validators, activeEra, currentSession] = await Promise.all([
-        api.query.Staking.Bonded.getValue(address),
-        api.query.Staking.Ledger.getValue(address),
-        api.query.Staking.Payee.getValue(address),
-        api.query.Staking.Nominators.getValue(address),
-        api.query.Staking.Validators.getValue(address),
+      // First, determine if this address is a stash or controller
+      // Bonded maps stash -> controller address
+      const controllerAddress = await api.query.Staking.Bonded.getValue(address)
+
+      // Ledger maps controller -> ledger data
+      const ledgerFromAddress = await api.query.Staking.Ledger.getValue(address)
+
+      let stashAddress: string
+      let controllerAddr: string | undefined
+      let ledger: any
+
+      // Determine the stash and get the ledger
+      if (controllerAddress) {
+        // Address is a stash
+        stashAddress = address
+        controllerAddr = controllerAddress.toString()
+        ledger = await api.query.Staking.Ledger.getValue(controllerAddr)
+        console.log(`[getStakingInfo] ${address.slice(0, 8)}... is a STASH, controller: ${controllerAddr.slice(0, 8)}...`)
+      } else if (ledgerFromAddress) {
+        // Address is a controller
+        ledger = ledgerFromAddress
+        stashAddress = ledger.stash.toString()
+        controllerAddr = address
+        console.log(`[getStakingInfo] ${address.slice(0, 8)}... is a CONTROLLER, stash: ${stashAddress.slice(0, 8)}...`)
+      } else {
+        // Not involved in staking
+        console.log(`[getStakingInfo] ${address.slice(0, 8)}... has no bonding`)
+        return null
+      }
+
+      // Now query staking info using the stash address
+      const [payee, nominators, validators, activeEra, currentSession] = await Promise.all([
+        api.query.Staking.Payee.getValue(stashAddress),
+        api.query.Staking.Nominators.getValue(stashAddress),
+        api.query.Staking.Validators.getValue(stashAddress),
         api.query.Staking.ActiveEra.getValue(),
         api.query.Session?.CurrentIndex?.getValue()
       ])
@@ -171,15 +200,33 @@ export class MultiChainServicePapi {
       })) || []
 
       // Get unclaimed eras
-      const unclaimedEras = await this.getUnclaimedEras(address, ledger?.stash || address)
+      const unclaimedEras = await this.getUnclaimedEras(controllerAddr || stashAddress, stashAddress)
+
+      // Parse reward destination
+      let rewardDestination = 'Staked'
+      if (payee) {
+        if (typeof payee === 'object') {
+          if ('type' in payee) {
+            if (payee.type === 'Account') {
+              rewardDestination = `Account: ${payee.value.slice(0, 8)}...`
+            } else {
+              rewardDestination = payee.type
+            }
+          } else if ('tag' in payee) {
+            rewardDestination = payee.tag === 'Account' ? `Account: ${payee.value.slice(0, 8)}...` : payee.tag
+          }
+        } else {
+          rewardDestination = payee.toString()
+        }
+      }
 
       return {
-        bonded: bonded || 0n,
+        bonded: ledger?.total || 0n,
         active: ledger?.active || 0n,
         unlocking,
-        rewardDestination: payee || 'Staked',
+        rewardDestination,
         nominators: nominators?.targets?.map((n: any) => n.toString()),
-        validators: validators ? [address] : undefined,
+        validators: validators ? [stashAddress] : undefined,
         commission: validators?.commission,
         era: activeEra?.index,
         sessionIndex: currentSession,
@@ -187,6 +234,7 @@ export class MultiChainServicePapi {
       }
     } catch (error) {
       console.error('Failed to get staking info:', error)
+      console.error('Error details:', error)
       return null
     }
   }
@@ -285,6 +333,7 @@ export class MultiChainServicePapi {
   }
 
   // Execute staking operations using the new API
+  // Note: controller is deprecated in modern Substrate, use stash as controller
   async bond(signer: any, controllerAddress: string, amount: bigint, payee: string) {
     const client = this.config?.stakingLocation === 'relay'
       ? this.clients.relay
@@ -292,29 +341,43 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
+    console.log(`[bond] Bonding ${amount} with controller=${controllerAddress}, payee=${payee}`)
 
-    // Format payee based on the type
-    let formattedPayee: any
-    if (payee === 'Staked') {
-      formattedPayee = { type: 'Staked' }
-    } else if (payee === 'Stash') {
-      formattedPayee = { type: 'Stash' }
-    } else if (payee === 'Controller') {
-      formattedPayee = { type: 'Controller' }
-    } else {
-      // Account address
-      formattedPayee = { type: 'Account', value: payee }
+    try {
+      const api = await client.getUnsafeApi()
+
+      // Format payee based on the type
+      let formattedPayee: any
+      if (payee === 'Staked') {
+        formattedPayee = { type: 'Staked' }
+      } else if (payee === 'Stash') {
+        formattedPayee = { type: 'Stash' }
+      } else if (payee === 'Controller') {
+        formattedPayee = { type: 'Controller' }
+      } else {
+        // Account address
+        formattedPayee = { type: 'Account', value: payee }
+      }
+
+      console.log('[bond] Formatted payee:', formattedPayee)
+
+      // UnsafeApi transactions need object format for parameters
+      // Modern runtimes may not need controller (it's deprecated)
+      const tx = api.tx.Staking.bond({
+        value: amount,
+        payee: formattedPayee
+      })
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[bond] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[bond] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[bond] Transaction failed:', error)
+      throw error
     }
-
-    const tx = api.tx.Staking.bond(
-      controllerAddress,
-      amount,
-      formattedPayee
-    )
-
-    // Sign and submit transaction
-    return await tx.signAndSubmit(signer)
   }
 
   async unbond(signer: any, amount: bigint) {
@@ -324,9 +387,26 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.unbond(amount)
-    return await tx.signAndSubmit(signer)
+    console.log(`[unbond] Unbonding ${amount}`)
+
+    try {
+      // Note: getUnsafeApi() returns offline transactions without signAndSubmit
+      // We need to sign and submit manually
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Staking.unbond({value: amount})
+
+      // Sign the transaction
+      const signedTx = await tx.sign(signer, {})
+      console.log('[unbond] Transaction signed, submitting...')
+
+      // Submit the signed transaction
+      const result = await client.submit(signedTx)
+      console.log('[unbond] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[unbond] Transaction failed:', error)
+      throw error
+    }
   }
 
   async nominate(signer: any, targets: string[]) {
@@ -336,9 +416,22 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.nominate(targets)
-    return await tx.signAndSubmit(signer)
+    console.log(`[nominate] Nominating ${targets.length} validators:`, targets.map(t => t.slice(0, 8) + '...'))
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Staking.nominate({targets})
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[nominate] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[nominate] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[nominate] Transaction failed:', error)
+      throw error
+    }
   }
 
   async chill(signer: any) {
@@ -348,9 +441,22 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.chill()
-    return await tx.signAndSubmit(signer)
+    console.log('[chill] Chilling account')
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Staking.chill({})
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[chill] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[chill] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[chill] Transaction failed:', error)
+      throw error
+    }
   }
 
   async setKeys(signer: any, keys: string, proof: string) {
@@ -358,9 +464,22 @@ export class MultiChainServicePapi {
     const client = this.clients.relay
     if (!client) throw new Error('Not connected to relay chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Session.setKeys(keys, proof)
-    return await tx.signAndSubmit(signer)
+    console.log(`[setKeys] Setting session keys: ${keys.slice(0, 16)}...`)
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Session.setKeys({keys, proof})
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[setKeys] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[setKeys] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[setKeys] Transaction failed:', error)
+      throw error
+    }
   }
 
   async withdrawUnbonded(signer: any, numSlashingSpans: number) {
@@ -370,9 +489,22 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.withdrawUnbonded(numSlashingSpans)
-    return await tx.signAndSubmit(signer)
+    console.log(`[withdrawUnbonded] Withdrawing unbonded with ${numSlashingSpans} slashing spans`)
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Staking.withdrawUnbonded({num_slashing_spans: numSlashingSpans})
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[withdrawUnbonded] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[withdrawUnbonded] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[withdrawUnbonded] Transaction failed:', error)
+      throw error
+    }
   }
 
   async payoutStakers(signer: any, validatorStash: string, era: number) {
@@ -382,9 +514,22 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.payoutStakers(validatorStash, era)
-    return await tx.signAndSubmit(signer)
+    console.log(`[payoutStakers] Paying out stakers for validator ${validatorStash.slice(0, 8)}... era ${era}`)
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Staking.payoutStakers({validator_stash: validatorStash, era})
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[payoutStakers] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[payoutStakers] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[payoutStakers] Transaction failed:', error)
+      throw error
+    }
   }
 
   // Add rebond method
@@ -395,9 +540,22 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.rebond(amount)
-    return await tx.signAndSubmit(signer)
+    console.log(`[rebond] Rebonding ${amount}`)
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Staking.rebond({value: amount})
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[rebond] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[rebond] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[rebond] Transaction failed:', error)
+      throw error
+    }
   }
 
   // Add validate method
@@ -408,9 +566,22 @@ export class MultiChainServicePapi {
 
     if (!client) throw new Error('Not connected to staking chain')
 
-    const api = await client.getUnsafeApi()
-    const tx = api.tx.Staking.validate(prefs)
-    return await tx.signAndSubmit(signer)
+    console.log(`[validate] Starting validation with commission=${prefs.commission}, blocked=${prefs.blocked}`)
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.Staking.validate({prefs})
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[validate] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[validate] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[validate] Transaction failed:', error)
+      throw error
+    }
   }
 
   // Get all clients
