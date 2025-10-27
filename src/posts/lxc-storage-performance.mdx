@@ -8,14 +8,13 @@ draft: false
 
 ## tl;dr
 
-One of our Kusama validators (val-kusama-03) was experiencing 2x slower storage performance. The
-issue: Proxmox LXC directory-backed storage with ext4-over-ext4 configuration. Moving to LVM
-resolved it immediately.
+val-kusama-03 was running 2x slower than identical validators. root cause: directory-backed lxc
+storage creating ext4-over-ext4 layers. moving to lvm resolved it immediately.
 
 ## the problem
 
-Proxmox LXC defaults to directory-backed storage. This creates an architecture that's convenient for
-setup but disastrous for fsync-heavy workloads:
+we configured val-kusama-03 with directory-backed storage. this creates an architecture that's
+convenient for setup but disastrous for fsync-heavy workloads:
 
 ```
 Container filesystem (ext4)
@@ -32,6 +31,9 @@ Physical disk (NVMe)
 Every write passes through two complete filesystem layers. The kernel translates block I/O → file
 I/O → block I/O. Each fsync triggers metadata updates at multiple levels. The container can't use
 O_DIRECT effectively through these abstraction layers.
+
+validators sync 1000s of blocks/sec with frequent fsyncs - this latency directly impacts
+finalization times and attestation deadlines.
 
 For our validator running RocksDB, this was measured in real latency:
 - **Directory storage (ext4/ext4)**: 40.8ms average fsync, ~50 IOPS
@@ -110,11 +112,11 @@ After migrating val-kusama-03 to LVM:
 
 ## lessons learned
 
-**Proxmox assumes ZFS, not ext4**: Directory-backed storage with ZFS host filesystem doesn't have
-the same double-ext4-journaling problem. If you're running ext4 on the host, use LVM instead.
+**directory storage works better with zfs hosts**: zfs doesn't double-journal like ext4-over-ext4,
+but has its own cow overhead. for ext4 hosts: use lvm.
 
-**Only one validator affected**: This was specific to val-kusama-03 which was provisioned with
-directory storage. Our other validators were already on LVM and didn't have the issue.
+**only one validator affected**: this was specific to val-kusama-03 which was provisioned with
+directory storage. our other validators were already on lvm and didn't have the issue.
 
 **Check your storage backend**: If you're running validators in LXC containers, verify your storage
 configuration:
@@ -130,5 +132,5 @@ for database workloads.
 
 **Configuration**: val-kusama-03 at bkk03, Proxmox VE 8.x, Debian 12, NVMe SSD
 **Performance gain**: 2.15x faster fsync (40.8ms → 18.9ms)
-**Migration effort**: 3 hours including validation
+**Migration effort**: 3 hours (lvm setup, backup/restore, performance testing, monitoring validation)
 **Downtime**: None (backup validator handled duties during migration)
