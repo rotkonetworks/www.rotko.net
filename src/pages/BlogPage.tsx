@@ -34,10 +34,10 @@ const BlogPage: Component = () => {
 
         <Show when={!loading()} fallback={<div class="text-gray-400">{blogPageData.messages.loading}</div>}>
           <Show when={posts().length > 0} fallback={<div class="text-gray-400">{blogPageData.messages.noPosts}</div>}>
-            <div class="space-y-6">
+            <div class="space-y-0">
               <For each={posts()}>
                 {(post) => (
-                  <article class="border border-gray-700 bg-gray-900 p-6">
+                  <article class="border border-gray-700 bg-gray-900 px-6 py-8 mb-8 hover:border-gray-600 transition-colors">
                     <A href={`/blog/${post.slug}`} class="block">
                       <h2 class="text-xl font-bold text-cyan-400 hover:text-cyan-300 mb-2">
                         {post.title}
@@ -49,8 +49,8 @@ const BlogPage: Component = () => {
                       <div class="flex flex-wrap gap-2">
                         <For each={post.tags}>
                           {(tag) => (
-                            <span class="text-xs text-gray-400">
-                              [{tag}]
+                            <span class="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded border border-gray-700">
+                              {tag}
                             </span>
                           )}
                         </For>

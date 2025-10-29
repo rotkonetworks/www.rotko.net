@@ -28,7 +28,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['solid-js', '@solidjs/router'],
-          utils: ['remark', 'remark-html', 'remark-gfm', 'front-matter']
+          utils: ['remark', 'remark-html', 'remark-gfm', 'remark-breaks', 'front-matter']
         }
       }
     }
@@ -37,7 +37,7 @@ export default defineConfig({
     noExternal: ['@solidjs/router']
   },
   optimizeDeps: {
-    include: ['solid-js', '@solidjs/router', 'front-matter', 'remark', 'remark-html', 'remark-gfm']
+    include: ['solid-js', '@solidjs/router', 'front-matter', 'remark', 'remark-html', 'remark-gfm', 'remark-breaks']
   },
   assetsInclude: ['**/*.md', '**/*.mdx']
 })

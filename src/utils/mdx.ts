@@ -2,6 +2,7 @@ import fm from 'front-matter'
 import { remark } from 'remark'
 import remarkHtml from 'remark-html'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 
 export interface ParsedMDX<T = any> {
   meta: T
@@ -32,6 +33,7 @@ export async function parseMDXFiles<T>(
 
     const processedContent = await remark()
       .use(remarkGfm)
+      .use(remarkBreaks)
       .use(remarkHtml)
       .process(markdown)
 
@@ -54,6 +56,7 @@ export async function parseSingleMDX<T>(
 
   const processedContent = await remark()
     .use(remarkGfm)
+    .use(remarkBreaks)
     .use(remarkHtml)
     .process(markdown)
 

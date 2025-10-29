@@ -1,19 +1,20 @@
 ---
-title: "Post-Mortem: 2x Storage Performance Loss from LXC Directory-Backed Storage"
-description: "One Kusama validator was running 2x slower due to Proxmox LXC directory storage using ext4 over ext4. Moving to LVM fixed it."
+title: "Post-Mortem: 2x Storage Performance Loss from LXC"
+description: "One Kusama validator was running 2x slower due to Proxmox LXC directory storage using ext4 over ext4. Moving to should LVM fix it."
 date: "2025-10-27"
 tags: ["infrastructure", "performance", "validators", "lxc", "storage", "polkadot"]
 draft: false
 ---
 
-## tl;dr
+*tl;dr: rotko.net/ksm02 validator was running 2x slower than identical validators for random write
+operations. root cause: directory-backed lxc storage creating ext4-over-ext4 layers. moving to lvm
+should resolve the issue.*
 
-val-kusama-03 was running 2x slower than identical validators. root cause: directory-backed lxc
-storage creating ext4-over-ext4 layers. moving to lvm resolved it immediately.
+---
 
 ## the problem
 
-we configured val-kusama-03 with directory-backed storage. this creates an architecture that's
+we configured rotko.net/ksm02 with directory-backed storage. this creates an architecture that's
 convenient for setup but disastrous for fsync-heavy workloads:
 
 ```
@@ -28,7 +29,7 @@ Host filesystem (ext4)
 Physical disk (NVMe)
 ```
 
-Every write passes through two complete filesystem layers. The kernel translates block I/O → file
+every write passes through two complete filesystem layers. the kernel translates block I/O → file
 I/O → block I/O. Each fsync triggers metadata updates at multiple levels. The container can't use
 O_DIRECT effectively through these abstraction layers.
 
@@ -59,53 +60,22 @@ LVM provides direct block device access - one filesystem layer instead of two:
 ### migration process
 
 ```bash
-# Create physical volume on your dedicated disk
 pvcreate /dev/nvme1n1
 
-# Create volume group
-vgcreate vg-containers /dev/nvme1n1
+vgcreate vg0 /dev/nvme1n1
 
-# Create thin pool for efficient space usage
-lvcreate -L 1.6T -n thinpool vg-containers
-lvconvert --type thin-pool vg-containers/thinpool
+lvcreate -L 1.6T -n thinpool vg0
+lvconvert --type thin-pool vg0/thinpool
 
-# Add to Proxmox storage configuration
-pvesm add lvmthin lvmthin-containers \
-  --vgname vg-containers \
+pvesm add lvmthin lvmct \
+  --vgname vg0 \
   --thinpool thinpool \
   --content rootdir,images
 ```
 
-### Migrating existing containers
-
-For our production Kusama validator, we used the safe backup-and-restore method:
-
-```bash
-# Backup current container
-vzdump 32006 --storage local --mode stop
-
-# Restore to LVM storage
-pct restore 32006 /var/lib/vz/dump/vzdump-lxc-32006-*.tar.lzo \
-  --storage lvmthin-containers
-
-# Verify performance, then cleanup old storage
-```
-
-For containers with large databases, direct copying with `dd` can be faster, but requires more
-careful configuration management.
-
-Important: add `noatime` mount option in `/etc/pve/lxc/<VMID>.conf`:
-
-```bash
-rootfs: lvmthin-containers:vm-100-disk-0,size=32G,mountoptions=noatime
-```
-
-This prevents access time updates on every file read, which can add 10-15% performance for
-RocksDB workloads with thousands of SSTable files.
-
 ## results
 
-After migrating val-kusama-03 to LVM:
+after migrating ksm02 to LVM:
 - fsync latency: 40.8ms → 18.9ms (2.15x improvement)
 - IOPS: ~50 → ~108 (2x improvement)
 - Stable performance, no more 100ms+ spikes
@@ -115,22 +85,22 @@ After migrating val-kusama-03 to LVM:
 **directory storage works better with zfs hosts**: zfs doesn't double-journal like ext4-over-ext4,
 but has its own cow overhead. for ext4 hosts: use lvm.
 
-**only one validator affected**: this was specific to val-kusama-03 which was provisioned with
+**only one validator affected**: this was specific to ksm02 which was provisioned with
 directory storage. our other validators were already on lvm and didn't have the issue.
 
-**Check your storage backend**: If you're running validators in LXC containers, verify your storage
+**check your storage backend**: If you're running validators in LXC containers, verify your storage
 configuration:
 
 ```bash
 pct config <VMID> | grep rootfs
 ```
 
-If it shows a path like `/data/images/...`, you're on directory storage and should migrate to LVM
+if it shows a path like `/data/images/...`, you're on directory storage and should migrate to LVM
 for database workloads.
 
 ---
 
-**Configuration**: val-kusama-03 at bkk03, Proxmox VE 8.x, Debian 12, NVMe SSD
+**Configuration**: rotko.net/ksm02 at bkk03, Proxmox VE 8.x, Debian 12, NVMe SSD
 **Performance gain**: 2.15x faster fsync (40.8ms → 18.9ms)
 **Migration effort**: 3 hours (lvm setup, backup/restore, performance testing, monitoring validation)
-**Downtime**: None (backup validator handled duties during migration)
+**Downtime**: None (backup validator handled duties during migration on 5950X@bkk13)
