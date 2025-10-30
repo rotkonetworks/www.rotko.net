@@ -20,7 +20,7 @@ cryptography requires trust in institutions: NIST-standardized curves, academic 
 
 if any of those institutions are compromised, privacy collapses.
 
-penumbralabs design a protocol where cryptographic security can be verified independently. they
+penumbra designed a protocol where cryptographic security can be verified independently. they
 assumed standards bodies might be captured, academic research might be biased, and parameter
 generation might be adversarial - then built a system that remains secure anyway.
 
@@ -68,7 +68,9 @@ their solution: design every component assuming adversarial parameter generation
 ## the BLS12-377 problem
 
 penumbra chose BLS12-377 from the Zexe paper for their pairing-friendly curve, despite BLS12-381
-being the industry default. but BLS12-377 has massive attack surface:
+being the industry default. BLS12-377 was chosen for its speed—a requirement for client-side
+operations where users need to generate proofs on their own devices. but this performance
+advantage comes with massive attack surface:
 
 ### the cofactor nightmare
 
@@ -128,12 +130,15 @@ change. optimizing for long-term security over short-term performance.
 
 **trusted setup**: the decentralized zk-SNARK parameter generation ceremony remains the weakest
 cryptographic assumption in the system. security depends on at least one participant being honest
-and destroying their contribution's toxic waste. to verify this assumption rather than trust it,
-we participated in penumbra's multi-party computation ceremony and destroyed our threshold key
-material after contributing. over 15,000 contributors participated in the summoning ceremony,
-meaning an attacker would need to have compromised every single participant to break the system.
+and destroying their contribution's toxic waste.
+
+to verify this assumption rather than trust it, Rotko participated in penumbra's multi-party
+computation ceremony and destroyed our threshold key material after contributing. over 15,000
+contributors participated in the summoning ceremony, meaning an attacker would need to have
+compromised every single participant to break the system.
+
 the ceremony transcript is publicly verifiable—anyone can audit that the protocol was followed
-correctly. this means if you choose to trust our participation, you can trust the protocol's
+correctly. this means if you choose to trust Rotko's participation, you can trust the protocol's
 security even if you didn't participate yourself—the MPC only requires one honest party.
 
 **audits**: penumbra underwent multiple independent security audits by [NCC
