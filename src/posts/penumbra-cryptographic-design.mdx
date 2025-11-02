@@ -82,22 +82,18 @@ works anyway.
 ## the BLS12-377 problem
 
 penumbra needed fast client-side proof generation, so they picked BLS12-377 over the
-industry-standard BLS12-381. faster proofs, better UX.
+industry-standard BLS12-381. ~30% faster proving, critical for mobile clients.
 
-but BLS12-377 has cofactor 8, which means it's not a prime-order group. which means it's a
-minefield:
+but BLS12-377 has cofactor 8. the full curve has order h\*r where h=8, r is prime. points outside
+the prime-order subgroup break everything: invalid point attacks leak secrets through timing or
+output observation, small subgroup confinement reveals key bits via chinese remainder theorem,
+encoding ambiguity creates side channels. miss one validation check anywhere in your stack, and
+funds lost forever.
 
-### the cofactor nightmare
+industry response: use BLS12-381 with cofactor 1, eliminate the attack class entirely. ethereum,
+zcash, filecoin all made this choice.
 
-some curve points belong to small subgroups instead of the main group. this creates attack vectors:
-
-- invalid point attacks that leak secret information
-- small subgroup attacks forcing computation into weak groups
-- encoding ambiguity where one value has multiple representations
-- validation complexity requiring manual subgroup checks
-
-miss one validation check, leak private keys. implement one optimization wrong, open a side channel.
-every developer has to get it right, every time.
+penumbra's response: engineer the problem away.
 
 ## Decaf377: making attacks impossible
 
@@ -108,6 +104,12 @@ prime-order group abstraction based on Ristretto:
 2. canonical encoding gives every element exactly one representation
 3. integrated validation makes encoding/decoding automatically verify validity
 4. uniform interface works identically in circuits and software
+
+you cannot deserialize an invalid point through decaf377's API. the type system makes small
+subgroup attacks unrepresentable. instead of trusting every developer to call
+`.is_in_correct_subgroup()`, the abstraction makes it impossible to hold an unchecked point.
+
+take the entire vulnerability class and make it a type error.
 
 ### the cost of paranoia
 
@@ -171,19 +173,22 @@ findings: implementation bugs, not design flaws. the defensive layers worked - b
 (fail-closed) instead of silent vulnerabilities (fail-open). turns out building abstraction layers
 that make entire bug classes impossible actually prevents those bugs.
 
-## the real cost of paranoia
+## when product engineering meets threat modeling
 
-penumbra made their protocol slower and more expensive to implement. Decaf377 costs 750 constraints
-where cheaper alternatives use 325. they picked the most conservative sign check even though faster
-options existed. they built abstraction layers that make it literally impossible to write certain
-classes of bugs, at the cost of complexity.
+penumbra is building a product - a privacy-preserving dex with mobile clients. normal product
+thinking says: ship fast, optimize for users, minimize complexity.
 
-every other project looks at these tradeoffs and picks speed. faster proofs, cheaper transactions,
-easier developer experience. which makes sense if you're building a product.
+they did the opposite. 750 constraints for validation where 325 would work - this matters on mobile
+devices generating proofs, not validators checking them. picked the slowest sign check that survives
+field arithmetic changes. built abstraction layers that make the codebase harder to understand but
+make entire bug classes impossible.
 
-but if you're building infrastructure that needs to work when institutions are captured, when
-academic research is compromised, when the adversary wrote the standards - then you optimize
-differently.
+because their threat model isn't "our developers might make mistakes." it's "nation-states will
+actively attempt to compromise this infrastructure."
+
+they chose to make proof generation slower on client devices to guarantee safety regardless of what
+changes in the underlying math. the payoff: BLS12-377 performance (still faster than BLS12-381
+despite the overhead) with BLS12-381-level safety guarantees.
 
 the question isn't whether NSA backdoored NIST curves. the question is whether your protocol
 survives if they did.
