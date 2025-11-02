@@ -1,14 +1,14 @@
 ---
 title: "The Brilliance in Cryptographic Design"
-description: "How a privacy first team built the most defensively engineered encrypted currency by assuming their adversaries control the standards"
+description: "How a team of legendary cypherpunks built the most defensively engineered end to end encrypted digital multiasset exchange."
 date: "2025-10-29"
 tags: ["cryptography", "privacy", "security", "penumbra", "zero-knowledge", "nsa", "surveillance"]
 draft: false
 ---
 
-*in this article we go through how to build financial infrastructure that works even when
-nation-states have compromised the cryptographic standards, while providing forward security
-guarantees for the post-quantum era.*
+*in this article we go through how to build financial infra that works even when nation-states have
+compromised the cryptographic standards; all while providing forward secrecy guarantees for the
+post-quantum era.*
 
 ---
 
@@ -228,11 +228,9 @@ changes in the underlying math. the payoff: BLS12-377 performance (still faster 
 despite the overhead) with BLS12-381-level safety guarantees.
 
 the question isn't whether NSA backdoored NIST curves. the question is whether your protocol
-survives if they did.
-
-penumbra is the only protocol I've seen that took that question seriously enough to pay the
-engineering cost of answering it. they built something that remains private even if the adversary
-controls the math.
+survives if they did. penumbra is one of the only protocols I've come across that took that question
+seriously enough to pay the engineering cost of answering it. they built something that remains
+private even if the adversary controls the math.
 
 which means when nation-states inevitably try to compromise privacy infrastructure - and they will,
 because they always do - there's at least one protocol that was designed for exactly that threat
