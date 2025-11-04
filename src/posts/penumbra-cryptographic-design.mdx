@@ -122,19 +122,19 @@ industry-standard BLS12-381. ~30% faster proving, critical for mobile clients.
 
 but BLS12-377 has cofactor 8. the full curve has order h\*r where h=8, r is prime. points outside
 the prime-order subgroup break everything: invalid point attacks leak secrets through timing or
-output observation, small subgroup confinement reveals key bits via chinese remainder theorem,
-encoding ambiguity creates side channels. miss one validation check anywhere in your stack, and
-funds lost forever.
+output observation, small subgroup confinement reveals key bits via [chinese remainder
+theorem](https://en.wikipedia.org/wiki/Chinese_remainder_theorem), encoding ambiguity creates side
+channels. miss one validation check anywhere in your stack, and user funds could be lost forever.
 
 industry response: use BLS12-381 with cofactor 1, eliminate the attack class entirely. ethereum,
 zcash, filecoin all made this choice.
 
-penumbra's response: engineer the problem away.
+penumbra's response: figure out engineering it takes to abstract the problem away.
 
 ## Decaf377: making attacks impossible
 
-instead of trusting developers to handle BLS12-377's complexity, penumbra built Decaf377; a
-prime-order group abstraction based on Ristretto:
+instead of trusting developers to rawdog BLS12-377's complexity, penumbra built Decaf377; a
+prime-order group abstraction based on [Ristretto](https://ristretto.group/):
 
 1. quotient group construction factors out the cofactor
 2. canonical encoding gives every element exactly one representation
@@ -147,7 +147,7 @@ subgroup attacks unrepresentable. instead of trusting every developer to call
 
 take the entire vulnerability class and make it a type error.
 
-### the cost of paranoia
+### what's the cost of paranoia
 
 Decaf377's validation costs 750 constraints in arithmetic circuits. cheaper alternatives use 325.
 penumbra chose expensive anyway, because:
@@ -156,10 +156,9 @@ penumbra chose expensive anyway, because:
 > check will appear to work fine... structuring validation as an integral part of encoding and
 > decoding is a safer design."
 
-they're optimizing for "impossible to fuck up" over "theoretically correct if implemented
-perfectly".
+team chose for "impossible to fuck up" over "theoretically correct if implemented perfectly".
 
-### nothing up my sleeve
+### nothing left hidden
 
 every parameter transparently derived:
 
@@ -180,9 +179,7 @@ for sign checks in zero-knowledge circuits, penumbra had three options:
 3. most significant bit: requires expensive range checking, but works regardless of field arithmetic
 
 they chose option 3. the slowest one. the expensive one. the one that survives if you swap out the
-entire field arithmetic later.
-
-every optimization decision went the same way: what works if our assumptions are wrong?
+entire field arithmetic later for example upgrade to post-quantum curves.
 
 ## security verification
 
@@ -197,7 +194,10 @@ Rotko participated and destroyed our key material. which means if you trust us, 
 trust anyone else. if you trust any of the other 15,000+ participants, you don't need to trust us.
 the ceremony transcript is public - verify it yourself if you don't trust any of us.
 
-this is as good as trusted setups get: trust one party out of 15,000, or verify the math yourself.
+this is as good as trusted setups get: trust one party out of thousands, or alternatively verify the
+deployed math yourself. the whole development process was fundamentally public going through almost
+testnets prior the launch. even the testnets were mostly run on transparent values, encryption
+added only last once there was certainty that the protocol was functional in secure manner.
 
 **audits**: [NCC
 Group](https://www.nccgroup.com/research-blog/public-report-penumbra-labs-r1cs-implementation-review/),
@@ -206,35 +206,9 @@ Group](https://www.nccgroup.com/research-blog/public-report-penumbra-labs-r1cs-i
 their shot. cryptographic primitives, zero-knowledge circuits, protocol design, IBC implementation.
 [full reports public](https://www.penumbra.zone/blog/2024-audits).
 
-findings: implementation bugs, not design flaws. the defensive layers worked - bugs caused panics
-(fail-closed) instead of silent vulnerabilities (fail-open). turns out building abstraction layers
-that make entire bug classes impossible actually prevents those bugs.
-
-## when product engineering meets threat modeling
-
-penumbra is building a product - a privacy-preserving dex with mobile clients. normal product
-thinking says: ship fast, optimize for users, minimize complexity.
-
-they did the opposite. 750 constraints for validation where 325 would work - this matters on mobile
-devices generating proofs, not validators checking them. picked the slowest sign check that survives
-field arithmetic changes. built abstraction layers that make the codebase harder to understand but
-make entire bug classes impossible.
-
-because their threat model isn't "our developers might make mistakes." it's "nation-states will
-actively attempt to compromise this infrastructure."
-
-they chose to make proof generation slower on client devices to guarantee safety regardless of what
-changes in the underlying math. the payoff: BLS12-377 performance (still faster than BLS12-381
-despite the overhead) with BLS12-381-level safety guarantees.
-
-the question isn't whether NSA backdoored NIST curves. the question is whether your protocol
-survives if they did. penumbra is one of the only protocols I've come across that took that question
-seriously enough to pay the engineering cost of answering it. they built something that remains
-private even if the adversary controls the math.
-
-which means when nation-states inevitably try to compromise privacy infrastructure - and they will,
-because they always do - there's at least one protocol that was designed for exactly that threat
-model.
+audit findings: implementation bugs, not design flaws. the defensive layers worked - bugs caused
+panics (fail-closed) instead of silent vulnerabilities (fail-open). turns out building abstraction
+layers that make entire bug classes impossible actually prevents those bugs.
 
 ## cryptographic agility
 
