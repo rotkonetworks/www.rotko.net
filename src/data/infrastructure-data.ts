@@ -98,7 +98,7 @@ export const infrastructureData = {
    power: "N+1 redundancy, dual feeds",
    cooling: "N+1 CRAC units",
    connectivity: "Carrier-neutral, 10+ providers",
-   rack: "42U, dedicated cabinet"
+   rack: "48U, dedicated cabinet"
  },
  
  routing: {

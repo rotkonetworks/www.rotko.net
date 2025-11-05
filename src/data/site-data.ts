@@ -50,16 +50,16 @@ export const siteData = {
   
   infrastructure: {
     network: { value: "12Gbps", label: "Transit + Peering" },
-    hardware: { value: "42U", label: "Dedicated Rack" },
+    hardware: { value: "48U", label: "Dedicated Rack" },
     compute: { value: "728", label: "Physical Cores" },
-    uptime: { value: "99.995%", label: "SLA Target" }
+    uptime: { value: "99.96%", label: "SLA" }
   },
 
   networks: [
     {
       id: "polkadot",
       name: "Polkadot",
-      description: "Scalable heterogeneous multi-chain",
+      description: "Scalable ubiquitous public compute",
       type: "mainnet" as const,
       coingeckoId: "polkadot",
       stats: { apy: 12.2, uptime: 99.97, staked: 68 },
@@ -80,7 +80,7 @@ export const siteData = {
       description: "End to end encrypted blockchain",
       type: "mainnet" as const,
       coingeckoId: "penumbra",
-      stats: { apy: 9.34, uptime: 99.98, staked: 52 },
+      stats: { apy: 2.00, uptime: 99.98, staked: 20 },
       price: { current: 0, change24h: 0, change30d: 0 }
     }
   ] as Network[],

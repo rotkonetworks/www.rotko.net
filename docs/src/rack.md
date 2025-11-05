@@ -3,7 +3,7 @@
 ![Rack from front](./images/rack/rack_front.webp)
 
 At the heart of our operations is a meticulously designed server
-infrastructure, securely housed within ten units of a top-tier 42U rack.
+infrastructure, securely housed within ten units of a top-tier 48U rack.
 Providing approximately 230 liters of computational capacity, our setup is
 powered by a robust dual 2kW, 220V power system that underlines our commitment
 to delivering superior performance and steadfast availability.
@@ -47,6 +47,3 @@ Our setup also incorporates a raised floor design, an element that demonstrates
 our meticulous attention to detail. This design improves air distribution and
 cable management, leading to thermal efficiency and a well-organized
 operational environment. 
-
-### Links
-- [Rittal 42U](https://www.rittal.com/com-en/products/PG0900ZUBEHOER1/PG0919ZUBEHOER1)
