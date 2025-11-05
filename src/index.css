@@ -28,21 +28,21 @@ button {
   font-family: inherit;
 }
 
-/* Ensure links are visible - but not in blog content */
-a:not(article a) {
+/* Ensure links are visible */
+a {
   color: inherit;
   text-decoration: none;
 }
 
-/* Blog post links styling */
-article a {
+/* Blog post content links styling - only in actual post content */
+.blog-post-content a {
   color: #d1d5db;
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.2s ease;
 }
 
-article a:hover {
+.blog-post-content a:hover {
   color: #ffffff;
 }
 
