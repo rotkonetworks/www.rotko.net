@@ -30,7 +30,7 @@ demand, not information extraction.
 privacy isn't just about hiding transactions - it's about creating fair market structure. when
 trading is algorithmic, competition becomes purely about information asymmetry. whoever sees order
 flow first, front-runs. whoever has dark pool access, extracts. whoever can monitor the mempool,
-captures MEV.
+captures [MEV](https://ethereum.org/developers/docs/mev).
 
 penumbra's shielded execution eliminates these advantages. when all transactions remain encrypted,
 no participant has information edge. instead of allowing validators to extract MEV, the protocol
@@ -45,7 +45,8 @@ not via information extraction.
 ## how shielded execution actually works
 
 the zero-knowledge proof doesn't contain instructions. it contains a claim about state transitions
-plus cryptographic proof the claim is valid.
+plus cryptographic proof the claim is valid. validators verify the math without learning your
+secrets.
 
 a transaction contains a list of actions (Spend, Output, Swap, Delegate, etc.), each with its own ZK
 proof:
@@ -54,39 +55,80 @@ proof:
 Transaction {
   actions: [
     Spend {
-      nullifier,           // public: spent note identifier
-      zkproof              // public: proves nullifier key ownership
-                           // encrypted within proof: amount, asset, sender
+      nullifier,           // public: one-time identifier proving you spent *something*
+                           //         like a serial number burned when used
+                           //         different every time, even for same note
+      zkproof              // public: mathematical proof you own the key for this nullifier
+                           // private: which note you spent, amount, asset type, your address
+                           //          validator verifies proof without learning these values
     },
     Output {
-      note_commitment,     // public: new state commitment (pedersen)
-      encrypted_note       // encrypted: amount, asset, recipient, memo
+      note_commitment,     // public: cryptographic commitment to new note
+                           //         binds amount + asset + recipient without revealing them
+                           //         using pedersen commitments (perfectly hiding)
+      encrypted_note       // encrypted: actual note data (amount, asset, recipient, memo)
+                           //           only recipient can decrypt using their key
     },
     ...
   ],
-  binding_signature,       // public: proves sum(inputs) = sum(outputs)
+  binding_signature,       // public: proves sum(inputs) = sum(outputs) without revealing amounts
+                           //         uses homomorphic properties of commitments
+                           //         prevents creating/destroying value
   transaction_parameters,  // public: fee, expiry, chain_id
 }
 ```
 
-validator execution is deterministic:
+validator execution is deterministic and verifiable:
 
-1. verify each action's zkproof (checks constraints, learns nothing about encrypted values)
-2. check nullifiers not in nullifier set (prevent double-spend)
-3. verify binding signature (proves balance without revealing amounts)
-4. add nullifiers to nullifier set (JMT), commitments to state tree (TCT)
+1. **verify each action's zkproof** - validator checks the mathematical proof is valid. the proof
+   demonstrates you satisfied all constraints (owned the note, amounts are positive, etc.) without
+   revealing which constraints or values. like checking a signature validates without seeing the
+   private key.
+
+2. **check nullifiers not in nullifier set** - prevents double-spending. each note has exactly one
+   valid nullifier that can only be derived by the owner. revealing it marks the note as spent.
+   validator checks this nullifier hasn't appeared before. if it has, reject the transaction.
+
+3. **verify [binding
+   signature](https://protocol.penumbra.zone/main/crypto/decaf377-rdsa.html#simple-example-binding-signature)**
+   - proves the transaction balances without revealing amounts. works because pedersen commitments
+   are additively homomorphic: `commit(a) + commit(b) = commit(a+b)`. validator checks sum of input
+   commitments equals sum of output commitments. if they don't balance, the binding signature fails.
+
+4. **update global state** - add revealed nullifiers to [nullifier
+   set](https://protocol.penumbra.zone/main/sct/nullifiers.html) (stored in a jellyfish merkle
+   tree), add new note commitments to [state commitment
+   tree](https://protocol.penumbra.zone/main/sct.html) (a tiered commitment tree optimized for
+   client sync). these data structures are append-only and publicly auditable.
 
 the proof encodes valid transition constraints. validator checks "proof valid?" without learning
 what satisfied it. like verifying `sha256(x) == known_hash` - you confirm the equation holds without
-learning x.
+learning x. the prover (you) demonstrates knowledge of secret values that satisfy public
+constraints.
 
-state transition function is public and deterministic. what's private is which execution trace you
-followed. validator doesn't need amounts/assets/addresses because the circuit already proved those
-satisfy transition rules.
+the state transition function is public and deterministic - anyone can verify the same inputs
+produce the same outputs. what's private is which execution trace you followed: which specific notes
+you spent, which amounts, which addresses. validators don't need these values because the circuit
+already proved they satisfy protocol rules.
 
-see real transactions at [explorer.penumbra.zone/txs](https://explorer.penumbra.zone/txs). amounts,
-assets, and addresses stay hidden. only nullifiers and commitments are visible. viewing key holders
-decrypt their notes locally, enabling selective disclosure to auditors without public exposure.
+**verification in practice:**
+
+visit [explorer.penumbra.zone/txs](https://explorer.penumbra.zone/txs) to see real transactions.
+you'll see:
+- nullifiers: random-looking 32-byte values that prove something was spent
+- note commitments: random-looking 32-byte values that prove something was created  
+- proofs: cryptographic attestations the transaction is valid
+- amounts, assets, addresses: not visible
+
+[viewing key](https://protocol.penumbra.zone/main/addresses_keys/viewing_keys.html) holders decrypt
+their notes locally using the encrypted note data and ephemeral keys included in the transaction.
+this enables selective disclosure: share your viewing key with an auditor to prove transaction
+history without making it public.
+
+all cryptographic constructions are specified in the [protocol
+documentation](https://protocol.penumbra.zone/main/crypto.html). proofs use groth16 with BLS12-377.
+commitments use rate-5 poseidon hashing. nullifiers are derived deterministically from note contents
+and position. nothing is hidden about how the system works - only your specific transaction data.
 
 ## what if the NSA already owns your curve?
 
@@ -95,7 +137,7 @@ curves like BLS12-381 or BN254, with parameters derived from optimization criter
 transparent.
 
 take NIST P-256 - the curve encrypting most HTTPS traffic on the web. every TLS 1.3 implementation
-must support it; it's mandatory for compliance.
+must support it; it's *mandatory for compliance*.
 
 its seed value: `c49d3608 86e70493 6a6678e1 139d26b7 819f7e90`. 
 
@@ -115,28 +157,36 @@ if those seeds are compromised.
 
 penumbra chose the latter.
 
-## the BLS12-377 problem
+## BLS12-377: eliminating the attack class
 
 penumbra needed fast client-side proof generation, so they picked BLS12-377 over the
-industry-standard BLS12-381. ~30% faster proving, critical for mobile clients.
+industry-standard BLS12-381. ~30% faster proving, critical for clients light enough to run in
+browser.
 
-but BLS12-377 has cofactor 8. the full curve has order h\*r where h=8, r is prime. points outside
+Web3 Foundation's [accountable light client system](https://eprint.iacr.org/2022/1205.pdf) chose
+BLS12-377 as well because commodity hardware needed to generate proofs in real time. both teams
+prioritizing client performance to be "ultralight" to be run in browser and even other blockchains.
+
+but BLS12-377 has cofactor 4. the full curve has order h\*r where h=4, r is prime. points outside
 the prime-order subgroup break everything: invalid point attacks leak secrets through timing or
 output observation, small subgroup confinement reveals key bits via [chinese remainder
 theorem](https://en.wikipedia.org/wiki/Chinese_remainder_theorem), encoding ambiguity creates side
 channels. miss one validation check anywhere in your stack, and user funds could be lost forever.
 
-industry response: use BLS12-381 with cofactor 1, eliminate the attack class entirely. ethereum,
-zcash, filecoin all made this choice.
+rest of the industry saw cofactor 4 and walked away - BLS12-381's cofactor 1 eliminates the attack
+class by construction. ethereum, zcash, filecoin chose this path.
 
-penumbra's response: figure out engineering it takes to abstract the problem away.
+penumbra took the 30% proving speedup and eliminated the attack class differently: instead of
+trusting developers to validate every curve point, they built
+[Decaf377](https://protocol.penumbra.zone/main/crypto/decaf377.html) - a prime-order group
+abstraction based on [Ristretto](https://ristretto.group/) that makes invalid points
+unrepresentable at the type level.
 
 ## Decaf377: making attacks impossible
 
-instead of trusting developers to rawdog BLS12-377's complexity, penumbra built Decaf377; a
-prime-order group abstraction based on [Ristretto](https://ristretto.group/):
+quotient group construction over BLS12-377:
 
-1. quotient group construction factors out the cofactor
+1. factors out the cofactor at type level
 2. canonical encoding gives every element exactly one representation
 3. integrated validation makes encoding/decoding automatically verify validity
 4. uniform interface works identically in circuits and software
@@ -147,16 +197,23 @@ subgroup attacks unrepresentable. instead of trusting every developer to call
 
 take the entire vulnerability class and make it a type error.
 
-### what's the cost of paranoia
+### the paranoia tax
 
-Decaf377's validation costs 750 constraints in arithmetic circuits. cheaper alternatives use 325.
+decaf377's validation costs 750 constraints in arithmetic circuits. cheaper alternatives use 325.
 penumbra chose expensive anyway, because:
 
 > "while a specification may require [validation] to be performed, implementations that skip the
 > check will appear to work fine... structuring validation as an integral part of encoding and
 > decoding is a safer design."
 
-team chose for "impossible to fuck up" over "theoretically correct if implemented perfectly".
+750 constraints vs 325. they chose "impossible to fuck up" over "theoretically correct if
+implemented perfectly".
+
+the sign check implementation uses the least significant bit (LSB) test rather than alternatives
+like legendre symbols or most significant bit checks. LSB is simpler for implementations and
+reasonably fast, though it is field-specific. this was an explicit tradeoff - LSB provides the best
+balance of implementation simplicity and performance for the current curve, even though it would
+need to be updated if the field changed.
 
 ### nothing left hidden
 
@@ -170,46 +227,6 @@ that generator, just the number 8 in hex, is the first small value producing a v
 compare this to Dual_EC_DRBG's mysterious constants with no derivation. this approach follows
 [rigidity principles](https://safecurves.cr.yp.to/rigid.html) for verifiable parameter generation.
 
-## circuit-level paranoia
-
-for sign checks in zero-knowledge circuits, penumbra had three options:
-
-1. legendre symbol: one constraint, blazing fast, but field-specific (breaks if you change fields)
-2. least significant bit: simple, reasonably fast
-3. most significant bit: requires expensive range checking, but works regardless of field arithmetic
-
-they chose option 3. the slowest one. the expensive one. the one that survives if you swap out the
-entire field arithmetic later for example upgrade to post-quantum curves.
-
-## security verification
-
-**trusted setup**: all this defensive design still bottlenecks on one assumption - the zk-SNARK
-parameter ceremony. if every single participant in that ceremony was compromised, the whole thing
-falls apart.
-
-penumbra's answer: get 15,000+ people to participate. an adversary has to compromise *all of them* -
-miss one honest participant, the setup is secure.
-
-Rotko participated and destroyed our key material. which means if you trust us, you don't need to
-trust anyone else. if you trust any of the other 15,000+ participants, you don't need to trust us.
-the ceremony transcript is public - verify it yourself if you don't trust any of us.
-
-this is as good as trusted setups get: trust one party out of thousands, or alternatively verify the
-deployed math yourself. the whole development process was fundamentally public going through almost
-testnets prior the launch. even the testnets were mostly run on transparent values, encryption
-added only last once there was certainty that the protocol was functional in secure manner.
-
-**audits**: [NCC
-Group](https://www.nccgroup.com/research-blog/public-report-penumbra-labs-r1cs-implementation-review/),
-[zkSecurity](https://www.zksecurity.xyz/), [Zellic](https://www.zellic.io/),
-[Violet](https://x.com/alpeh_v), and [Electric Coin Company](https://electriccoin.co/) all took
-their shot. cryptographic primitives, zero-knowledge circuits, protocol design, IBC implementation.
-[full reports public](https://www.penumbra.zone/blog/2024-audits).
-
-audit findings: implementation bugs, not design flaws. the defensive layers worked - bugs caused
-panics (fail-closed) instead of silent vulnerabilities (fail-open). turns out building abstraction
-layers that make entire bug classes impossible actually prevents those bugs.
-
 ## cryptographic agility
 
 every hard-coded assumption about field arithmetic becomes a liability if you need to swap curves;
@@ -218,7 +235,6 @@ whether from quantum computers, cryptanalytic breakthroughs, or newly discovered
 penumbra's defensive layers enable curve migration:
 
 - circuit modularity: swap primitives without rewriting validation logic
-- field-independent sign checks: survive curve replacement
 - quotient group construction: works for any cofactor curve
 - verifiable parameter generation: regenerate from new constants
 
