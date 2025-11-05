@@ -62,7 +62,7 @@ export const siteData = {
       description: "Scalable ubiquitous public compute",
       type: "mainnet" as const,
       coingeckoId: "polkadot",
-      stats: { apy: 12.2, uptime: 99.97, staked: 68 },
+      stats: { apy: 12.2, uptime: 99.99, staked: 46.6, inflation: 7.2 },
       price: { current: 0, change24h: 0, change30d: 0 }
     },
     {
@@ -71,7 +71,7 @@ export const siteData = {
       description: "Most decentralized privacy network",
       type: "mainnet" as const,
       coingeckoId: "kusama",
-      stats: { apy: 14.8, uptime: 99.96, staked: 45 },
+      stats: { apy: 14.8, uptime: 99.97, staked: 44.4, inflation: 10.0 },
       price: { current: 0, change24h: 0, change30d: 0 }
     },
     {
@@ -80,7 +80,7 @@ export const siteData = {
       description: "End to end encrypted blockchain",
       type: "mainnet" as const,
       coingeckoId: "penumbra",
-      stats: { apy: 2.00, uptime: 99.98, staked: 20 },
+      stats: { apy: 2.00, uptime: 99.98, staked: 13.2, inflation: 0.26 },
       price: { current: 0, change24h: 0, change30d: 0 }
     }
   ] as Network[],
