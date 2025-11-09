@@ -5,6 +5,7 @@ import ServiceCard from '../components/ServiceCard'
 import { siteData } from '../data/site-data'
 import { fetchCryptoPrices } from '../utils/fetchPrices'
 import BlogPreview from '../components/BlogPreview'
+import NewsPreview from '../components/NewsPreview'
 
 const HomePage: Component = () => {
   const [networks, setNetworks] = createSignal(siteData.networks)
@@ -99,6 +100,9 @@ const HomePage: Component = () => {
           </For>
         </div>
       </section>
+
+      {/* News Preview */}
+      <NewsPreview limit={3} />
 
       {/* Blog Preview */}
       <BlogPreview limit={3} />

@@ -1,0 +1,21 @@
+---
+title: "polkadot staking rewards bug fixed"
+description: "asset hub migration introduced bug affecting staking rewards calculation across entire network since era 1981"
+date: "2025-11-08"
+tags: ["polkadot", "staking", "bug"]
+draft: false
+---
+
+asset hub migration introduced bug in staking rewards calculation.
+
+wrong `fixed_total_issuance` value (5.2T instead of 15.0T) caused uniform 65% reduction across all validators and nominators since era 1981.
+
+fix already merged: [polkadot-fellows/runtimes#998](https://github.com/polkadot-fellows/runtimes/pull/998)
+
+deployment eta: few days
+
+reimbursement planned for all affected accounts
+
+**this affects entire network uniformly** - not validator-specific performance.
+
+side effect: era timing shifted from 15:36 to 03:36 utc.

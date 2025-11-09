@@ -11,6 +11,7 @@ export const navigationData: NavItem[] = [
   { label: "Infrastructure", href: "/infrastructure" },
   { label: "Team", href: "/team" },
   { label: "Blog", href: "/blog" },
+  { label: "News", href: "/news" },
   { label: "Contact", href: "/contact" }
 ]
 
@@ -21,6 +22,7 @@ export const footerData = {
       links: [
         { label: "Team", href: "/team" },
         { label: "Blog", href: "/blog" },
+        { label: "News", href: "/news" },
         { label: "Contact", href: "/contact" }
       ]
     },

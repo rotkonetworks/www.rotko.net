@@ -29,7 +29,7 @@ const BlogPreview: Component<BlogPreviewProps> = (props) => {
    <section class="py-16 md:py-24 px-4 sm:px-6 lg:px-8">
      <div class="max-w-6xl mx-auto">
        <div class="flex justify-between items-center mb-8 md:mb-12">
-         <h2 class="text-3xl md:text-4xl font-bold text-white">Latest Updates</h2>
+         <h2 class="text-3xl md:text-4xl font-bold text-white">Latest Blogs</h2>
          <Show when={showViewAll}>
            <A href="/blog" class="text-cyan-400 hover:text-cyan-300 transition-colors text-sm">
              View all →
