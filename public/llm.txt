@@ -96,4 +96,4 @@ Key facts:
 - Philosophy: Linux-only, open source, no vendor lock-in
 - IRC preferred for support (no accounts needed)
 
-Generated: 2025-11-07T22:39:23.913Z
+Generated: 2025-12-02T13:37:52.873Z
