@@ -10,16 +10,14 @@ export interface ChainConfig {
 // Rotko's validator addresses per chain
 export const ROTKO_VALIDATORS: Record<string, { address: string; name: string }[]> = {
   polkadot: [
-    { address: '12iqwZGB2sguEhjFi2ZRuWWixU8mEWym3EoWXKUX1v5xZJt9', name: 'ROTKO.NET/01' },
-    { address: '16VsNAS6ghVdDsPY4iLvFhfYVcswLj82HmFrJqLLxisd5Sg', name: 'ROTKO.NET/02' },
+    { address: '1ArdZJtNUrZsfidfn1t69xHaSWwzf6PQNdLEUpcnVmbkZc5', name: 'rotko.net/dot01' },
   ],
   kusama: [
-    { address: 'GhNL9Mi5KiL2cSsGwPfwKVPvF7TtSfAhfGJWgFxfRz3wuTb', name: 'ROTKO.NET/01' },
-    { address: 'FDDy3cQa7JXiChYU2xq1B2WUUJBpZpZ38oP1EMu9vNEPEKT', name: 'ROTKO.NET/02' },
+    { address: 'ESSZefozpZYVLbLF1vaGtabthQYg8PVXiTytVm6YiiwAnee', name: 'rotko.net/ksm01' },
+    { address: 'DKKax6uZkiNPfd2ATd8cJhyi3c1KZD24VDdoWG9CfTmwgSp', name: 'rotko.net/ksm02' },
+    { address: 'H4La9AvRKWu7Z4EcDbiVTTvY1eVj9L3SN32ocFNrjXAYNUw', name: 'rotko.net/ksm03' },
   ],
-  paseo: [
-    { address: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY', name: 'ROTKO.NET/TEST' },
-  ]
+  paseo: []
 }
 
 export const validatorData = {
