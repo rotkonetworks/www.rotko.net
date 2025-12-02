@@ -2,17 +2,14 @@ import { Component, createSignal, For, Show, createMemo, onMount, onCleanup, cre
 import MainLayout from '../layouts/MainLayout'
 import PageHeader from '../components/PageHeader'
 import { WalletConnector } from '../components/WalletConnector'
-import { ChainSelector } from '../components/polkadot/ChainSelector'
-import { ConnectionStatus } from '../components/polkadot/ConnectionStatus'
 import { ProxyManager } from '../components/polkadot/ProxyManager'
 import { StakingStats } from '../components/polkadot/StakingStats'
 import { StakingModal } from '../components/polkadot/StakingModal'
 import { UnclaimedEras } from '../components/polkadot/UnclaimedEras'
 import type { OperationType } from '../components/polkadot/StakingModal'
-import { PolkadotProvider, usePolkadot } from '../contexts/PolkadotProvider'
 import { validatorData } from '../data/validator-data'
 import type { InjectedAccountWithMeta, ChainId, ChainConfig, ProxyAccount } from '../types/polkadot'
-import { encodeAddress } from '@polkadot/util-crypto'
+import { getSs58AddressInfo, fromBufferToBase58 } from '@polkadot-api/substrate-bindings'
 import { multiChainServicePapi } from '../services/multi-chain-service-papi'
 import type { AccountBalance, StakingData } from '../services/multi-chain-service-papi'
 
@@ -50,7 +47,6 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
 }
 
 const ValidatorToolContent: Component = () => {
-  const polkadot = usePolkadot()
   const [connectedAccounts, setConnectedAccounts] = createSignal<InjectedAccountWithMeta[]>([])
   const [proxyAccounts, setProxyAccounts] = createSignal<ProxyAccount[]>([])
   const [searchTerm, setSearchTerm] = createSignal('')
@@ -153,7 +149,9 @@ const ValidatorToolContent: Component = () => {
   const formatAddress = (address: string): string => {
     try {
       const config = CHAIN_CONFIGS[selectedChain()]
-      return encodeAddress(address, config.ss58)
+      const addressInfo = getSs58AddressInfo(address)
+      if (!addressInfo.isValid) return address
+      return fromBufferToBase58(config.ss58)(addressInfo.publicKey)
     } catch (err) {
       console.warn('Failed to encode address:', err)
       return address
@@ -1011,11 +1009,7 @@ const ValidatorToolContent: Component = () => {
 }
 
 const ValidatorPage: Component = () => {
-  return (
-    <PolkadotProvider chains={CHAIN_CONFIGS} autoConnect={true}>
-      <ValidatorToolContent />
-    </PolkadotProvider>
-  )
+  return <ValidatorToolContent />
 }
 
 export default ValidatorPage

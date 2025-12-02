@@ -36,6 +36,12 @@ export interface StakingData {
   unclaimedEras?: number[]
 }
 
+export interface ProxyDefinition {
+  delegate: string
+  proxyType: string
+  delay: number
+}
+
 export class MultiChainServicePapi {
   private clients: ChainClients = {}
   private statusCallbacks: ((status: ConnectionStatus) => void)[] = []
@@ -604,6 +610,43 @@ export class MultiChainServicePapi {
     const trimmedDecimal = decimalStr.slice(0, 4) // Show 4 decimal places
 
     return `${wholePart.toLocaleString()}.${trimmedDecimal}`
+  }
+
+  // Get proxies for an address
+  async getProxies(address: string): Promise<ProxyDefinition[]> {
+    const client = this.clients.relay
+    if (!client) return []
+
+    try {
+      const api = await client.getUnsafeApi()
+      const proxiesData = await api.query.Proxy?.Proxies?.getValue(address)
+
+      if (!proxiesData || !proxiesData[0]) return []
+
+      return proxiesData[0].map((proxy: any) => ({
+        delegate: proxy.delegate?.toString() || '',
+        proxyType: proxy.proxyType?.toString() || proxy.proxy_type?.toString() || 'Unknown',
+        delay: Number(proxy.delay || 0)
+      }))
+    } catch (error) {
+      console.error('Failed to get proxies:', error)
+      return []
+    }
+  }
+
+  // Validate proxy access - check if proxyAddress has proxy access to any of the delegator addresses
+  async validateProxyAccess(
+    proxyAddress: string,
+    delegatorAddresses: string[]
+  ): Promise<ProxyDefinition | null> {
+    for (const delegator of delegatorAddresses) {
+      const proxies = await this.getProxies(delegator)
+      const proxyDef = proxies.find(p => p.delegate === proxyAddress)
+      if (proxyDef) {
+        return proxyDef
+      }
+    }
+    return null
   }
 }
 

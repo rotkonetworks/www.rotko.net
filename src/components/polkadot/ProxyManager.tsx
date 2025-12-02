@@ -1,7 +1,7 @@
-import { Component, createSignal, Show, For, createResource } from 'solid-js'
+import { Component, createSignal, Show, For } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { usePolkadot } from '../../contexts/PolkadotProvider'
-import type { ProxyAccount, ProxyDefinition, InjectedAccountWithMeta } from '../../types/polkadot'
+import { multiChainServicePapi, type ProxyDefinition } from '../../services/multi-chain-service-papi'
+import type { ProxyAccount, InjectedAccountWithMeta } from '../../types/polkadot'
 
 interface ProxyManagerProps {
   connectedAccounts: InjectedAccountWithMeta[]
@@ -9,7 +9,6 @@ interface ProxyManagerProps {
 }
 
 export const ProxyManager: Component<ProxyManagerProps> = (props) => {
-  const polkadot = usePolkadot()
   const [proxyAccounts, setProxyAccounts] = createStore<ProxyAccount[]>([])
   const [isAddingProxy, setIsAddingProxy] = createSignal(false)
   const [proxyAddress, setProxyAddress] = createSignal('')
@@ -77,7 +76,7 @@ export const ProxyManager: Component<ProxyManagerProps> = (props) => {
       const delegatorAddresses = props.connectedAccounts.map(acc => acc.address)
 
       // Validate proxy access
-      const proxyDef = await polkadot.validateProxyAccess(address, delegatorAddresses)
+      const proxyDef = await multiChainServicePapi.validateProxyAccess(address, delegatorAddresses)
 
       if (proxyDef) {
         // Find which account gave proxy access
@@ -117,7 +116,7 @@ export const ProxyManager: Component<ProxyManagerProps> = (props) => {
 
     // Find the delegator account
     const delegatorAddresses = props.connectedAccounts.map(acc => acc.address)
-    const proxyDef = await polkadot.validateProxyAccess(address, delegatorAddresses)
+    const proxyDef = await multiChainServicePapi.validateProxyAccess(address, delegatorAddresses)
 
     if (!proxyDef) return
 

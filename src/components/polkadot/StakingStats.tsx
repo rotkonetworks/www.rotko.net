@@ -1,5 +1,5 @@
 import { Component, createSignal, createEffect, onCleanup, Show, For } from 'solid-js'
-import { PolkadotStakingService, type EraInfo, type ValidatorInfo, type StakingInfo } from '../../services/polkadot-staking-simple'
+import { PolkadotStakingServicePapi, type EraInfo, type ValidatorInfo, type StakingInfo } from '../../services/polkadot-staking-papi'
 import type { ChainId } from '../../types/polkadot'
 
 interface StakingStatsProps {
@@ -17,7 +17,7 @@ export const StakingStats: Component<StakingStatsProps> = (props) => {
   const [minimums, setMinimums] = createSignal<any>(null)
   const [error, setError] = createSignal<string | null>(null)
 
-  let stakingService: PolkadotStakingService | null = null
+  let stakingService: PolkadotStakingServicePapi | null = null
   let unsubscribeEra: (() => void) | null = null
   let unsubscribeValidator: (() => void) | null = null
 
@@ -50,7 +50,7 @@ export const StakingStats: Component<StakingStatsProps> = (props) => {
       }
 
       // Create new service
-      stakingService = new PolkadotStakingService(chain)
+      stakingService = new PolkadotStakingServicePapi(chain)
       await stakingService.connect(endpoint)
 
       // Get initial data
