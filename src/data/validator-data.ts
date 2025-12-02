@@ -7,6 +7,21 @@ export interface ChainConfig {
   token: string
 }
 
+// Rotko's validator addresses per chain
+export const ROTKO_VALIDATORS: Record<string, { address: string; name: string }[]> = {
+  polkadot: [
+    { address: '12iqwZGB2sguEhjFi2ZRuWWixU8mEWym3EoWXKUX1v5xZJt9', name: 'ROTKO.NET/01' },
+    { address: '16VsNAS6ghVdDsPY4iLvFhfYVcswLj82HmFrJqLLxisd5Sg', name: 'ROTKO.NET/02' },
+  ],
+  kusama: [
+    { address: 'GhNL9Mi5KiL2cSsGwPfwKVPvF7TtSfAhfGJWgFxfRz3wuTb', name: 'ROTKO.NET/01' },
+    { address: 'FDDy3cQa7JXiChYU2xq1B2WUUJBpZpZ38oP1EMu9vNEPEKT', name: 'ROTKO.NET/02' },
+  ],
+  paseo: [
+    { address: '5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY', name: 'ROTKO.NET/TEST' },
+  ]
+}
+
 export const validatorData = {
   hero: {
     title: "Validator Tool",

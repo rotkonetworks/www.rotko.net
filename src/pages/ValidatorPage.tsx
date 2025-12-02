@@ -3,9 +3,11 @@ import MainLayout from '../layouts/MainLayout'
 import PageHeader from '../components/PageHeader'
 import { WalletConnector } from '../components/WalletConnector'
 import { ProxyManager } from '../components/polkadot/ProxyManager'
-import { StakingStats } from '../components/polkadot/StakingStats'
 import { StakingModal } from '../components/polkadot/StakingModal'
 import { UnclaimedEras } from '../components/polkadot/UnclaimedEras'
+import { StakingDashboard } from '../components/polkadot/StakingDashboard'
+import { RotkoValidatorStatus } from '../components/polkadot/RotkoValidatorStatus'
+import { StakingAccountCard } from '../components/polkadot/StakingAccountCard'
 import type { OperationType } from '../components/polkadot/StakingModal'
 import { validatorData } from '../data/validator-data'
 import type { InjectedAccountWithMeta, ChainId, ChainConfig, ProxyAccount } from '../types/polkadot'
@@ -514,6 +516,23 @@ const ValidatorToolContent: Component = () => {
           subtitle={validatorData.hero.subtitle}
         />
 
+        {/* Rotko Validators Status - Always visible */}
+        <RotkoValidatorStatus
+          chainId={selectedChain()}
+          config={CHAIN_CONFIGS[selectedChain()]}
+        />
+
+        {/* Dashboard Overview - Show when wallet connected */}
+        <Show when={connectedAccounts().length > 0}>
+          <StakingDashboard
+            config={CHAIN_CONFIGS[selectedChain()]}
+            balances={accountBalances()}
+            staking={accountStaking()}
+            currentEra={currentEra()}
+            connectionStatus={connectionStatus()}
+          />
+        </Show>
+
         {/* Connection Section - Two separate dropdowns */}
         <div class="mb-6 grid md:grid-cols-2 gap-4">
           {/* Wallet Connection Dropdown */}
@@ -666,28 +685,6 @@ const ValidatorToolContent: Component = () => {
         </div>
 
         <Show when={connectedAccounts().length > 0}>
-          {/* Stats Bar */}
-          <div class="mb-6 p-4 bg-gray-900 border border-gray-700 rounded">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span class="text-gray-400">Total:</span>
-                <span class="text-cyan-400 font-bold ml-2">{accountStats().total}</span>
-              </div>
-              <div>
-                <span class="text-gray-400">Validators:</span>
-                <span class="text-green-400 font-bold ml-2">{accountStats().validators}</span>
-              </div>
-              <div>
-                <span class="text-gray-400">Stashes:</span>
-                <span class="text-blue-400 font-bold ml-2">{accountStats().stashes}</span>
-              </div>
-              <div>
-                <span class="text-gray-400">Nominators:</span>
-                <span class="text-purple-400 font-bold ml-2">{accountStats().nominators}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Controls Bar */}
           <div class="mb-6 p-4 bg-gray-900 border border-gray-700 rounded">
             <div class="flex flex-wrap gap-4 items-center">
@@ -992,17 +989,6 @@ const ValidatorToolContent: Component = () => {
           onSubmit={handleModalSubmit}
         />
 
-        {/* Staking Statistics Section */}
-        <Show when={connectedAccounts().length > 0 && Object.values(connectionStatus()).some(status => status)}>
-          <div class="mb-6">
-            <h2 class="text-xl font-bold text-cyan-400 mb-4">Live Staking Data</h2>
-            <StakingStats
-              chainId={selectedChain()}
-              endpoint={CHAIN_CONFIGS[selectedChain()].relay}
-              address={connectedAccounts()[0]?.address}
-            />
-          </div>
-        </Show>
       </section>
     </MainLayout>
   )

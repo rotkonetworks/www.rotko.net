@@ -42,6 +42,27 @@ export interface ProxyDefinition {
   delay: number
 }
 
+export interface ValidatorEntry {
+  address: string
+  identity?: string
+  commission: number
+  totalStake: bigint
+  ownStake: bigint
+  nominatorCount: number
+  isActive: boolean
+  isOversubscribed: boolean
+  isBlocked: boolean
+}
+
+export interface EraInfo {
+  currentEra: number
+  activeEra: number
+  eraProgress: number
+  sessionProgress: number
+  eraLength: number
+  sessionLength: number
+}
+
 export class MultiChainServicePapi {
   private clients: ChainClients = {}
   private statusCallbacks: ((status: ConnectionStatus) => void)[] = []
@@ -647,6 +668,153 @@ export class MultiChainServicePapi {
       }
     }
     return null
+  }
+
+  // Get current era information
+  async getEraInfo(): Promise<EraInfo | null> {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) return null
+
+    try {
+      const api = await client.getUnsafeApi()
+
+      const [activeEra, currentEra] = await Promise.all([
+        api.query.Staking?.ActiveEra?.getValue(),
+        api.query.Staking?.CurrentEra?.getValue()
+      ])
+
+      // Try to get session info for progress calculation
+      let eraProgress = 0
+      let sessionProgress = 0
+      let eraLength = 0
+      let sessionLength = 0
+
+      try {
+        const currentIndex = await api.query.Session?.CurrentIndex?.getValue()
+        const epochIndex = await api.query.Babe?.EpochIndex?.getValue()
+
+        // Get constants
+        const epochDuration = 2400 // blocks per epoch/session
+        const sessionsPerEra = 6
+
+        eraLength = epochDuration * sessionsPerEra
+        sessionLength = epochDuration
+
+        // Calculate progress (simplified)
+        if (currentIndex) {
+          const sessionInEra = Number(currentIndex) % sessionsPerEra
+          sessionProgress = (sessionInEra / sessionsPerEra) * 100
+          eraProgress = sessionProgress // Simplified - would need block info for accurate
+        }
+      } catch (e) {
+        console.warn('Could not get session progress:', e)
+      }
+
+      return {
+        currentEra: currentEra || 0,
+        activeEra: activeEra?.index || 0,
+        eraProgress,
+        sessionProgress,
+        eraLength,
+        sessionLength
+      }
+    } catch (error) {
+      console.error('Failed to get era info:', error)
+      return null
+    }
+  }
+
+  // Get list of validators with their info
+  async getValidators(): Promise<ValidatorEntry[]> {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) return []
+
+    try {
+      const api = await client.getUnsafeApi()
+
+      // Get active era
+      const activeEra = await api.query.Staking?.ActiveEra?.getValue()
+      const currentEra = activeEra?.index || 0
+
+      // Get all validators
+      const validatorEntries = await api.query.Staking?.Validators?.getEntries()
+      if (!validatorEntries) return []
+
+      // Get active validator set
+      const activeValidators = await api.query.Session?.Validators?.getValue() || []
+      const activeSet = new Set(activeValidators.map((v: any) => v.toString()))
+
+      // Get max nominators per validator
+      const maxNominators = await api.query.Staking?.MaxNominatorsCount?.getValue() || 256
+
+      const validators: ValidatorEntry[] = []
+
+      for (const entry of validatorEntries) {
+        const address = entry.keyArgs[0]?.toString()
+        const prefs = entry.value
+
+        if (!address) continue
+
+        // Get exposure for this validator in current era
+        let totalStake = 0n
+        let ownStake = 0n
+        let nominatorCount = 0
+
+        try {
+          const exposure = await api.query.Staking?.ErasStakers?.getValue(currentEra, address)
+          if (exposure) {
+            totalStake = BigInt(exposure.total?.toString() || '0')
+            ownStake = BigInt(exposure.own?.toString() || '0')
+            nominatorCount = exposure.others?.length || 0
+          }
+        } catch (e) {
+          // Exposure might not exist for waiting validators
+        }
+
+        // Try to get identity from people chain
+        let identity: string | undefined
+        if (this.clients.peopleChain) {
+          try {
+            const peopleApi = await this.clients.peopleChain.getUnsafeApi()
+            const identityInfo = await peopleApi.query.Identity?.IdentityOf?.getValue(address)
+            if (identityInfo && identityInfo[0]?.info?.display) {
+              const display = identityInfo[0].info.display
+              if (display.type === 'Raw' && display.value) {
+                identity = new TextDecoder().decode(display.value)
+              }
+            }
+          } catch (e) {
+            // Identity lookup failed, continue without it
+          }
+        }
+
+        validators.push({
+          address,
+          identity,
+          commission: (prefs.commission || 0) / 10000000,
+          totalStake,
+          ownStake,
+          nominatorCount,
+          isActive: activeSet.has(address),
+          isOversubscribed: nominatorCount >= Number(maxNominators),
+          isBlocked: prefs.blocked || false
+        })
+      }
+
+      // Sort by total stake descending
+      validators.sort((a, b) => Number(b.totalStake - a.totalStake))
+
+      return validators
+    } catch (error) {
+      console.error('Failed to get validators:', error)
+      return []
+    }
   }
 }
 
