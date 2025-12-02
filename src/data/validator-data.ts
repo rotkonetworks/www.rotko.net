@@ -17,7 +17,10 @@ export const ROTKO_VALIDATORS: Record<string, { address: string; name: string }[
     { address: 'DKKax6uZkiNPfd2ATd8cJhyi3c1KZD24VDdoWG9CfTmwgSp', name: 'rotko.net/ksm02' },
     { address: 'H4La9AvRKWu7Z4EcDbiVTTvY1eVj9L3SN32ocFNrjXAYNUw', name: 'rotko.net/ksm03' },
   ],
-  paseo: []
+  paseo: [
+    { address: '15HfgrULVrnXuRkEoscWrUiFAk3xjUqpfPPWJeXreiNJmdm6', name: 'rotko.net/01' },
+    { address: '14cQdSZy4FdLXa36dgVd6BWt41Fd1j6pkf8hPXFsWm1f9orX', name: 'rotko.net/02' },
+  ]
 }
 
 export const validatorData = {
