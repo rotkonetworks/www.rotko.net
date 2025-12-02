@@ -18,8 +18,12 @@ export const ROTKO_VALIDATORS: Record<string, { address: string; name: string }[
     { address: 'H4La9AvRKWu7Z4EcDbiVTTvY1eVj9L3SN32ocFNrjXAYNUw', name: 'rotko.net/ksm03' },
   ],
   paseo: [
-    { address: '15HfgrULVrnXuRkEoscWrUiFAk3xjUqpfPPWJeXreiNJmdm6', name: 'rotko.net/01' },
-    { address: '14cQdSZy4FdLXa36dgVd6BWt41Fd1j6pkf8hPXFsWm1f9orX', name: 'rotko.net/02' },
+    { address: '15HfgrULVrnXuRkEoscWrUiFAk3xjUqpfPPWJeXreiNJmdm6', name: 'ROTKO NETWORKS/01' },
+    { address: '14cQdSZy4FdLXa36dgVd6BWt41Fd1j6pkf8hPXFsWm1f9orX', name: 'ROTKO NETWORKS/02' },
+    { address: '15g1G7kPdLn2u2KEdWoj5jV789uVLkoYAXwLSttL3d78F2A5', name: 'ROTKO NETWORKS/03' },
+    { address: '138KL2HVHLsuk1NhNjnttQbcWfSahCBsjDbXF9vigbxrdXij', name: 'ROTKO NETWORKS/04' },
+    { address: '15dbNAcR6qoKv65mkq4EUVzvtxZg1gA7JrVa1ywkkF37VgdX', name: 'ROTKO NETWORKS/05' },
+    { address: '12EgzZggXfmuZS4q88wxWcwU3hj4v2yH2dEaBfvMTfGpkQ6c', name: 'ROTKO NETWORKS/06' },
   ]
 }
 
