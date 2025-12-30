@@ -4,6 +4,8 @@ import HomePage from './pages/HomePage'
 import TeamPage from './pages/TeamPage'
 import InfrastructurePage from './pages/InfrastructurePage'
 import ServicesPage from './pages/ServicesPage'
+import StakingPage from './pages/services/StakingPage'
+import EndpointsPage from './pages/services/EndpointsPage'
 import BlogPage from './pages/BlogPage'
 import BlogPostPage from './pages/BlogPostPage'
 import NewsPage from './pages/NewsPage'
@@ -18,6 +20,10 @@ const App: Component = () => {
     <>
       <Route path="/" component={HomePage} />
       <Route path="/services" component={ServicesPage} />
+      <Route path="/services/staking" component={StakingPage} />
+      <Route path="/services/staking/:network" component={StakingPage} />
+      <Route path="/services/endpoints" component={EndpointsPage} />
+      <Route path="/services/endpoints/:network" component={EndpointsPage} />
       <Route path="/blog" component={BlogPage} />
       <Route path="/blog/:slug" component={BlogPostPage} />
       <Route path="/news" component={NewsPage} />
