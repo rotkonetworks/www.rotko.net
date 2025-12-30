@@ -1,5 +1,6 @@
 import { Component, Show, createSignal, createEffect, For } from 'solid-js'
-import type { InjectedAccountWithMeta } from '../../types/polkadot'
+import type { InjectedAccountWithMeta, ChainId, ChainConfig } from '../../types/polkadot'
+import { NominatorSelection } from './NominatorSelection'
 
 export type OperationType = 'bond' | 'unbond' | 'nominate' | 'setKeys' | 'rebond' | 'withdrawUnbonded'
 
@@ -9,8 +10,11 @@ interface StakingModalProps {
   account: InjectedAccountWithMeta | null
   token: string
   decimals: number
+  chainId?: ChainId
+  chainConfig?: ChainConfig
   currentBonded?: bigint
   maxBalance?: bigint
+  currentNominations?: string[]
   onClose: () => void
   onSubmit: (data: any) => Promise<void>
 }
@@ -18,7 +22,6 @@ interface StakingModalProps {
 export const StakingModal: Component<StakingModalProps> = (props) => {
   const [amount, setAmount] = createSignal('')
   const [payee, setPayee] = createSignal<'Staked' | 'Stash' | 'Account'>('Staked')
-  const [controller, setController] = createSignal('')
   const [validators, setValidators] = createSignal<string[]>([])
   const [validatorInput, setValidatorInput] = createSignal('')
   const [sessionKeys, setSessionKeys] = createSignal('')
@@ -31,7 +34,6 @@ export const StakingModal: Component<StakingModalProps> = (props) => {
     if (props.show) {
       setAmount('')
       setPayee('Staked')
-      setController(props.account?.address || '')
       setValidators([])
       setValidatorInput('')
       setSessionKeys('')
@@ -120,7 +122,6 @@ export const StakingModal: Component<StakingModalProps> = (props) => {
       switch (props.operation) {
         case 'bond':
           data.amount = parseAmount()
-          data.controller = controller()
           data.payee = payee()
           break
         case 'unbond':
@@ -205,17 +206,6 @@ export const StakingModal: Component<StakingModalProps> = (props) => {
               </div>
 
               <div>
-                <label class="block text-sm text-gray-400 mb-2">Controller Account</label>
-                <input
-                  type="text"
-                  value={controller()}
-                  onInput={(e) => setController(e.currentTarget.value)}
-                  placeholder="Same as stash"
-                  class="w-full px-3 py-2 bg-black border border-gray-700 rounded text-white focus:border-cyan-400 focus:outline-none font-mono text-xs"
-                />
-              </div>
-
-              <div>
                 <label class="block text-sm text-gray-400 mb-2">Reward Destination</label>
                 <select
                   value={payee()}
@@ -262,54 +252,63 @@ export const StakingModal: Component<StakingModalProps> = (props) => {
             </div>
           </Show>
 
-          {/* Nominate Form */}
+          {/* Nominate Form - Use NominatorSelection if chain config provided */}
           <Show when={props.operation === 'nominate'}>
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm text-gray-400 mb-2">Validator Address</label>
-                <div class="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter validator address"
-                    value={validatorInput()}
-                    onInput={(e) => setValidatorInput(e.currentTarget.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addValidator()}
-                    class="flex-1 px-3 py-2 bg-black border border-gray-700 rounded text-white focus:border-cyan-400 focus:outline-none font-mono text-xs"
-                  />
-                  <button
-                    onClick={addValidator}
-                    class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded text-white"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-
-              <Show when={validators().length > 0}>
+            <Show when={props.chainId && props.chainConfig} fallback={
+              <div class="space-y-4">
                 <div>
-                  <div class="text-sm text-gray-400 mb-2">Selected Validators ({validators().length}/16)</div>
-                  <div class="space-y-2 max-h-48 overflow-y-auto">
-                    <For each={validators()}>
-                      {(validator) => (
-                        <div class="flex items-center justify-between p-2 bg-gray-800 rounded">
-                          <span class="font-mono text-xs">{validator.slice(0, 12)}...{validator.slice(-8)}</span>
-                          <button
-                            onClick={() => removeValidator(validator)}
-                            class="text-red-400 hover:text-red-300"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )}
-                    </For>
+                  <label class="block text-sm text-gray-400 mb-2">Validator Address</label>
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter validator address"
+                      value={validatorInput()}
+                      onInput={(e) => setValidatorInput(e.currentTarget.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addValidator()}
+                      class="flex-1 px-3 py-2 bg-black border border-gray-700 rounded text-white focus:border-cyan-400 focus:outline-none font-mono text-xs"
+                    />
+                    <button
+                      onClick={addValidator}
+                      class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded text-white"
+                    >
+                      Add
+                    </button>
                   </div>
                 </div>
-              </Show>
 
-              <div class="p-3 bg-blue-900/20 border border-blue-700 rounded text-sm text-blue-400">
-                ℹ️ You can nominate up to 16 validators. Choose validators with good performance and low commission.
+                <Show when={validators().length > 0}>
+                  <div>
+                    <div class="text-sm text-gray-400 mb-2">Selected Validators ({validators().length}/16)</div>
+                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                      <For each={validators()}>
+                        {(validator) => (
+                          <div class="flex items-center justify-between p-2 bg-gray-800 rounded">
+                            <span class="font-mono text-xs">{validator.slice(0, 12)}...{validator.slice(-8)}</span>
+                            <button
+                              onClick={() => removeValidator(validator)}
+                              class="text-red-400 hover:text-red-300"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </Show>
+
+                <div class="p-3 bg-blue-900/20 border border-blue-700 rounded text-sm text-blue-400">
+                  ℹ️ You can nominate up to 16 validators. Choose validators with good performance and low commission.
+                </div>
               </div>
-            </div>
+            }>
+              <NominatorSelection
+                chainId={props.chainId!}
+                config={props.chainConfig!}
+                initialSelected={props.currentNominations || validators()}
+                onSelectionChange={(selected) => setValidators(selected)}
+              />
+            </Show>
           </Show>
 
           {/* Set Keys Form */}

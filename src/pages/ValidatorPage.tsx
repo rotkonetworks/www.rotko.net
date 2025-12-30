@@ -8,6 +8,8 @@ import { UnclaimedEras } from '../components/polkadot/UnclaimedEras'
 import { StakingDashboard } from '../components/polkadot/StakingDashboard'
 import { RotkoValidatorStatus } from '../components/polkadot/RotkoValidatorStatus'
 import { StakingAccountCard } from '../components/polkadot/StakingAccountCard'
+import { AccountDiscovery } from '../components/polkadot/AccountDiscovery'
+import { TransactionConfirmation, type TransactionDetails, type ProxyOption } from '../components/polkadot/TransactionConfirmation'
 import type { OperationType } from '../components/polkadot/StakingModal'
 import { validatorData } from '../data/validator-data'
 import type { InjectedAccountWithMeta, ChainId, ChainConfig, ProxyAccount } from '../types/polkadot'
@@ -21,7 +23,7 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
     relay: 'wss://polkadot.dotters.network',
     assetHub: 'wss://asset-hub-polkadot.dotters.network',
     peopleChain: 'wss://people-polkadot.dotters.network',
-    stakingLocation: 'relay',  // Polkadot still has staking on relay chain
+    stakingLocation: 'assetHub',
     ss58: 0,
     decimals: 10,
     token: 'DOT'
@@ -31,7 +33,7 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
     relay: 'wss://kusama.dotters.network',
     assetHub: 'wss://asset-hub-kusama.dotters.network',
     peopleChain: 'wss://people-kusama.dotters.network',
-    stakingLocation: 'assetHub',  // Kusama has staking on asset hub
+    stakingLocation: 'assetHub',
     ss58: 2,
     decimals: 12,
     token: 'KSM'
@@ -41,8 +43,8 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
     relay: 'wss://paseo.dotters.network',
     assetHub: 'wss://asset-hub-paseo.dotters.network',
     peopleChain: 'wss://people-paseo.dotters.network',
-    stakingLocation: 'assetHub',  // Paseo has staking on asset hub
-    ss58: 0,  // Paseo uses same SS58 as Polkadot
+    stakingLocation: 'assetHub',
+    ss58: 0,
     decimals: 10,
     token: 'PAS'
   }
@@ -58,6 +60,7 @@ const ValidatorToolContent: Component = () => {
   const [showWalletMenu, setShowWalletMenu] = createSignal(false)
   const [showNetworkMenu, setShowNetworkMenu] = createSignal(false)
   const [showProxyModal, setShowProxyModal] = createSignal(false)
+  const [showDiscoveryPanel, setShowDiscoveryPanel] = createSignal(false)
   const [selectedChain, setSelectedChain] = createSignal<ChainId>('polkadot')
   const [copiedAddress, setCopiedAddress] = createSignal<string | null>(null)
   const [connectionStatus, setConnectionStatus] = createSignal({
@@ -72,6 +75,11 @@ const ValidatorToolContent: Component = () => {
   const [txStatus, setTxStatus] = createSignal<{message: string, type: 'success' | 'error' | 'pending'} | null>(null)
   const [currentEra, setCurrentEra] = createSignal<number | null>(null)
   const [currentSession, setCurrentSession] = createSignal<number | null>(null)
+
+  // Transaction confirmation state
+  const [pendingTx, setPendingTx] = createSignal<TransactionDetails | null>(null)
+  const [pendingTxData, setPendingTxData] = createSignal<any>(null)
+  const [pendingProxyOption, setPendingProxyOption] = createSignal<ProxyOption | null>(null)
 
   // Keyboard shortcuts
   onMount(() => {
@@ -334,10 +342,125 @@ const ValidatorToolContent: Component = () => {
     setTimeout(() => setTxStatus(null), 5000)
   }
 
+  // Prepare transaction for confirmation (instead of executing directly)
   const handleModalSubmit = async (data: any) => {
     const account = modalAccount()
     const operation = modalOperation()
     if (!account || !operation) return
+
+    const config = CHAIN_CONFIGS[selectedChain()]
+
+    // Build transaction details for confirmation
+    let txDetails: TransactionDetails
+
+    switch (operation) {
+      case 'bond':
+        txDetails = {
+          type: 'Bond Tokens',
+          description: `Stake ${config.token} for validation/nomination`,
+          params: {
+            Amount: data.amount,
+            'Reward Destination': data.payee
+          },
+          warnings: data.amount > (accountBalances().get(account.address)?.free || 0n)
+            ? ['Amount exceeds available balance']
+            : undefined
+        }
+        break
+
+      case 'unbond':
+        txDetails = {
+          type: 'Unbond Tokens',
+          description: `Start unbonding period for ${config.token}`,
+          params: { Amount: data.amount },
+          warnings: ['Unbonding takes 28 days on Polkadot, 7 days on Kusama']
+        }
+        break
+
+      case 'rebond':
+        txDetails = {
+          type: 'Rebond Tokens',
+          description: 'Cancel unbonding and restake tokens',
+          params: { Amount: data.amount }
+        }
+        break
+
+      case 'withdrawUnbonded':
+        txDetails = {
+          type: 'Withdraw Unbonded',
+          description: 'Withdraw tokens that finished unbonding',
+          params: {}
+        }
+        break
+
+      case 'nominate':
+        txDetails = {
+          type: 'Nominate Validators',
+          description: `Select ${data.validators.length} validator(s) to back`,
+          params: { Validators: data.validators }
+        }
+        break
+
+      case 'setKeys':
+        txDetails = {
+          type: 'Set Session Keys',
+          description: 'Update validator session keys',
+          params: { Keys: data.keys.slice(0, 20) + '...' },
+          warnings: ['Ensure these keys match your running validator node']
+        }
+        break
+
+      default:
+        txDetails = {
+          type: operation,
+          description: 'Staking operation',
+          params: data
+        }
+    }
+
+    // Check if this account can be proxied
+    let proxyOption: ProxyOption | null = null
+    const proxiedAccounts = await multiChainServicePapi.getProxiedAccounts(
+      account.address,
+      connectedAccounts().map(a => a.address).filter(a => a !== account.address)
+    )
+
+    if (proxiedAccounts.length > 0) {
+      const proxy = proxiedAccounts[0]
+      const proxyAccountMeta = connectedAccounts().find(a => a.address === proxy.account)
+      proxyOption = {
+        realAccount: proxy.account,
+        realAccountName: proxyAccountMeta?.meta.name,
+        proxyType: proxy.proxyType,
+        delay: proxy.delay
+      }
+    }
+
+    // Store pending transaction and show confirmation
+    setPendingTx(txDetails)
+    setPendingTxData(data)
+    setPendingProxyOption(proxyOption)
+
+    // Close the input modal
+    setModalOperation(null)
+  }
+
+  // Execute the confirmed transaction
+  const executeTransaction = async (useProxy: boolean) => {
+    const account = modalAccount()
+    const operation = modalOperation() || pendingTxData()?.operation
+    const data = pendingTxData()
+    if (!account || !data) return
+
+    // Determine what operation we're doing based on pending data
+    const op = data.operation || (
+      data.validators ? 'nominate' :
+      data.keys ? 'setKeys' :
+      data.payee ? 'bond' :
+      data.numSlashingSpans !== undefined ? 'withdrawUnbonded' :
+      data.amount && pendingTx()?.type.includes('Rebond') ? 'rebond' :
+      data.amount ? 'unbond' : 'unknown'
+    )
 
     try {
       // Get signer using polkadot-api
@@ -345,58 +468,87 @@ const ValidatorToolContent: Component = () => {
       const extensions = getInjectedExtensions()
       if (extensions.length === 0) throw new Error('No wallet extension found')
 
-      // Connect to the extension that has this account
       const extension = await connectInjectedExtension(account.meta.source || extensions[0])
       const accounts = await extension.getAccounts()
       const matchingAccount = accounts.find(a => a.address === account.address)
       if (!matchingAccount) throw new Error('Account not found in extension')
 
       const signer = matchingAccount.polkadotSigner
+      const proxyOpt = pendingProxyOption()
 
-      setTxStatus({ message: `Executing ${operation}...`, type: 'pending' })
+      if (useProxy && proxyOpt) {
+        // Execute via proxy
+        const api = await multiChainServicePapi.getStakingApi()
+        let innerTx: any
 
-      switch (operation) {
-        case 'bond':
-          await multiChainServicePapi.bond(signer, data.controller, data.amount, data.payee)
-          setTxStatus({ message: 'Tokens bonded successfully', type: 'success' })
-          break
+        switch (op) {
+          case 'bond':
+            let payee: any
+            if (data.payee === 'Staked') payee = { type: 'Staked' }
+            else if (data.payee === 'Stash') payee = { type: 'Stash' }
+            else if (data.payee === 'Controller') payee = { type: 'Controller' }
+            else payee = { type: 'Account', value: data.payee }
+            innerTx = api.tx.Staking.bond({ value: data.amount, payee })
+            break
+          case 'unbond':
+            innerTx = api.tx.Staking.unbond({ value: data.amount })
+            break
+          case 'rebond':
+            innerTx = api.tx.Staking.rebond({ value: data.amount })
+            break
+          case 'nominate':
+            innerTx = api.tx.Staking.nominate({ targets: data.validators })
+            break
+          case 'withdrawUnbonded':
+            innerTx = api.tx.Staking.withdrawUnbonded({ num_slashing_spans: data.numSlashingSpans || 0 })
+            break
+          case 'setKeys':
+            const relayApi = await multiChainServicePapi.getRelayApi()
+            innerTx = relayApi.tx.Session.setKeys({ keys: data.keys, proof: data.proof || '0x' })
+            break
+          default:
+            throw new Error(`Unknown operation: ${op}`)
+        }
 
-        case 'unbond':
-          await multiChainServicePapi.unbond(signer, data.amount)
-          setTxStatus({ message: 'Unbonding initiated', type: 'success' })
-          break
-
-        case 'rebond':
-          await multiChainServicePapi.rebond(signer, data.amount)
-          setTxStatus({ message: 'Tokens rebonded successfully', type: 'success' })
-          break
-
-        case 'withdrawUnbonded':
-          await multiChainServicePapi.withdrawUnbonded(signer, data.numSlashingSpans || 0)
-          setTxStatus({ message: 'Unbonded tokens withdrawn', type: 'success' })
-          break
-
-        case 'nominate':
-          await multiChainServicePapi.nominate(signer, data.validators)
-          setTxStatus({ message: 'Nominations submitted', type: 'success' })
-          break
-
-        case 'setKeys':
-          await multiChainServicePapi.setKeys(signer, data.keys, data.proof || '0x')
-          setTxStatus({ message: 'Session keys updated', type: 'success' })
-          break
+        await multiChainServicePapi.executeViaProxy(signer, proxyOpt.realAccount, innerTx, proxyOpt.proxyType)
+      } else {
+        // Direct execution
+        switch (op) {
+          case 'bond':
+            await multiChainServicePapi.bond(signer, account.address, data.amount, data.payee)
+            break
+          case 'unbond':
+            await multiChainServicePapi.unbond(signer, data.amount)
+            break
+          case 'rebond':
+            await multiChainServicePapi.rebond(signer, data.amount)
+            break
+          case 'withdrawUnbonded':
+            await multiChainServicePapi.withdrawUnbonded(signer, data.numSlashingSpans || 0)
+            break
+          case 'nominate':
+            await multiChainServicePapi.nominate(signer, data.validators)
+            break
+          case 'setKeys':
+            await multiChainServicePapi.setKeys(signer, data.keys, data.proof || '0x')
+            break
+          default:
+            throw new Error(`Unknown operation: ${op}`)
+        }
       }
 
-      // Refresh account data
-      setTimeout(() => {
-        loadAccountData(account)
-      }, 2000)
-
+      // Refresh account data after success
+      setTimeout(() => loadAccountData(account), 2000)
     } catch (error: any) {
-      setTxStatus({ message: error.message || 'Transaction failed', type: 'error' })
+      throw error // Let TransactionConfirmation handle the error display
     }
+  }
 
-    setTimeout(() => setTxStatus(null), 5000)
+  const cancelTransaction = () => {
+    setPendingTx(null)
+    setPendingTxData(null)
+    setPendingProxyOption(null)
+    setModalAccount(null)
   }
 
   const loadAccountData = async (account: InjectedAccountWithMeta) => {
@@ -738,8 +890,35 @@ const ValidatorToolContent: Component = () => {
               >
                 Proxy
               </button>
+
+              {/* Discover Related Accounts */}
+              <button
+                class={`px-3 py-2 rounded text-sm ${
+                  showDiscoveryPanel()
+                    ? 'bg-purple-600 hover:bg-purple-700'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+                onClick={() => setShowDiscoveryPanel(!showDiscoveryPanel())}
+              >
+                Discover
+              </button>
             </div>
           </div>
+
+          {/* Account Discovery Panel */}
+          <Show when={showDiscoveryPanel()}>
+            <div class="mb-6">
+              <AccountDiscovery
+                accounts={connectedAccounts()}
+                config={CHAIN_CONFIGS[selectedChain()]}
+                onAddAccount={(address, name) => {
+                  // Create a synthetic account entry for the discovered account
+                  console.log(`Adding discovered account: ${address} (${name})`)
+                  // For now just log - in a real implementation you'd add to tracked accounts
+                }}
+              />
+            </div>
+          </Show>
 
           {/* Proxy Modal */}
           <Show when={showProxyModal()}>
@@ -973,20 +1152,35 @@ const ValidatorToolContent: Component = () => {
           </div>
         </Show>
 
-        {/* Staking Modal */}
+        {/* Staking Modal (Input Phase) */}
         <StakingModal
           show={!!modalOperation()}
           operation={modalOperation() || 'bond'}
           account={modalAccount()}
           token={CHAIN_CONFIGS[selectedChain()].token}
           decimals={CHAIN_CONFIGS[selectedChain()].decimals}
+          chainId={selectedChain()}
+          chainConfig={CHAIN_CONFIGS[selectedChain()]}
           currentBonded={modalAccount() ? accountStaking().get(modalAccount()!.address)?.bonded : undefined}
           maxBalance={modalAccount() ? accountBalances().get(modalAccount()!.address)?.free : undefined}
+          currentNominations={modalAccount() ? accountStaking().get(modalAccount()!.address)?.nominators : undefined}
           onClose={() => {
             setModalOperation(null)
             setModalAccount(null)
           }}
           onSubmit={handleModalSubmit}
+        />
+
+        {/* Transaction Confirmation (Review & Sign Phase) */}
+        <TransactionConfirmation
+          show={!!pendingTx()}
+          transaction={pendingTx()}
+          signer={modalAccount()}
+          proxyOption={pendingProxyOption()}
+          token={CHAIN_CONFIGS[selectedChain()].token}
+          decimals={CHAIN_CONFIGS[selectedChain()].decimals}
+          onConfirm={executeTransaction}
+          onCancel={cancelTransaction}
         />
 
       </section>

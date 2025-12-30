@@ -2,6 +2,8 @@ export interface ChainConfig {
   name: string
   relay: string
   assetHub: string
+  peopleChain: string
+  stakingLocation: 'relay' | 'assetHub'
   ss58: number
   decimals: number
   token: string
@@ -38,6 +40,8 @@ export const validatorData = {
       name: 'Polkadot',
       relay: 'wss://polkadot.dotters.network',
       assetHub: 'wss://asset-hub-polkadot.dotters.network',
+      peopleChain: 'wss://people-polkadot.dotters.network',
+      stakingLocation: 'assetHub',
       ss58: 0,
       decimals: 10,
       token: 'DOT'
@@ -46,15 +50,19 @@ export const validatorData = {
       name: 'Kusama',
       relay: 'wss://kusama.dotters.network',
       assetHub: 'wss://asset-hub-kusama.dotters.network',
+      peopleChain: 'wss://people-kusama.dotters.network',
+      stakingLocation: 'assetHub',
       ss58: 2,
       decimals: 12,
       token: 'KSM'
     },
     paseo: {
       name: 'Paseo',
-      relay: 'wss://paseo-rpc.dwellir.com',
-      assetHub: 'wss://paseo-asset-hub-rpc.polkadot.io',
-      ss58: 42,
+      relay: 'wss://paseo.dotters.network',
+      assetHub: 'wss://asset-hub-paseo.dotters.network',
+      peopleChain: 'wss://people-paseo.dotters.network',
+      stakingLocation: 'assetHub',
+      ss58: 0,
       decimals: 10,
       token: 'PAS'
     }
