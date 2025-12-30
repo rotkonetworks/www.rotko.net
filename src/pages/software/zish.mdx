@@ -1,0 +1,101 @@
+---
+title: "zish"
+repo: "https://github.com/rotkonetworks/zish"
+description: "Fast, opinionated shell written in Zig with full vim mode, syntax highlighting, and 4-7x faster execution than bash/zsh."
+tags: ["cli", "zig", "shell", "vim", "unix"]
+---
+
+# zish
+
+**Fast shell in Zig** — An opinionated, high-performance shell with native vim mode and syntax highlighting.
+
+## Why zish
+
+Modern shells carry decades of compatibility baggage. zish starts fresh with zig, achieving 3-7x faster execution than bash/zsh while providing a full vim-style editing experience.
+
+## Features
+
+- **Vim mode** — full text objects, visual mode, operators (d/c/y with i/a modifiers)
+- **Git prompt** — optional branch/status display
+- **Syntax highlighting** — real-time as you type
+- **Tab completion** — with common prefix detection
+- **Persistent history** — across sessions
+- **Parameter expansion** — `${VAR:-default}` syntax
+- **Test expressions** — `[[ ]]` conditionals
+- **Command chaining** — pipes, redirects, `&&`, `||`
+- **Command/math substitution** — `$(cmd)` and `$((math))`
+
+## Performance
+
+| test | vs bash | vs zsh |
+|------|---------|--------|
+| command substitution | **7.0x faster** | **7.0x faster** |
+| nested loops | **4.0x faster** | **4.4x faster** |
+| conditionals | **4.0x faster** | **4.5x faster** |
+| arithmetic | **3.8x faster** | **4.3x faster** |
+| variables | **3.6x faster** | **3.9x faster** |
+| functions | **3.4x faster** | **3.8x faster** |
+| pipelines | **1.7x faster** | **1.9x faster** |
+
+Why it's fast:
+- **Static binary** — no dynamic linker overhead
+- **Stack buffers** — echo/test builtins avoid malloc in loops
+- **Minimal init** — no readline/job control setup for `-c` mode
+
+## Installation
+
+```bash
+zig build --release=fast
+./zig-out/bin/zish
+```
+
+## Vim Mode
+
+Zish has vim-style modal editing enabled by default.
+
+### Modes
+
+| mode | indicator | description |
+|------|-----------|-------------|
+| insert | `[I]` | normal typing (default) |
+| normal | `[N]` | vim commands |
+| visual | `[V]` | character selection |
+| visual line | `[VL]` | line selection |
+| replace | `[R]` | overwrite mode |
+
+### Common Combos
+
+```
+ciw     change inner word
+diw     delete inner word
+daw     delete around word (includes space)
+ci"     change inside quotes
+da(     delete around parentheses
+yiw     yank inner word
+dd      delete line
+cc      change line
+```
+
+### Text Objects
+
+| object | description |
+|--------|-------------|
+| `w` `W` | word / WORD |
+| `"` `'` `` ` `` | quoted string |
+| `(` `)` `b` | parentheses |
+| `[` `]` | brackets |
+| `{` `}` `B` | braces |
+
+## Configuration
+
+```bash
+cp example.zishrc ~/.zishrc
+```
+
+## Status
+
+v0.5.1 — daily driver ready, expect rough edges.
+
+## Built by Rotko Networks
+
+zish is developed and maintained by [Rotko Networks](https://rotko.net), focusing on high-performance developer tooling.

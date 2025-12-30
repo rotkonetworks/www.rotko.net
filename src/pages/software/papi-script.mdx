@@ -1,0 +1,62 @@
+---
+title: "papi-script"
+website: "https://papi.rotko.net/script"
+description: "Browser-based code editor for polkadot-api with live execution, auto-completion, and chain connectivity."
+tags: ["polkadot", "papi", "editor", "typescript", "developer-tools"]
+---
+
+# papi-script
+
+**Polkadot-API playground** — Browser-based code editor for writing and executing polkadot-api scripts with live chain connectivity.
+
+## Why papi-script
+
+Testing polkadot-api code typically requires local setup with node.js and dependencies. papi-script provides instant access to a full development environment in your browser — connect to any chain and run code immediately.
+
+## Features
+
+- **Live execution** — run polkadot-api code directly in browser
+- **Chain connectivity** — connect to Polkadot, Kusama, parachains via WebSocket
+- **Auto-completion** — TypeScript intellisense for the full papi API
+- **Pre-configured** — polkadot-api already imported and ready to use
+- **Shareable** — share scripts via URL
+- **Examples** — built-in examples for common operations
+
+## Try It
+
+Visit [papi.rotko.net/script](https://papi.rotko.net/script) to start coding immediately.
+
+## Quick Example
+
+```typescript
+import { createClient } from 'polkadot-api'
+import { getWsProvider } from 'polkadot-api/ws-provider/web'
+
+const client = createClient(getWsProvider('wss://polkadot.dotters.network'))
+const api = await client.getUnsafeApi()
+
+// Get current block number
+const header = await api.query.System.Number.getValue()
+console.log('Current block:', header)
+
+// Get account balance
+const account = await api.query.System.Account.getValue('YOUR_ADDRESS')
+console.log('Free balance:', account.data.free)
+```
+
+## Use Cases
+
+- **Learning papi** — experiment with the API without local setup
+- **Quick queries** — check on-chain state without building a full app
+- **Debugging** — test transaction parameters before submitting
+- **Prototyping** — rapidly iterate on chain interactions
+- **Sharing** — demonstrate code snippets to others
+
+## Related
+
+- [polkadot-api docs](https://papi.how) — official documentation
+- [vctl](/software/vctl) — validator control interface built with papi
+
+## Built by Rotko Networks
+
+papi-script is developed and maintained by [Rotko Networks](https://rotko.net), providing developer tools for the Polkadot ecosystem.

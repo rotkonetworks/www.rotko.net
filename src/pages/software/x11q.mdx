@@ -1,0 +1,108 @@
+---
+title: "x11q"
+repo: "https://github.com/rotkonetworks/x11q"
+website: "https://x11q.com"
+description: "X11 display forwarding over QUIC with P2P holepunching. Lowest latency remote desktop without video encoding."
+tags: ["cli", "rust", "x11", "remote-desktop", "p2p", "quic"]
+---
+
+# x11q
+
+**X11 over QUIC** — Remote display forwarding with P2P NAT traversal. No video encoding, no compression artifacts. Your local GPU renders everything.
+
+## Why x11q
+
+Traditional remote desktop solutions encode video on the server, introducing latency and compression artifacts. x11q forwards raw X11 protocol over QUIC, letting your local machine handle all rendering.
+
+Built on [iroh](https://iroh.computer/) for automatic NAT traversal — works behind any NAT without port forwarding.
+
+## Features
+
+- **No video encoding** — raw X11 protocol, local GPU rendering
+- **P2P holepunching** — automatic NAT traversal via mainline DHT (bittorrent)
+- **Word codes** — magic-wormhole style short codes for easy connection
+- **SPAKE2 auth** — password-authenticated key exchange prevents MITM
+- **QUIC transport** — low latency, multiplexed streams, TLS encrypted
+
+## Installation
+
+```bash
+cargo install x11q
+```
+
+## Usage
+
+### Easy Mode (word codes)
+
+Like magic-wormhole — share a short code to connect.
+
+**On your local machine (has your monitor):**
+```bash
+x11q serve
+# Prints: x11q join 7-tiger-lamp
+```
+
+**On remote machine (runs your apps):**
+```bash
+x11q join 7-tiger-lamp
+# Creates DISPLAY=:99
+
+DISPLAY=:99 bspwm &
+DISPLAY=:99 alacritty
+```
+
+### Direct Mode (node IDs)
+
+For persistent setups without DHT lookup.
+
+**Local:**
+```bash
+x11q server
+# Prints node ID
+```
+
+**Remote:**
+```bash
+x11q client NODE_ID
+# Creates DISPLAY=:99
+```
+
+### Mirror Mode (screen sharing)
+
+```bash
+# Share your screen
+x11q mirror-server
+
+# View remote screen
+x11q mirror NODE_ID
+```
+
+## How It Works
+
+```
+Remote: [bspwm] -> DISPLAY=:99 -> x11q join
+                                      |
+                      (iroh: holepunch via mainline DHT)
+                                      |
+Local:  [Xorg :0] <- x11q serve <-----+
+```
+
+1. `serve` generates word code, publishes node ID to mainline DHT
+2. `join` looks up node ID from DHT using word code
+3. SPAKE2 key exchange authenticates both sides
+4. iroh establishes P2P connection (holepunch or relay)
+5. X11 protocol streams over QUIC
+6. Your local GPU renders everything
+
+Result: minimal latency, no compression artifacts, works behind any NAT.
+
+## Security
+
+- Word codes have ~16 bits entropy (2 words from 256-word list)
+- SPAKE2 PAKE prevents MITM even if attacker knows the code
+- All traffic encrypted via QUIC/TLS
+- DHT records expire after 2 minutes
+
+## Built by Rotko Networks
+
+x11q is developed and maintained by [Rotko Networks](https://rotko.net), focusing on low-latency remote access for developers and power users.

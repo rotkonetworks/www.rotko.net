@@ -1,0 +1,95 @@
+---
+title: "nocb"
+repo: "https://github.com/rotkonetworks/nocb"
+description: "Nearly optimal clipboard manager with hash-based storage, automatic compression, and image support."
+tags: ["cli", "rust", "clipboard", "unix", "x11"]
+---
+
+# nocb
+
+**Nearly optimal clipboard manager** — Fast, compressed, hash-based storage for clipboard history.
+
+## Why nocb
+
+Traditional clipboard managers store entries linearly, leading to duplicates and wasted space. nocb uses content-addressed storage with blake3 hashing for instant deduplication and fast retrieval.
+
+## Features
+
+- **Hash-based storage** — blake3 content addressing with instant deduplication
+- **Compression** — automatic zstd compression for text entries >4KB
+- **Image support** — full support with dimensions (png/jpeg/gif/bmp/webp)
+- **Performance** — sqlite with WAL mode, LRU cache, 100MB entry support
+- **Security** — unix socket with uid verification, memory zeroization
+- **Rofi/fzf integration** — 80-char entries with hash-based retrieval
+
+## Installation
+
+```bash
+cargo install --path core
+# or
+cargo build --release
+cp target/release/nocb ~/.local/bin/
+```
+
+## Usage
+
+### Daemon
+
+```bash
+# start daemon
+nocb daemon
+
+# or use systemd
+systemctl --user enable --now nocb
+```
+
+### Commands
+
+```bash
+# minimalistic use with fzf
+nocb print | fzf | nocb copy
+
+# with rofi
+nocb print | rofi -dmenu -i -p "clipboard" | nocb copy
+
+# clear history
+nocb clear
+
+# remove specific entries
+nocb prune <hash1> <hash2>
+```
+
+## Display Format
+
+```
+3m use anyhow::{Context, Result}; use arboard… #b9ef2033
+27s Preview of large text file… [38K] #a7c4f892
+1d [IMG:1920x1080px png 256K] #d8e9f023
+```
+
+- **time** — relative timestamp (s/m/h/d)
+- **content** — truncated to fit 80 chars
+- **size** — file size for large entries
+- **hash** — 8-char prefix for retrieval
+
+## Configuration
+
+`~/.config/nocb/config.toml`:
+
+```toml
+cache_dir = "~/.cache/nocb"
+max_entries = 10000
+max_display_length = 200
+max_print_entries = 1000
+blacklist = ["KeePassXC", "1Password"]
+trim_whitespace = true
+compress_threshold = 4096
+```
+
+## Implementation
+
+Built in rust with tokio async runtime, arboard for cross-platform clipboard access, sqlite with prepared statements, and zstd compression level 3. Uses non-blocking clipboard polling and LRU cache for recent entries.
+
+## Built by Rotko Networks
+
+nocb is developed and maintained by [Rotko Networks](https://rotko.net), focusing on efficient unix tooling for power users.

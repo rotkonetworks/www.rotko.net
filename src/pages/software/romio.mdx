@@ -1,0 +1,118 @@
+---
+title: "romio"
+repo: "https://github.com/rotkonetworks/romio"
+description: "JAM (Join Accumulate Machine) implementation in Julia with full PVM interpreter and 100% STF test coverage."
+tags: ["julia", "jam", "polkadot", "blockchain", "pvm"]
+---
+
+# romio
+
+**JAM in Julia** — Full implementation of the Join Accumulate Machine protocol with PolkaVM interpreter and JAMNP-S networking.
+
+## Why Julia
+
+JAM requires intensive numerical computation for cryptography, state transitions, and VM execution. Julia's JIT compilation delivers near-native performance while maintaining high-level expressiveness — ideal for protocol research and rapid iteration.
+
+## Status
+
+149/149 STF tests passing (100%)
+
+| Component | Tests |
+|-----------|-------|
+| Authorizations | 3/3 |
+| Statistics | 3/3 |
+| History | 4/4 |
+| Accumulate | 30/30 |
+| SAFROLE | 21/21 |
+| Assurances | 10/10 |
+| Preimages | 8/8 |
+| Reports | 42/42 |
+| Disputes | 28/28 |
+
+## Features
+
+- **Full STF** — complete state transition function implementation
+- **PVM interpreter** — 95 instructions (JAM v1 ISA), 32 registers, 4GB sparse address space
+- **JAMNP-S networking** — QUIC-based protocol for JAM nodes
+- **JSON-RPC server** — compatible with jamt tooling
+- **GRANDPA consensus** — block production and finality
+- **Service deployment** — deploy and run PVM services
+
+## Installation
+
+```bash
+# requirements: Julia 1.12+, Rust (for bandersnatch-ffi)
+
+make        # builds deps + sysimage
+make test   # run tests
+```
+
+## Usage
+
+```bash
+# cli help
+make run ARGS="--help"
+
+# run testnet (compatible with jamt cli)
+make run ARGS="testnet"
+
+# or directly with sysimage:
+julia -J build/romio.so --project=. bin/romio testnet
+```
+
+## Testnet
+
+romio runs a JAM-compatible testnet with bootstrap service:
+
+```bash
+# start testnet
+./bin/romio testnet
+
+# in another terminal, use jamt to deploy services
+jamt --rpc ws://localhost:19800 create-service ./myservice.corevm
+jamt --rpc ws://localhost:19800 vm new ./doom.corevm 1000000000
+```
+
+## PVM Implementation
+
+The PolkaVM interpreter supports:
+- 95 instructions (JAM v1 ISA)
+- 32 registers (13 general purpose)
+- 4GB sparse address space (two-level page table)
+- Gas metering
+- 27+ host call types
+- Optional Rust FFI backend for ~70x faster execution
+
+## Building Services
+
+JAM services are PVM programs with refine/accumulate entry points:
+
+```bash
+# using polkaports toolchain
+cd ~/rotko/polkaports
+. ./activate.sh polkavm
+
+# compile c to elf
+polkavm-cc -flto -Os service.c -o service.elf
+
+# link to jam format
+polkatool link --dispatch-table '_jb_entry_refine,_jb_entry_accumulate' service.elf -o service.jam
+```
+
+## Architecture
+
+```
+src/
+  types/       # JAM types (State, Block, ServiceAccount, etc)
+  stf/         # State transition functions
+  pvm/         # PolkaVM interpreter + host calls
+  crypto/      # Blake2b, Keccak, Bandersnatch VRF
+  codec/       # JAM serialization
+  network/     # QUIC networking (JAMNP-S)
+  rpc/         # JSON-RPC server
+  consensus/   # GRANDPA, block production
+```
+
+## Built by Rotko Networks
+
+romio is developed and maintained by [Rotko Networks](https://rotko.net), contributing to the JAM ecosystem with a research-focused implementation.

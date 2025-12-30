@@ -1,0 +1,116 @@
+---
+title: "bspwm1"
+repo: "https://github.com/rotkonetworks/bspwm"
+description: "Hardened forks of bspwm and sxhkd with security fixes, memory safety, C23 modernization, and reduced X11 latency."
+tags: ["c", "x11", "window-manager", "tiling", "security", "hotkey"]
+---
+
+# bspwm1
+
+**Hardened bspwm + sxhkd** — Security-focused forks of baskerville's bspwm window manager and sxhkd hotkey daemon with memory safety improvements, C23 modernization, and X11 pipelining.
+
+## Why These Forks
+
+The original bspwm and sxhkd are minimal, fast tools that form a complete tiling window manager setup. Our forks add security hardening and modernization without sacrificing performance — identical latency on localhost, measurable improvements on remote X11.
+
+## bspwm Changes
+
+### Security Hardening
+
+- Buffer overflow fixes with bounds checking
+- Integer overflow protection on size calculations
+- Safe memory allocation wrappers (NULL checks, overflow detection)
+- Format string vulnerability fixes
+- Input validation on all IPC commands
+- Resource limits (tree depth, string sizes)
+
+### Memory Safety
+
+- Scratch arena allocator for per-command temporary allocations
+- Eliminates leak-prone manual `free()` on error paths
+- `__attribute__((cold))` on error handlers for better I-cache utilization
+- Struct field reordering to eliminate padding holes
+
+### X11 Pipelining
+
+Reduced X11 round-trips in rule application (6→1) and client initialization (4→1).
+
+| scenario | round-trip latency | savings |
+|----------|-------------------|---------|
+| localhost | ~10μs | ~50μs (not measurable) |
+| remote X11 | ~500μs | ~2-4ms per window |
+
+### Benchmark Results (localhost, 100 iterations)
+
+```
+                      upstream    current
+command latency:         4 μs       4 μs
+window create+map:    1634 μs    1637 μs
+```
+
+Identical performance. Security hardening adds no measurable overhead.
+
+## sxhkd Changes
+
+- Refactored to C23 with modern optimizations
+- Hardened build configuration
+- Added `closefrom()` for secure file descriptor handling
+- Improved security posture while maintaining compatibility
+
+## Installation
+
+Both available in AUR as `bspwm1` and `sxhkd1`.
+
+```bash
+# bspwm
+git clone https://github.com/rotkonetworks/bspwm
+cd bspwm && make && make install
+
+# sxhkd
+git clone https://github.com/rotkonetworks/sxhkd
+cd sxhkd && make && make install
+```
+
+Dependencies: libxcb, xcb-util, xcb-util-keysyms, xcb-util-wm
+
+## Configuration
+
+### bspwm
+
+Config: `$XDG_CONFIG_HOME/bspwm/bspwmrc`
+
+```bash
+# start
+exec bspwm
+
+# control via bspc
+bspc node -f west
+bspc desktop -f next
+```
+
+### sxhkd
+
+Config: `~/.config/sxhkd/sxhkdrc`
+
+```bash
+# basic bindings
+super + Return
+    alacritty
+
+# parallel notation
+super + {h,j,k,l}
+    bspc node -f {west,south,north,east}
+
+# chained keys
+super + o ; {e,w,m}
+    {gvim,firefox,thunderbird}
+```
+
+## Repositories
+
+- **bspwm**: [github.com/rotkonetworks/bspwm](https://github.com/rotkonetworks/bspwm)
+- **sxhkd**: [github.com/rotkonetworks/sxhkd](https://github.com/rotkonetworks/sxhkd)
+
+## Built by Rotko Networks
+
+These forks are maintained by [Rotko Networks](https://rotko.net), focusing on security-hardened unix tooling for paranoid power users.
