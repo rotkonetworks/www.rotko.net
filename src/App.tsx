@@ -12,6 +12,7 @@ import SoftwarePage from './pages/SoftwarePage'
 import SoftwarePostPage from './pages/SoftwarePostPage'
 import ContactPage from './pages/ContactPage'
 import ValidatorPage from './pages/ValidatorPage'
+import ValidatorsPage from './pages/ValidatorsPage'
 
 const App: Component = () => {
   return (
@@ -25,6 +26,7 @@ const App: Component = () => {
       <Route path="/software" component={SoftwarePage} />
       <Route path="/software/vctl" component={ValidatorPage} />
       <Route path="/software/:slug" component={SoftwarePostPage} />
+      <Route path="/validators" component={ValidatorsPage} />
       <Route path="/team" component={TeamPage} />
       <Route path="/infrastructure" component={InfrastructurePage} />
       <Route path="/contact" component={ContactPage} />
