@@ -60,8 +60,10 @@ Features:
 ## Networks Supported
 
 - Polkadot: Scalable ubiquitous public compute (12.2% APY, 99.99% uptime)
-- Kusama: Most decentralized privacy network (14.8% APY, 99.97% uptime)
+- Kusama: Canary network for rapid iteration (14.8% APY, 99.97% uptime)
 - Penumbra: End to end encrypted blockchain (2% APY, 99.98% uptime)
+- Zcash: Privacy-preserving digital currency (0% APY, 99.95% uptime)
+- Paseo: Community testnet for Polkadot (0% APY, 99.98% uptime)
 
 ## Philosophy
 
@@ -96,4 +98,4 @@ Key facts:
 - Philosophy: Linux-only, open source, no vendor lock-in
 - IRC preferred for support (no accounts needed)
 
-Generated: 2025-12-31T19:37:45.610Z
+Generated: 2025-12-31T19:39:34.495Z

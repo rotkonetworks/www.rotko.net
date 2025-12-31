@@ -68,8 +68,8 @@ export const siteData = {
     {
       id: "kusama",
       name: "Kusama",
-      description: "Most decentralized privacy network",
-      type: "mainnet" as const,
+      description: "Canary network for rapid iteration",
+      type: "canary" as const,
       coingeckoId: "kusama",
       stats: { apy: 14.8, uptime: 99.97, staked: 44.4, inflation: 10.0 },
       price: { current: 0, change24h: 0, change30d: 0 }
@@ -81,6 +81,23 @@ export const siteData = {
       type: "mainnet" as const,
       coingeckoId: "penumbra",
       stats: { apy: 2.00, uptime: 99.98, staked: 13.2, inflation: 0.26 },
+      price: { current: 0, change24h: 0, change30d: 0 }
+    },
+    {
+      id: "zcash",
+      name: "Zcash",
+      description: "Privacy-preserving digital currency",
+      type: "mainnet" as const,
+      coingeckoId: "zcash",
+      stats: { apy: 0, uptime: 99.95, staked: 0, inflation: 0 },
+      price: { current: 0, change24h: 0, change30d: 0 }
+    },
+    {
+      id: "paseo",
+      name: "Paseo",
+      description: "Community testnet for Polkadot",
+      type: "testnet" as const,
+      stats: { apy: 0, uptime: 99.98, staked: 0, inflation: 0 },
       price: { current: 0, change24h: 0, change30d: 0 }
     }
   ] as Network[],
