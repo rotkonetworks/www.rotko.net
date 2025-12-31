@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build site
+        run: bun run build
+
+      - name: Download redbean and ape loader
+        run: |
+          wget -q https://cosmo.zip/pub/cosmos/bin/ape-x86_64.elf -O ape
+          wget -q https://redbean.dev/redbean-2.2.com -O redbean.com
+          chmod +x ape redbean.com
+
+      - name: Pack site into redbean
+        run: |
+          cd dist && zip -r ../redbean.com .
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H www.rotko.net >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        run: |
+          scp -i ~/.ssh/id_deploy ape redbean.com deploy@www.rotko.net:/tmp/
+          ssh -i ~/.ssh/id_deploy deploy@www.rotko.net bash -s <<'EOF'
+          set -e
+          cd /tmp
+
+          # Stop existing container
+          podman stop ligerito-web 2>/dev/null || true
+          podman rm ligerito-web 2>/dev/null || true
+
+          # Move files to place
+          sudo mkdir -p /srv/ligerito
+          sudo mv ape /srv/ligerito/ape
+          sudo mv redbean.com /srv/ligerito/redbean.com
+          sudo chmod +x /srv/ligerito/ape /srv/ligerito/redbean.com
+
+          # Run container on port 8090 (haproxy will forward ligerito.rotko.net -> 127.0.0.1:8090)
+          podman run -d \
+            --name ligerito-web \
+            --restart=always \
+            -p 127.0.0.1:8090:80 \
+            -v /srv/ligerito/redbean.com:/redbean.com:ro \
+            -v /srv/ligerito/ape:/usr/bin/ape:ro \
+            alpine:latest /usr/bin/ape /redbean.com -vv -p 80
+
+          # Verify
+          sleep 2
+          curl -sf http://127.0.0.1:8090/ > /dev/null && echo "Deploy OK"
+          EOF

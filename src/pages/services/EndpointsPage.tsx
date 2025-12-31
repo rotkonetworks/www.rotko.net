@@ -3,66 +3,11 @@ import { useParams, A } from '@solidjs/router'
 import { createClient } from 'polkadot-api'
 import { getWsProvider } from 'polkadot-api/ws-provider/web'
 import MainLayout from '../../layouts/MainLayout'
-
-interface ChainConfig {
-  name: string
-  endpoints: {
-    name: string
-    url: string
-    type: 'relay' | 'assetHub' | 'people' | 'bridge' | 'collectives'
-    description: string
-  }[]
-  ss58: number
-  decimals: number
-  token: string
-  color: string
-}
-
-const CHAINS: Record<string, ChainConfig> = {
-  polkadot: {
-    name: 'Polkadot',
-    endpoints: [
-      { name: 'Relay Chain', url: 'wss://polkadot.dotters.network', type: 'relay', description: 'Main relay chain RPC' },
-      { name: 'Asset Hub', url: 'wss://asset-hub-polkadot.dotters.network', type: 'assetHub', description: 'Assets, staking, and system parachains' },
-      { name: 'People Chain', url: 'wss://people-polkadot.dotters.network', type: 'people', description: 'Identity and people chain' },
-      { name: 'Bridge Hub', url: 'wss://bridge-hub-polkadot.dotters.network', type: 'bridge', description: 'Cross-chain bridge infrastructure' },
-      { name: 'Collectives', url: 'wss://collectives-polkadot.dotters.network', type: 'collectives', description: 'Fellowship and governance' },
-    ],
-    ss58: 0,
-    decimals: 10,
-    token: 'DOT',
-    color: 'pink'
-  },
-  kusama: {
-    name: 'Kusama',
-    endpoints: [
-      { name: 'Relay Chain', url: 'wss://kusama.dotters.network', type: 'relay', description: 'Main relay chain RPC' },
-      { name: 'Asset Hub', url: 'wss://asset-hub-kusama.dotters.network', type: 'assetHub', description: 'Assets, staking, and system parachains' },
-      { name: 'People Chain', url: 'wss://people-kusama.dotters.network', type: 'people', description: 'Identity and people chain' },
-      { name: 'Bridge Hub', url: 'wss://bridge-hub-kusama.dotters.network', type: 'bridge', description: 'Cross-chain bridge infrastructure' },
-      { name: 'Coretime', url: 'wss://coretime-kusama.dotters.network', type: 'collectives', description: 'Coretime marketplace' },
-    ],
-    ss58: 2,
-    decimals: 12,
-    token: 'KSM',
-    color: 'gray'
-  },
-  paseo: {
-    name: 'Paseo',
-    endpoints: [
-      { name: 'Relay Chain', url: 'wss://paseo.dotters.network', type: 'relay', description: 'Main relay chain RPC' },
-      { name: 'Asset Hub', url: 'wss://asset-hub-paseo.dotters.network', type: 'assetHub', description: 'Assets, staking, and system parachains' },
-      { name: 'People Chain', url: 'wss://people-paseo.dotters.network', type: 'people', description: 'Identity and people chain' },
-    ],
-    ss58: 0,
-    decimals: 10,
-    token: 'PAS',
-    color: 'green'
-  }
-}
+import { CHAINS, ENDPOINT_PROVIDERS, buildEndpointUrl } from '../../data/endpoints-data'
 
 interface EndpointStatus {
   url: string
+  provider: string
   connected: boolean
   latency: number | null
   blockNumber: number | null
@@ -73,14 +18,29 @@ const EndpointsPage: Component = () => {
   const params = useParams()
   const [statuses, setStatuses] = createSignal<Map<string, EndpointStatus>>(new Map())
   const [testing, setTesting] = createSignal(false)
+  const [copiedUrl, setCopiedUrl] = createSignal<string | null>(null)
   const clients: Map<string, any> = new Map()
 
   const network = () => params.network?.toLowerCase() || 'polkadot'
   const config = () => CHAINS[network()] || CHAINS.polkadot
 
-  const testEndpoint = async (url: string): Promise<EndpointStatus> => {
+  const testEndpoint = async (url: string, provider: string): Promise<EndpointStatus> => {
     const start = Date.now()
     try {
+      if (url.startsWith('https://')) {
+        // HTTP endpoint - just ping
+        const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' })
+        const latency = Date.now() - start
+        return {
+          url,
+          provider,
+          connected: true,
+          latency,
+          blockNumber: null,
+          error: null
+        }
+      }
+
       const client = createClient(getWsProvider(url))
       clients.set(url, client)
       const api = await client.getUnsafeApi()
@@ -89,6 +49,7 @@ const EndpointsPage: Component = () => {
 
       return {
         url,
+        provider,
         connected: true,
         latency,
         blockNumber: Number(blockNumber),
@@ -97,6 +58,7 @@ const EndpointsPage: Component = () => {
     } catch (err) {
       return {
         url,
+        provider,
         connected: false,
         latency: null,
         blockNumber: null,
@@ -111,8 +73,17 @@ const EndpointsPage: Component = () => {
     const newStatuses = new Map<string, EndpointStatus>()
 
     for (const endpoint of cfg.endpoints) {
-      const status = await testEndpoint(endpoint.url)
-      newStatuses.set(endpoint.url, status)
+      // Test both providers in parallel
+      const promises = ENDPOINT_PROVIDERS.map(async (provider) => {
+        const url = buildEndpointUrl(endpoint.slug, provider.domain as 'dotters.network' | 'rotko.net')
+        const status = await testEndpoint(url, provider.name)
+        return { key: `${endpoint.slug}-${provider.domain}`, status }
+      })
+
+      const results = await Promise.all(promises)
+      results.forEach(({ key, status }) => {
+        newStatuses.set(key, status)
+      })
       setStatuses(new Map(newStatuses))
     }
 
@@ -120,10 +91,8 @@ const EndpointsPage: Component = () => {
   }
 
   createEffect(() => {
-    const _ = network() // track changes
-    // Clear old statuses when switching networks
+    const _ = network()
     setStatuses(new Map())
-    // Cleanup old clients
     for (const client of clients.values()) {
       try { client?.destroy?.() } catch (e) {}
     }
@@ -138,6 +107,8 @@ const EndpointsPage: Component = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+    setCopiedUrl(text)
+    setTimeout(() => setCopiedUrl(null), 2000)
   }
 
   const getTypeColor = (type: string) => {
@@ -147,8 +118,17 @@ const EndpointsPage: Component = () => {
       case 'people': return 'bg-green-900/50 text-green-400'
       case 'bridge': return 'bg-orange-900/50 text-orange-400'
       case 'collectives': return 'bg-blue-900/50 text-blue-400'
+      case 'coretime': return 'bg-pink-900/50 text-pink-400'
+      case 'parachain': return 'bg-indigo-900/50 text-indigo-400'
       default: return 'bg-gray-800 text-gray-400'
     }
+  }
+
+  const getLatencyColor = (latency: number | null) => {
+    if (latency === null) return 'text-gray-500'
+    if (latency < 200) return 'text-green-400'
+    if (latency < 500) return 'text-yellow-400'
+    return 'text-red-400'
   }
 
   return (
@@ -173,7 +153,7 @@ const EndpointsPage: Component = () => {
                   <h1 class="text-2xl font-bold text-cyan-400">
                     {config().name} RPC Endpoints
                   </h1>
-                  <p class="text-gray-400">High-performance WebSocket endpoints</p>
+                  <p class="text-gray-400">Public WebSocket endpoints with latency comparison</p>
                 </div>
               </div>
               <button
@@ -187,6 +167,19 @@ const EndpointsPage: Component = () => {
               >
                 {testing() ? 'Testing...' : 'Test All Endpoints'}
               </button>
+            </div>
+
+            {/* Provider Legend */}
+            <div class="flex flex-wrap gap-4 mb-6 text-sm">
+              <For each={ENDPOINT_PROVIDERS}>
+                {(provider) => (
+                  <div class="flex items-center gap-2">
+                    <span class={`w-3 h-3 rounded-full ${provider.domain === 'dotters.network' ? 'bg-cyan-500' : 'bg-purple-500'}`} />
+                    <span class="text-gray-400">{provider.name}</span>
+                    <span class="text-gray-600">({provider.description})</span>
+                  </div>
+                )}
+              </For>
             </div>
 
             {/* Network Tabs */}
@@ -214,10 +207,12 @@ const EndpointsPage: Component = () => {
 
         {/* Endpoints List */}
         <div class="max-w-6xl mx-auto px-4 py-8">
-          <div class="space-y-4">
+          <div class="space-y-6">
             <For each={config().endpoints}>
               {(endpoint) => {
-                const status = () => statuses().get(endpoint.url)
+                const getStatus = (provider: string) =>
+                  statuses().get(`${endpoint.slug}-${provider}`)
+
                 return (
                   <div class="p-6 bg-gray-900/50 border border-gray-800 rounded-lg">
                     <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
@@ -227,64 +222,77 @@ const EndpointsPage: Component = () => {
                           <span class={`px-2 py-1 text-xs rounded ${getTypeColor(endpoint.type)}`}>
                             {endpoint.type}
                           </span>
-                          <Show when={status()}>
-                            <span class={`px-2 py-1 text-xs rounded ${
-                              status()!.connected
-                                ? 'bg-green-900/50 text-green-400'
-                                : 'bg-red-900/50 text-red-400'
-                            }`}>
-                              {status()!.connected ? 'Connected' : 'Failed'}
-                            </span>
-                          </Show>
                         </div>
                         <p class="text-sm text-gray-500 mt-1">{endpoint.description}</p>
                       </div>
-                      <Show when={status()?.connected}>
-                        <div class="text-right text-sm">
-                          <div class="text-gray-500">Latency</div>
-                          <div class={`font-mono ${
-                            status()!.latency! < 100 ? 'text-green-400' :
-                            status()!.latency! < 300 ? 'text-yellow-400' : 'text-red-400'
-                          }`}>
-                            {status()!.latency}ms
-                          </div>
-                        </div>
-                      </Show>
                     </div>
 
-                    {/* URL */}
-                    <div class="flex items-center gap-2 p-3 bg-black rounded-lg">
-                      <code class="flex-1 text-sm text-cyan-400 font-mono overflow-x-auto">
-                        {endpoint.url}
-                      </code>
-                      <button
-                        onClick={() => copyToClipboard(endpoint.url)}
-                        class="px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
-                      >
-                        Copy
-                      </button>
-                    </div>
+                    {/* Endpoint URLs for each provider */}
+                    <div class="space-y-3">
+                      <For each={ENDPOINT_PROVIDERS}>
+                        {(provider) => {
+                          const url = buildEndpointUrl(endpoint.slug, provider.domain as 'dotters.network' | 'rotko.net')
+                          const status = getStatus(provider.domain)
 
-                    {/* Status Details */}
-                    <Show when={status()}>
-                      <div class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                        <Show when={status()!.connected}>
-                          <div>
-                            <div class="text-gray-500">Block</div>
-                            <div class="text-white font-mono">#{status()!.blockNumber?.toLocaleString()}</div>
-                          </div>
-                          <div>
-                            <div class="text-gray-500">Protocol</div>
-                            <div class="text-white">WebSocket</div>
-                          </div>
-                        </Show>
-                        <Show when={status()!.error}>
-                          <div class="col-span-full">
-                            <div class="text-red-400 text-sm">{status()!.error}</div>
-                          </div>
-                        </Show>
-                      </div>
-                    </Show>
+                          // Skip dotters.network for zcash
+                          if (endpoint.slug === 'zcash' && provider.domain === 'dotters.network') {
+                            return null
+                          }
+
+                          // Skip dotters.network for parachains (only rotko.net)
+                          if (endpoint.type === 'parachain' && provider.domain === 'dotters.network') {
+                            return null
+                          }
+
+                          return (
+                            <div class="flex items-center gap-3 p-3 bg-black rounded-lg">
+                              <span class={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                provider.domain === 'dotters.network' ? 'bg-cyan-500' : 'bg-purple-500'
+                              }`} />
+
+                              <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                  <span class="text-xs text-gray-500">{provider.name}</span>
+                                  <Show when={status}>
+                                    <span class={`text-xs px-2 py-0.5 rounded ${
+                                      status!.connected
+                                        ? 'bg-green-900/50 text-green-400'
+                                        : 'bg-red-900/50 text-red-400'
+                                    }`}>
+                                      {status!.connected ? 'OK' : 'Failed'}
+                                    </span>
+                                    <Show when={status!.latency !== null}>
+                                      <span class={`text-xs font-mono ${getLatencyColor(status!.latency)}`}>
+                                        {status!.latency}ms
+                                      </span>
+                                    </Show>
+                                    <Show when={status!.blockNumber !== null}>
+                                      <span class="text-xs text-gray-600">
+                                        #{status!.blockNumber?.toLocaleString()}
+                                      </span>
+                                    </Show>
+                                  </Show>
+                                </div>
+                                <code class="text-sm text-cyan-400 font-mono break-all">
+                                  {url}
+                                </code>
+                              </div>
+
+                              <button
+                                onClick={() => copyToClipboard(url)}
+                                class={`px-3 py-1 text-xs rounded transition-colors flex-shrink-0 ${
+                                  copiedUrl() === url
+                                    ? 'bg-green-800 text-green-300'
+                                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                                }`}
+                              >
+                                {copiedUrl() === url ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                          )
+                        }}
+                      </For>
+                    </div>
 
                     {/* Usage Examples */}
                     <details class="mt-4">
@@ -295,13 +303,13 @@ const EndpointsPage: Component = () => {
                         <div>
                           <div class="text-xs text-gray-500 mb-1">polkadot-api</div>
                           <code class="block p-2 bg-black rounded text-xs text-gray-300 overflow-x-auto">
-                            {`const client = createClient(getWsProvider('${endpoint.url}'))`}
+                            {`const client = createClient(getWsProvider('${buildEndpointUrl(endpoint.slug, 'dotters.network')}'))`}
                           </code>
                         </div>
                         <div>
                           <div class="text-xs text-gray-500 mb-1">wscat</div>
                           <code class="block p-2 bg-black rounded text-xs text-gray-300 overflow-x-auto">
-                            {`wscat -c ${endpoint.url}`}
+                            {`wscat -c ${buildEndpointUrl(endpoint.slug, 'rotko.net')}`}
                           </code>
                         </div>
                       </div>
@@ -316,11 +324,11 @@ const EndpointsPage: Component = () => {
           <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800 rounded-lg text-sm text-gray-500">
             <h3 class="text-white font-semibold mb-2">Endpoint Features</h3>
             <ul class="space-y-1">
-              <li>• Direct BGP routing via AS142108</li>
+              <li>• <span class="text-cyan-400">dotters.network</span> - IBP GeoDNS with global anycast routing</li>
+              <li>• <span class="text-purple-400">rotko.net</span> - Direct connection via AS142108</li>
               <li>• No rate limits for reasonable usage</li>
               <li>• Full archive node access</li>
               <li>• WebSocket and HTTP/2 support</li>
-              <li>• Anycast failover for high availability</li>
             </ul>
           </div>
         </div>

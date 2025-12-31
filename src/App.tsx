@@ -5,6 +5,7 @@ import TeamPage from './pages/TeamPage'
 import InfrastructurePage from './pages/InfrastructurePage'
 import ServicesPage from './pages/ServicesPage'
 import StakingPage from './pages/services/StakingPage'
+import PenumbraStakingPage from './pages/services/PenumbraStakingPage'
 import EndpointsPage from './pages/services/EndpointsPage'
 import BlogPage from './pages/BlogPage'
 import BlogPostPage from './pages/BlogPostPage'
@@ -21,6 +22,7 @@ const App: Component = () => {
       <Route path="/" component={HomePage} />
       <Route path="/services" component={ServicesPage} />
       <Route path="/services/staking" component={StakingPage} />
+      <Route path="/services/staking/penumbra" component={PenumbraStakingPage} />
       <Route path="/services/staking/:network" component={StakingPage} />
       <Route path="/services/endpoints" component={EndpointsPage} />
       <Route path="/services/endpoints/:network" component={EndpointsPage} />

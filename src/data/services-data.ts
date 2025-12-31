@@ -1,3 +1,33 @@
+import { ROTKO_VALIDATORS } from './validator-data'
+
+export interface StakingNetwork {
+  id: string
+  name: string
+  token: string
+  validators: number
+}
+
+export interface EndpointNetwork {
+  id: string
+  name: string
+  token: string
+  description: string
+}
+
+export const STAKING_NETWORKS: StakingNetwork[] = [
+  { id: 'polkadot', name: 'Polkadot', token: 'DOT', validators: ROTKO_VALIDATORS.polkadot?.length || 0 },
+  { id: 'kusama', name: 'Kusama', token: 'KSM', validators: ROTKO_VALIDATORS.kusama?.length || 0 },
+  { id: 'paseo', name: 'Paseo', token: 'PAS', validators: ROTKO_VALIDATORS.paseo?.length || 0 },
+  { id: 'penumbra', name: 'Penumbra', token: 'UM', validators: ROTKO_VALIDATORS.penumbra?.length || 0 },
+]
+
+export const ENDPOINT_NETWORKS: EndpointNetwork[] = [
+  { id: 'polkadot', name: 'Polkadot', token: 'DOT', description: 'Relay, system chains, and parachains' },
+  { id: 'kusama', name: 'Kusama', token: 'KSM', description: 'Relay, system chains, and parachains' },
+  { id: 'paseo', name: 'Paseo', token: 'PAS', description: 'Relay and system chains' },
+  { id: 'zcash', name: 'Zcash', token: 'ZEC', description: 'Zidecar RPC' },
+]
+
 export interface Service {
   title: string
   description: string

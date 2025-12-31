@@ -1,54 +1,11 @@
 import { Component, createSignal, createEffect, For, Show, onCleanup } from 'solid-js'
-import { useParams, A } from '@solidjs/router'
+import { useParams, A, useNavigate } from '@solidjs/router'
 import { createClient } from 'polkadot-api'
 import { getWsProvider } from 'polkadot-api/ws-provider/web'
 import MainLayout from '../../layouts/MainLayout'
 import { ROTKO_VALIDATORS } from '../../data/validator-data'
+import { STAKING_CHAINS } from '../../data/staking-data'
 import { turboflakesService, type ValidatorGrade } from '../../services/turboflakes-service'
-
-interface ChainConfig {
-  name: string
-  assetHub: string
-  relay: string
-  ss58: number
-  decimals: number
-  token: string
-  subscan: string
-  color: string
-}
-
-const CHAINS: Record<string, ChainConfig> = {
-  polkadot: {
-    name: 'Polkadot',
-    assetHub: 'wss://asset-hub-polkadot.dotters.network',
-    relay: 'wss://polkadot.dotters.network',
-    ss58: 0,
-    decimals: 10,
-    token: 'DOT',
-    subscan: 'https://polkadot.subscan.io',
-    color: 'pink'
-  },
-  kusama: {
-    name: 'Kusama',
-    assetHub: 'wss://asset-hub-kusama.dotters.network',
-    relay: 'wss://kusama.dotters.network',
-    ss58: 2,
-    decimals: 12,
-    token: 'KSM',
-    subscan: 'https://kusama.subscan.io',
-    color: 'gray'
-  },
-  paseo: {
-    name: 'Paseo',
-    assetHub: 'wss://asset-hub-paseo.dotters.network',
-    relay: 'wss://paseo.dotters.network',
-    ss58: 0,
-    decimals: 10,
-    token: 'PAS',
-    subscan: 'https://paseo.subscan.io',
-    color: 'green'
-  }
-}
 
 interface ValidatorStatus {
   address: string
@@ -65,6 +22,7 @@ interface ValidatorStatus {
 
 const StakingPage: Component = () => {
   const params = useParams()
+  const navigate = useNavigate()
   const [validators, setValidators] = createSignal<ValidatorStatus[]>([])
   const [loading, setLoading] = createSignal(true)
   const [currentEra, setCurrentEra] = createSignal<number | null>(null)
@@ -73,7 +31,14 @@ const StakingPage: Component = () => {
   let client: any = null
 
   const network = () => params.network?.toLowerCase() || 'polkadot'
-  const config = () => CHAINS[network()] || CHAINS.polkadot
+  const config = () => STAKING_CHAINS[network()] || STAKING_CHAINS.polkadot
+
+  // Redirect to Penumbra page if that network is selected
+  createEffect(() => {
+    if (network() === 'penumbra') {
+      navigate('/services/staking/penumbra', { replace: true })
+    }
+  })
 
   const formatBalance = (value: bigint): string => {
     const cfg = config()
@@ -227,7 +192,7 @@ const StakingPage: Component = () => {
 
             {/* Network Tabs */}
             <div class="flex flex-wrap gap-2">
-              <For each={Object.entries(CHAINS)}>
+              <For each={Object.entries(STAKING_CHAINS)}>
                 {([chainId, cfg]) => (
                   <A
                     href={`/services/staking/${chainId}`}

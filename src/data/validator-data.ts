@@ -26,7 +26,10 @@ export const ROTKO_VALIDATORS: Record<string, { address: string; name: string }[
     { address: '138KL2HVHLsuk1NhNjnttQbcWfSahCBsjDbXF9vigbxrdXij', name: 'ROTKO NETWORKS/04' },
     { address: '15dbNAcR6qoKv65mkq4EUVzvtxZg1gA7JrVa1ywkkF37VgdX', name: 'ROTKO NETWORKS/05' },
     { address: '12EgzZggXfmuZS4q88wxWcwU3hj4v2yH2dEaBfvMTfGpkQ6c', name: 'ROTKO NETWORKS/06' },
-  ]
+  ],
+  penumbra: [
+    { address: 'penumbravalid1ar6hyxmvy0em86nclqgxc4qlauj9ct747g4dsx8tn6wthg9nuvrq099640', name: 'rotko.net' },
+  ],
 }
 
 export const validatorData = {

@@ -1,17 +1,10 @@
 import { Component, For } from 'solid-js'
 import { A } from '@solidjs/router'
 import MainLayout from '../layouts/MainLayout'
-import { servicesData } from '../data/services-data'
-import { ROTKO_VALIDATORS } from '../data/validator-data'
-
-const NETWORKS = [
-  { id: 'polkadot', name: 'Polkadot', token: 'DOT', validators: ROTKO_VALIDATORS.polkadot?.length || 0 },
-  { id: 'kusama', name: 'Kusama', token: 'KSM', validators: ROTKO_VALIDATORS.kusama?.length || 0 },
-  { id: 'paseo', name: 'Paseo', token: 'PAS', validators: ROTKO_VALIDATORS.paseo?.length || 0 },
-]
+import { servicesData, STAKING_NETWORKS, ENDPOINT_NETWORKS } from '../data/services-data'
 
 const ServicesPage: Component = () => {
-  const totalValidators = () => NETWORKS.reduce((sum, n) => sum + n.validators, 0)
+  const totalValidators = () => STAKING_NETWORKS.reduce((sum, n) => sum + n.validators, 0)
 
   return (
     <MainLayout>
@@ -33,7 +26,7 @@ const ServicesPage: Component = () => {
             <span class="text-sm text-gray-500">{totalValidators()} validators</span>
           </div>
           <div class="grid md:grid-cols-3 gap-4">
-            <For each={NETWORKS}>
+            <For each={STAKING_NETWORKS}>
               {(network) => (
                 <A
                   href={`/services/staking/${network.id}`}
@@ -65,7 +58,7 @@ const ServicesPage: Component = () => {
             <h2 class="text-xl font-bold text-cyan-400">RPC Endpoints</h2>
           </div>
           <div class="grid md:grid-cols-3 gap-4">
-            <For each={NETWORKS}>
+            <For each={ENDPOINT_NETWORKS}>
               {(network) => (
                 <A
                   href={`/services/endpoints/${network.id}`}
@@ -80,7 +73,7 @@ const ServicesPage: Component = () => {
                     </span>
                   </div>
                   <div class="text-sm text-gray-400 mb-2">
-                    Relay, Asset Hub, People Chain
+                    {network.description}
                   </div>
                   <div class="text-xs text-cyan-400 group-hover:text-cyan-300">
                     View endpoints →
