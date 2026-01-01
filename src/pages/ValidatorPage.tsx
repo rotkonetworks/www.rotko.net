@@ -1,22 +1,11 @@
-import { Component, createSignal, For, Show, createMemo, onMount, onCleanup, createEffect } from 'solid-js'
+import { Component, createSignal, Show, createEffect, onMount, onCleanup, For } from 'solid-js'
 import { useSearchParams } from '@solidjs/router'
 import MainLayout from '../layouts/MainLayout'
-import PageHeader from '../components/PageHeader'
 import { WalletConnector } from '../components/WalletConnector'
-import { ProxyManager } from '../components/polkadot/ProxyManager'
-import { StakingModal } from '../components/polkadot/StakingModal'
-import { UnclaimedEras } from '../components/polkadot/UnclaimedEras'
-import { StakingDashboard } from '../components/polkadot/StakingDashboard'
-import { RotkoValidatorStatus } from '../components/polkadot/RotkoValidatorStatus'
-import { StakingAccountCard } from '../components/polkadot/StakingAccountCard'
-import { AccountDiscovery } from '../components/polkadot/AccountDiscovery'
-import { TransactionConfirmation, type TransactionDetails, type ProxyOption } from '../components/polkadot/TransactionConfirmation'
-import type { OperationType } from '../components/polkadot/StakingModal'
-import { validatorData } from '../data/validator-data'
-import type { InjectedAccountWithMeta, ChainId, ChainConfig, ProxyAccount } from '../types/polkadot'
-import { getSs58AddressInfo, fromBufferToBase58 } from '@polkadot-api/substrate-bindings'
+import type { InjectedAccountWithMeta, ChainId, ChainConfig } from '../types/polkadot'
 import { multiChainServicePapi } from '../services/multi-chain-service-papi'
 import type { AccountBalance, StakingData } from '../services/multi-chain-service-papi'
+import { ROTKO_VALIDATORS } from '../data/validator-data'
 
 const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
   polkadot: {
@@ -40,7 +29,7 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
     token: 'KSM'
   },
   paseo: {
-    name: 'Paseo Testnet',
+    name: 'Paseo',
     relay: 'wss://paseo.dotters.network',
     assetHub: 'wss://asset-hub-paseo.dotters.network',
     peopleChain: 'wss://people-paseo.dotters.network',
@@ -51,80 +40,50 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
   }
 }
 
-const ValidatorToolContent: Component = () => {
+type TabId = 'nominate' | 'bond' | 'session' | 'status'
+
+const ValidatorPage: Component = () => {
   const [searchParams] = useSearchParams()
+
+  // Core state
+  const [selectedChain, setSelectedChain] = createSignal<ChainId>(
+    (searchParams.network?.toLowerCase() as ChainId) || 'polkadot'
+  )
   const [connectedAccounts, setConnectedAccounts] = createSignal<InjectedAccountWithMeta[]>([])
-  const [proxyAccounts, setProxyAccounts] = createSignal<ProxyAccount[]>([])
-  const [searchTerm, setSearchTerm] = createSignal('')
-  const [filterType, setFilterType] = createSignal<'all' | 'validators' | 'stashes' | 'nominators' | 'other'>('all')
-  const [viewMode, setViewMode] = createSignal<'grid' | 'list'>('list')
-  const [expandedAccounts, setExpandedAccounts] = createSignal<Set<string>>(new Set())
-  const [showWalletMenu, setShowWalletMenu] = createSignal(false)
-  const [showNetworkMenu, setShowNetworkMenu] = createSignal(false)
-  const [showProxyModal, setShowProxyModal] = createSignal(false)
-  const [showDiscoveryPanel, setShowDiscoveryPanel] = createSignal(false)
-  const [preselectedValidator, setPreselectedValidator] = createSignal<string | null>(null)
+  const [selectedAccount, setSelectedAccount] = createSignal<InjectedAccountWithMeta | null>(null)
+  const [activeTab, setActiveTab] = createSignal<TabId>('nominate')
 
-  // Parse URL params for network and pre-selected validator
-  const getInitialChain = (): ChainId => {
-    const networkParam = searchParams.network?.toLowerCase()
-    if (networkParam && networkParam in CHAIN_CONFIGS) {
-      return networkParam as ChainId
-    }
-    return 'polkadot'
-  }
+  // Chain data
+  const [balance, setBalance] = createSignal<AccountBalance | null>(null)
+  const [stakingData, setStakingData] = createSignal<StakingData | null>(null)
+  const [connectionStatus, setConnectionStatus] = createSignal({ relay: false, assetHub: false, peopleChain: false })
 
-  const [selectedChain, setSelectedChain] = createSignal<ChainId>(getInitialChain())
-  const [copiedAddress, setCopiedAddress] = createSignal<string | null>(null)
-  const [connectionStatus, setConnectionStatus] = createSignal({
-    relay: false,
-    assetHub: false,
-    peopleChain: false
-  })
-  const [accountBalances, setAccountBalances] = createSignal<Map<string, AccountBalance>>(new Map())
-  const [accountStaking, setAccountStaking] = createSignal<Map<string, StakingData>>(new Map())
-  const [modalOperation, setModalOperation] = createSignal<OperationType | null>(null)
-  const [modalAccount, setModalAccount] = createSignal<InjectedAccountWithMeta | null>(null)
-  const [txStatus, setTxStatus] = createSignal<{message: string, type: 'success' | 'error' | 'pending'} | null>(null)
-  const [currentEra, setCurrentEra] = createSignal<number | null>(null)
-  const [currentSession, setCurrentSession] = createSignal<number | null>(null)
+  // Operation state
+  const [txStatus, setTxStatus] = createSignal<{ msg: string; type: 'pending' | 'success' | 'error' } | null>(null)
+  const [bondAmount, setBondAmount] = createSignal('')
+  const [sessionKeys, setSessionKeys] = createSignal('')
+  const [selectedValidators, setSelectedValidators] = createSignal<string[]>([])
 
-  // Transaction confirmation state
-  const [pendingTx, setPendingTx] = createSignal<TransactionDetails | null>(null)
-  const [pendingTxData, setPendingTxData] = createSignal<any>(null)
-  const [pendingProxyOption, setPendingProxyOption] = createSignal<ProxyOption | null>(null)
+  // Pre-selected validator from URL
+  const preselectedValidator = () => searchParams.nominate as string | undefined
 
-  // Keyboard shortcuts
-  onMount(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Cmd/Ctrl + F to focus search
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
-        e.preventDefault()
-        document.getElementById('wallet-search')?.focus()
-      }
-      // G for grid, L for list
-      if (e.key === 'g' && !e.metaKey && !e.ctrlKey) setViewMode('grid')
-      if (e.key === 'l' && !e.metaKey && !e.ctrlKey) setViewMode('list')
-    }
+  const config = () => CHAIN_CONFIGS[selectedChain()]
+  const rotkoValidators = () => ROTKO_VALIDATORS[selectedChain()] || []
 
-    document.addEventListener('keydown', handleKeyPress)
-    return () => document.removeEventListener('keydown', handleKeyPress)
+  // Connect to chain on mount/network change
+  createEffect(async () => {
+    const chain = selectedChain()
+    const cfg = CHAIN_CONFIGS[chain]
+    await multiChainServicePapi.connect(chain, cfg)
   })
 
-  // Handle URL parameters for pre-selected validator
   onMount(() => {
-    if (searchParams.nominate) {
-      setPreselectedValidator(searchParams.nominate as string)
-      // Auto-open wallet menu if validator is pre-selected
-      setShowWalletMenu(true)
-    }
-  })
+    const unsubscribe = multiChainServicePapi.onStatusChange(setConnectionStatus)
 
-  // Subscribe to connection status
-  onMount(() => {
-    const unsubscribe = multiChainServicePapi.onStatusChange((status) => {
-      setConnectionStatus(status)
-    })
+    // Pre-select Rotko validators if coming from staking page
+    if (preselectedValidator()) {
+      setSelectedValidators([preselectedValidator()!])
+    }
 
     onCleanup(() => {
       unsubscribe()
@@ -132,1109 +91,492 @@ const ValidatorToolContent: Component = () => {
     })
   })
 
-  // Connect to all chains when network changes
+  // Load account data when account selected
   createEffect(async () => {
-    const chain = selectedChain()
-    const config = CHAIN_CONFIGS[chain]
-
-    // Connect to all three chains
-    console.log(`Connecting to ${chain} networks:`)
-    console.log(`  Relay: ${config.relay}`)
-    console.log(`  AssetHub: ${config.assetHub}`)
-    console.log(`  People: ${config.peopleChain}`)
-
-    // Connect using the multi-chain service
-    await multiChainServicePapi.connect(chain, config)
-  })
-
-  // Load account data when accounts or network changes
-  createEffect(async () => {
-    const accounts = connectedAccounts()
-    const chain = selectedChain()
-    const config = CHAIN_CONFIGS[chain]
-
-    if (accounts.length === 0 || !multiChainServicePapi.isConnected()) return
-
-    const balances = new Map<string, AccountBalance>()
-    const staking = new Map<string, StakingData>()
-
-    // Load data for each account
-    for (const account of accounts) {
-      try {
-        const [balance, stakingData] = await Promise.all([
-          multiChainServicePapi.getBalance(account.address),
-          multiChainServicePapi.getStakingInfo(account.address)
-        ])
-
-        if (balance) balances.set(account.address, balance)
-        if (stakingData) staking.set(account.address, stakingData)
-      } catch (error) {
-        console.error(`Failed to load data for ${account.address}:`, error)
-      }
-    }
-
-    setAccountBalances(balances)
-    setAccountStaking(staking)
-  })
-
-  // Format address based on selected network
-  const formatAddress = (address: string): string => {
-    try {
-      const config = CHAIN_CONFIGS[selectedChain()]
-      const addressInfo = getSs58AddressInfo(address)
-      if (!addressInfo.isValid) return address
-      return fromBufferToBase58(config.ss58)(addressInfo.publicKey)
-    } catch (err) {
-      console.warn('Failed to encode address:', err)
-      return address
-    }
-  }
-
-  // Get account type
-  const getAccountType = (account: InjectedAccountWithMeta): 'validator' | 'nominator' | 'stash' | 'other' => {
-    const name = account.meta.name?.toLowerCase() || ''
-    if (name.includes('validator')) return 'validator'
-    if (name.includes('nominator')) return 'nominator'
-    if (name.includes('stash')) return 'stash'
-    return 'other'
-  }
-
-  // Sort accounts by type priority
-  const sortAccounts = (accounts: InjectedAccountWithMeta[]) => {
-    const typeOrder = { validator: 0, nominator: 1, stash: 2, other: 3 }
-    return accounts.sort((a, b) => {
-      const aType = getAccountType(a)
-      const bType = getAccountType(b)
-      return typeOrder[aType] - typeOrder[bType]
-    })
-  }
-
-  // Group and filter accounts
-  const filteredAccounts = createMemo(() => {
-    const accounts = connectedAccounts()
-    const search = searchTerm().toLowerCase()
-    const type = filterType()
-
-    let filtered = accounts.filter(a => {
-      const matchesSearch = !search ||
-        a.meta.name?.toLowerCase().includes(search) ||
-        a.address.toLowerCase().includes(search)
-
-      if (!matchesSearch) return false
-
-      if (type === 'all') return true
-      if (type === 'validators') return getAccountType(a) === 'validator'
-      if (type === 'nominators') return getAccountType(a) === 'nominator'
-      if (type === 'stashes') return getAccountType(a) === 'stash'
-      if (type === 'other') return getAccountType(a) === 'other'
-      return true
-    })
-
-    return sortAccounts(filtered)
-  })
-
-  const accountStats = createMemo(() => {
-    const accounts = connectedAccounts()
-    return {
-      total: accounts.length,
-      validators: accounts.filter(a => getAccountType(a) === 'validator').length,
-      stashes: accounts.filter(a => getAccountType(a) === 'stash').length,
-      nominators: accounts.filter(a => getAccountType(a) === 'nominator').length
-    }
-  })
-
-  const handleAccountsChange = (accounts: InjectedAccountWithMeta[]) => {
-    setConnectedAccounts(accounts)
-  }
-
-  const handleConnect = (accounts: InjectedAccountWithMeta[]) => {
-    setConnectedAccounts(accounts)
-  }
-
-  const handleProxyAdded = (proxy: ProxyAccount) => {
-    setProxyAccounts([...proxyAccounts(), proxy])
-    setShowProxyModal(false)
-  }
-
-  const handleClaimRewards = async (account: InjectedAccountWithMeta, eras: number[]) => {
-    try {
-      setTxStatus({ message: `Claiming rewards for ${eras.length} era(s)...`, type: 'pending' })
-
-      // For now, we'll use the payoutStakers method for each era
-      // In a real implementation, you might want to batch these or use a different approach
-      for (const era of eras) {
-        await multiChainServicePapi.payoutStakers(account, account.address, era)
-      }
-
-      setTxStatus({ message: `Successfully claimed rewards for ${eras.length} era(s)`, type: 'success' })
-
-      // Refresh staking data after claiming
-      setTimeout(async () => {
-        const stakingData = await multiChainServicePapi.getStakingInfo(account.address)
-        if (stakingData) {
-          setAccountStaking(prev => new Map(prev.set(account.address, stakingData)))
-        }
-        setTxStatus(null)
-      }, 3000)
-    } catch (error) {
-      console.error('Failed to claim rewards:', error)
-      setTxStatus({ message: `Failed to claim rewards: ${error.message}`, type: 'error' })
-      setTimeout(() => setTxStatus(null), 5000)
-    }
-  }
-
-  const toggleAccountExpanded = (address: string) => {
-    const current = new Set(expandedAccounts())
-    if (current.has(address)) {
-      current.delete(address)
-    } else {
-      current.add(address)
-    }
-    setExpandedAccounts(current)
-  }
-
-  const copyAddress = (address: string) => {
-    navigator.clipboard.writeText(address)
-    setCopiedAddress(address)
-    setTimeout(() => setCopiedAddress(null), 2000)
-  }
-
-  const executeAction = async (action: string, account: InjectedAccountWithMeta) => {
-    console.log(`Executing ${action} on ${account.address}`)
-
-    // For operations that need modals
-    if (['bond', 'unbond', 'nominate', 'setKeys', 'rebond', 'withdrawUnbonded'].includes(action)) {
-      setModalAccount(account)
-      setModalOperation(action as OperationType)
+    const account = selectedAccount()
+    if (!account) {
+      setBalance(null)
+      setStakingData(null)
       return
     }
 
+    const [bal, staking] = await Promise.all([
+      multiChainServicePapi.getBalance(account.address),
+      multiChainServicePapi.getStakingInfo(account.address)
+    ])
+    setBalance(bal)
+    setStakingData(staking)
+  })
+
+  const formatBalance = (value: bigint): string => {
+    const cfg = config()
+    return multiChainServicePapi.formatBalance(value, cfg.decimals)
+  }
+
+  const parseAmount = (input: string): bigint => {
+    const cfg = config()
+    const parts = input.split('.')
+    const whole = BigInt(parts[0] || 0)
+    const decimal = (parts[1] || '').padEnd(cfg.decimals, '0').slice(0, cfg.decimals)
+    return whole * (10n ** BigInt(cfg.decimals)) + BigInt(decimal)
+  }
+
+  // Get signer from wallet extension
+  const getSigner = async (account: InjectedAccountWithMeta) => {
+    const { getInjectedExtensions, connectInjectedExtension } = await import('polkadot-api/pjs-signer')
+    const extensions = getInjectedExtensions()
+    if (extensions.length === 0) throw new Error('No wallet extension found')
+
+    const extension = await connectInjectedExtension(account.meta.source || extensions[0])
+    const accounts = await extension.getAccounts()
+    const match = accounts.find(a => a.address === account.address)
+    if (!match) throw new Error('Account not found in extension')
+
+    return match.polkadotSigner
+  }
+
+  // Staking operations
+  const handleBond = async () => {
+    const account = selectedAccount()
+    if (!account || !bondAmount()) return
+
+    setTxStatus({ msg: 'Signing transaction...', type: 'pending' })
     try {
-      // Get signer from the wallet extension
-      // Get signer using polkadot-api
-      const { getInjectedExtensions, connectInjectedExtension } = await import('polkadot-api/pjs-signer')
-      const extensions = getInjectedExtensions()
-      if (extensions.length === 0) throw new Error('No wallet extension found')
-
-      // Connect to the extension that has this account
-      const extension = await connectInjectedExtension(account.meta.source || extensions[0])
-      const accounts = await extension.getAccounts()
-      const matchingAccount = accounts.find(a => a.address === account.address)
-      if (!matchingAccount) throw new Error('Account not found in extension')
-
-      const signer = matchingAccount.polkadotSigner
-
-      setTxStatus({ message: `Executing ${action}...`, type: 'pending' })
-
-      switch (action) {
-        case 'claim':
-          // Claim rewards - this would need proper implementation
-          console.log('Claim rewards action')
-          setTxStatus({ message: 'Rewards claimed successfully', type: 'success' })
-          break
-
-        case 'validate':
-          // Start validating with default commission
-          const prefs = { commission: 50000000, blocked: false } // 5% commission
-          await multiChainServicePapi.validate(signer, prefs)
-          setTxStatus({ message: 'Validation started', type: 'success' })
-          break
-
-        case 'chill':
-          // Stop validating/nominating
-          await multiChainServicePapi.chill(signer)
-          setTxStatus({ message: 'Successfully chilled', type: 'success' })
-          break
-
-        default:
-          console.log(`Unknown action: ${action}`)
-      }
-
-      // Refresh account data after transaction
-      setTimeout(() => {
-        loadAccountData(account)
-      }, 2000)
-
-    } catch (error: any) {
-      console.error(`Failed to execute ${action}:`, error)
-      setTxStatus({ message: error.message || `Failed to ${action}`, type: 'error' })
+      const signer = await getSigner(account)
+      const amount = parseAmount(bondAmount())
+      await multiChainServicePapi.bond(signer, account.address, amount, 'Staked')
+      setTxStatus({ msg: 'Bonded successfully', type: 'success' })
+      setBondAmount('')
+      // Refresh data
+      const staking = await multiChainServicePapi.getStakingInfo(account.address)
+      setStakingData(staking)
+    } catch (e: any) {
+      setTxStatus({ msg: e.message || 'Bond failed', type: 'error' })
     }
-
-    // Clear status after 5 seconds
-    setTimeout(() => setTxStatus(null), 5000)
   }
 
-  // Prepare transaction for confirmation (instead of executing directly)
-  const handleModalSubmit = async (data: any) => {
-    const account = modalAccount()
-    const operation = modalOperation()
-    if (!account || !operation) return
+  const handleNominate = async () => {
+    const account = selectedAccount()
+    if (!account || selectedValidators().length === 0) return
 
-    const config = CHAIN_CONFIGS[selectedChain()]
-
-    // Build transaction details for confirmation
-    let txDetails: TransactionDetails
-
-    switch (operation) {
-      case 'bond':
-        txDetails = {
-          type: 'Bond Tokens',
-          description: `Stake ${config.token} for validation/nomination`,
-          params: {
-            Amount: data.amount,
-            'Reward Destination': data.payee
-          },
-          warnings: data.amount > (accountBalances().get(account.address)?.free || 0n)
-            ? ['Amount exceeds available balance']
-            : undefined
-        }
-        break
-
-      case 'unbond':
-        txDetails = {
-          type: 'Unbond Tokens',
-          description: `Start unbonding period for ${config.token}`,
-          params: { Amount: data.amount },
-          warnings: ['Unbonding takes 28 days on Polkadot, 7 days on Kusama']
-        }
-        break
-
-      case 'rebond':
-        txDetails = {
-          type: 'Rebond Tokens',
-          description: 'Cancel unbonding and restake tokens',
-          params: { Amount: data.amount }
-        }
-        break
-
-      case 'withdrawUnbonded':
-        txDetails = {
-          type: 'Withdraw Unbonded',
-          description: 'Withdraw tokens that finished unbonding',
-          params: {}
-        }
-        break
-
-      case 'nominate':
-        txDetails = {
-          type: 'Nominate Validators',
-          description: `Select ${data.validators.length} validator(s) to back`,
-          params: { Validators: data.validators }
-        }
-        break
-
-      case 'setKeys':
-        txDetails = {
-          type: 'Set Session Keys',
-          description: 'Update validator session keys',
-          params: { Keys: data.keys.slice(0, 20) + '...' },
-          warnings: ['Ensure these keys match your running validator node']
-        }
-        break
-
-      default:
-        txDetails = {
-          type: operation,
-          description: 'Staking operation',
-          params: data
-        }
-    }
-
-    // Check if this account can be proxied
-    let proxyOption: ProxyOption | null = null
-    const proxiedAccounts = await multiChainServicePapi.getProxiedAccounts(
-      account.address,
-      connectedAccounts().map(a => a.address).filter(a => a !== account.address)
-    )
-
-    if (proxiedAccounts.length > 0) {
-      const proxy = proxiedAccounts[0]
-      const proxyAccountMeta = connectedAccounts().find(a => a.address === proxy.account)
-      proxyOption = {
-        realAccount: proxy.account,
-        realAccountName: proxyAccountMeta?.meta.name,
-        proxyType: proxy.proxyType,
-        delay: proxy.delay
-      }
-    }
-
-    // Store pending transaction and show confirmation
-    setPendingTx(txDetails)
-    setPendingTxData(data)
-    setPendingProxyOption(proxyOption)
-
-    // Close the input modal
-    setModalOperation(null)
-  }
-
-  // Execute the confirmed transaction
-  const executeTransaction = async (useProxy: boolean) => {
-    const account = modalAccount()
-    const operation = modalOperation() || pendingTxData()?.operation
-    const data = pendingTxData()
-    if (!account || !data) return
-
-    // Determine what operation we're doing based on pending data
-    const op = data.operation || (
-      data.validators ? 'nominate' :
-      data.keys ? 'setKeys' :
-      data.payee ? 'bond' :
-      data.numSlashingSpans !== undefined ? 'withdrawUnbonded' :
-      data.amount && pendingTx()?.type.includes('Rebond') ? 'rebond' :
-      data.amount ? 'unbond' : 'unknown'
-    )
-
+    setTxStatus({ msg: 'Signing nomination...', type: 'pending' })
     try {
-      // Get signer using polkadot-api
-      const { getInjectedExtensions, connectInjectedExtension } = await import('polkadot-api/pjs-signer')
-      const extensions = getInjectedExtensions()
-      if (extensions.length === 0) throw new Error('No wallet extension found')
-
-      const extension = await connectInjectedExtension(account.meta.source || extensions[0])
-      const accounts = await extension.getAccounts()
-      const matchingAccount = accounts.find(a => a.address === account.address)
-      if (!matchingAccount) throw new Error('Account not found in extension')
-
-      const signer = matchingAccount.polkadotSigner
-      const proxyOpt = pendingProxyOption()
-
-      if (useProxy && proxyOpt) {
-        // Execute via proxy
-        const api = await multiChainServicePapi.getStakingApi()
-        let innerTx: any
-
-        switch (op) {
-          case 'bond':
-            let payee: any
-            if (data.payee === 'Staked') payee = { type: 'Staked' }
-            else if (data.payee === 'Stash') payee = { type: 'Stash' }
-            else if (data.payee === 'Controller') payee = { type: 'Controller' }
-            else payee = { type: 'Account', value: data.payee }
-            innerTx = api.tx.Staking.bond({ value: data.amount, payee })
-            break
-          case 'unbond':
-            innerTx = api.tx.Staking.unbond({ value: data.amount })
-            break
-          case 'rebond':
-            innerTx = api.tx.Staking.rebond({ value: data.amount })
-            break
-          case 'nominate':
-            innerTx = api.tx.Staking.nominate({ targets: data.validators })
-            break
-          case 'withdrawUnbonded':
-            innerTx = api.tx.Staking.withdrawUnbonded({ num_slashing_spans: data.numSlashingSpans || 0 })
-            break
-          case 'setKeys':
-            const relayApi = await multiChainServicePapi.getRelayApi()
-            innerTx = relayApi.tx.Session.setKeys({ keys: data.keys, proof: data.proof || '0x' })
-            break
-          default:
-            throw new Error(`Unknown operation: ${op}`)
-        }
-
-        await multiChainServicePapi.executeViaProxy(signer, proxyOpt.realAccount, innerTx, proxyOpt.proxyType)
-      } else {
-        // Direct execution
-        switch (op) {
-          case 'bond':
-            await multiChainServicePapi.bond(signer, account.address, data.amount, data.payee)
-            break
-          case 'unbond':
-            await multiChainServicePapi.unbond(signer, data.amount)
-            break
-          case 'rebond':
-            await multiChainServicePapi.rebond(signer, data.amount)
-            break
-          case 'withdrawUnbonded':
-            await multiChainServicePapi.withdrawUnbonded(signer, data.numSlashingSpans || 0)
-            break
-          case 'nominate':
-            await multiChainServicePapi.nominate(signer, data.validators)
-            break
-          case 'setKeys':
-            await multiChainServicePapi.setKeys(signer, data.keys, data.proof || '0x')
-            break
-          default:
-            throw new Error(`Unknown operation: ${op}`)
-        }
-      }
-
-      // Refresh account data after success
-      setTimeout(() => loadAccountData(account), 2000)
-    } catch (error: any) {
-      throw error // Let TransactionConfirmation handle the error display
+      const signer = await getSigner(account)
+      await multiChainServicePapi.nominate(signer, selectedValidators())
+      setTxStatus({ msg: `Nominated ${selectedValidators().length} validator(s)`, type: 'success' })
+    } catch (e: any) {
+      setTxStatus({ msg: e.message || 'Nomination failed', type: 'error' })
     }
   }
 
-  const cancelTransaction = () => {
-    setPendingTx(null)
-    setPendingTxData(null)
-    setPendingProxyOption(null)
-    setModalAccount(null)
-  }
+  const handleSetKeys = async () => {
+    const account = selectedAccount()
+    if (!account || !sessionKeys()) return
 
-  const loadAccountData = async (account: InjectedAccountWithMeta) => {
+    setTxStatus({ msg: 'Setting session keys on relay chain...', type: 'pending' })
     try {
-      const [balance, stakingData] = await Promise.all([
-        multiChainServicePapi.getBalance(account.address),
-        multiChainServicePapi.getStakingInfo(account.address)
-      ])
-
-      if (balance) {
-        setAccountBalances(prev => {
-          const map = new Map(prev)
-          map.set(account.address, balance)
-          return map
-        })
-      }
-
-      if (stakingData) {
-        setAccountStaking(prev => {
-          const map = new Map(prev)
-          map.set(account.address, stakingData)
-          return map
-        })
-
-        // Update current era and session if available
-        if (stakingData.era !== null) {
-          setCurrentEra(stakingData.era)
-        }
-        if (stakingData.sessionIndex !== null) {
-          setCurrentSession(stakingData.sessionIndex)
-        }
-      }
-    } catch (error) {
-      console.error(`Failed to load data for ${account.address}:`, error)
+      const signer = await getSigner(account)
+      await multiChainServicePapi.setKeys(signer, sessionKeys(), '0x')
+      setTxStatus({ msg: 'Session keys set', type: 'success' })
+      setSessionKeys('')
+    } catch (e: any) {
+      setTxStatus({ msg: e.message || 'Set keys failed', type: 'error' })
     }
   }
 
-  // Contextual operations based on account type
-  const getOperations = (account: InjectedAccountWithMeta) => {
-    const accountType = getAccountType(account)
-    const staking = accountStaking().get(account.address)
-
-    const baseOps = [
-      { id: 'bond', label: 'Bond More', desc: 'Add tokens to stake' },
-      { id: 'unbond', label: 'Unbond', desc: 'Schedule withdrawal' },
-      { id: 'claim', label: 'Claim', desc: 'Collect rewards' }
-    ]
-
-    // Add withdraw option if there are unlocking funds
-    if (staking?.unlocking && staking.unlocking.length > 0) {
-      baseOps.push({
-        id: 'withdrawUnbonded',
-        label: 'Withdraw',
-        desc: `${staking.unlocking.length} unlocking`,
-        highlight: true
-      })
-    }
-
-    const validatorOps = [
-      { id: 'setKeys', label: 'Set Keys', desc: 'Update session keys', highlight: true },
-      { id: 'validate', label: 'Validate', desc: 'Start validating', highlight: true },
-      { id: 'chill', label: 'Chill', desc: 'Stop validating' }
-    ]
-
-    const stashOps = [
-      { id: 'nominate', label: 'Nominate', desc: 'Select validators' },
-      { id: 'controller', label: 'Set Controller', desc: 'Change controller' }
-    ]
-
-    if (accountType === 'validator') {
-      return [...validatorOps, ...baseOps]
-    } else if (accountType === 'stash') {
-      return [...baseOps, ...stashOps]
-    } else if (accountType === 'nominator') {
-      return [...baseOps, { id: 'nominate', label: 'Re-nominate', desc: 'Change validators' }]
-    } else {
-      return baseOps
+  const toggleValidator = (address: string) => {
+    const current = selectedValidators()
+    if (current.includes(address)) {
+      setSelectedValidators(current.filter(v => v !== address))
+    } else if (current.length < 16) {
+      setSelectedValidators([...current, address])
     }
   }
 
-  // Get real account data from chain
-  const getAccountData = (account: InjectedAccountWithMeta) => {
-    const accountType = getAccountType(account)
-    const chain = selectedChain()
-    const config = CHAIN_CONFIGS[chain]
-    const token = config.token
-    const decimals = config.decimals
-
-    const balance = accountBalances().get(account.address)
-    const staking = accountStaking().get(account.address)
-
-    // Calculate total unlocking amount
-    const unlockingTotal = staking?.unlocking?.reduce((sum, unlock) => sum + unlock.value, 0n) || 0n
-
-    return {
-      balance: balance ? `${multiChainServicePapi.formatBalance(balance.free, decimals)} ${token}` : `0.0000 ${token}`,
-      bonded: staking ? `${multiChainServicePapi.formatBalance(staking.bonded, decimals)} ${token}` : `0.0000 ${token}`,
-      active: staking ? `${multiChainServicePapi.formatBalance(staking.active, decimals)} ${token}` : `0.0000 ${token}`,
-      unlocking: unlockingTotal > 0n ? `${multiChainServicePapi.formatBalance(unlockingTotal, decimals)} ${token}` : null,
-      unlockingChunks: staking?.unlocking?.length || 0,
-      rewards: '0.0000 ' + token, // TODO: Calculate pending rewards
-      rewardDestination: staking?.rewardDestination || null,
-      commission: staking?.commission ? `${(staking.commission / 10000000).toFixed(2)}%` : null,
-      nominators: staking?.nominators ? staking.nominators.length.toString() : null,
-      nominatedValidators: staking?.nominators?.length || 0,
-      status: staking ? (staking.validators ? 'Validating' : staking.nominators ? 'Nominating' : 'Inactive') : null,
-      era: staking?.era || null,
-      sessionIndex: staking?.sessionIndex || null
-    }
+  const selectAllRotko = () => {
+    setSelectedValidators(rotkoValidators().map(v => v.address))
   }
 
   return (
     <MainLayout>
-      <section class="pt-12 pb-8 px-4 max-w-7xl mx-auto">
-        <PageHeader
-          title={validatorData.hero.title}
-          subtitle={validatorData.hero.subtitle}
-        />
+      <div class="max-w-4xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div class="mb-8">
+          <h1 class="text-2xl font-bold text-cyan-400 font-mono">vctl</h1>
+          <p class="text-gray-400 text-sm">validator control tool</p>
+        </div>
 
-        {/* Pre-selected Validator Banner */}
-        <Show when={preselectedValidator()}>
-          <div class="mb-6 p-4 bg-cyan-900/30 border border-cyan-700 text-sm">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span class="text-cyan-400 font-bold">Staking on validator: </span>
-                <span class="font-mono text-white break-all">{preselectedValidator()}</span>
-              </div>
-              <div class="flex gap-2">
-                <Show when={connectedAccounts().length === 0}>
-                  <span class="text-gray-400">Connect wallet below to nominate</span>
-                </Show>
-                <button
-                  onClick={() => setPreselectedValidator(null)}
-                  class="text-gray-400 hover:text-white"
-                >
-                  [clear]
-                </button>
-              </div>
+        {/* Network + Wallet Row */}
+        <div class="grid md:grid-cols-2 gap-4 mb-6">
+          {/* Network Selector */}
+          <div class="p-4 bg-gray-900 border border-gray-700">
+            <div class="text-xs text-gray-500 mb-2">network</div>
+            <div class="flex gap-2">
+              <For each={Object.entries(CHAIN_CONFIGS)}>
+                {([id, cfg]) => (
+                  <button
+                    onClick={() => setSelectedChain(id as ChainId)}
+                    class={`px-3 py-1 text-sm font-mono ${
+                      selectedChain() === id
+                        ? 'bg-cyan-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    {cfg.token}
+                  </button>
+                )}
+              </For>
+            </div>
+            <div class="mt-2 text-xs text-gray-600">
+              relay: {connectionStatus().relay ? '●' : '○'} |
+              staking: {connectionStatus().assetHub ? '●' : '○'}
             </div>
           </div>
-        </Show>
 
-        {/* Rotko Validators Status - Always visible */}
-        <RotkoValidatorStatus
-          chainId={selectedChain()}
-          config={CHAIN_CONFIGS[selectedChain()]}
-        />
-
-        {/* Dashboard Overview - Show when wallet connected */}
-        <Show when={connectedAccounts().length > 0}>
-          <StakingDashboard
-            config={CHAIN_CONFIGS[selectedChain()]}
-            balances={accountBalances()}
-            staking={accountStaking()}
-            currentEra={currentEra()}
-            connectionStatus={connectionStatus()}
-          />
-        </Show>
-
-        {/* Connection Section - Two separate dropdowns */}
-        <div class="mb-6 grid md:grid-cols-2 gap-4">
-          {/* Wallet Connection Dropdown */}
-          <div>
-            <button
-              onClick={() => setShowWalletMenu(!showWalletMenu())}
-              class="w-full p-4 bg-gray-900 border border-gray-700 rounded flex items-center justify-between hover:border-cyan-400 transition-colors"
-            >
-              <div class="flex items-center gap-2">
-                <h2 class="text-lg font-bold text-cyan-400">Wallet</h2>
-                <Show when={connectedAccounts().length > 0}>
-                  <span class="text-sm text-gray-400">({connectedAccounts().length} connected)</span>
-                </Show>
-              </div>
-              <span class={`text-gray-400 transition-transform ${showWalletMenu() ? 'rotate-180' : ''}`}>▼</span>
-            </button>
-
-            <Show when={showWalletMenu()}>
-              <div class="mt-1 p-4 bg-gray-900 border border-gray-700 rounded-b">
-                <WalletConnector
-                  onConnect={handleConnect}
-                  onAccountsChange={handleAccountsChange}
-                  dappName="Rotko Validator Tool"
-                  autoConnect={true}
-                />
-              </div>
+          {/* Wallet */}
+          <div class="p-4 bg-gray-900 border border-gray-700">
+            <div class="text-xs text-gray-500 mb-2">wallet</div>
+            <Show when={connectedAccounts().length === 0}>
+              <WalletConnector
+                onConnect={setConnectedAccounts}
+                onAccountsChange={setConnectedAccounts}
+                dappName="vctl"
+                autoConnect={true}
+              />
             </Show>
-          </div>
-
-          {/* Network Selection Dropdown */}
-          <div>
-            <button
-              onClick={() => setShowNetworkMenu(!showNetworkMenu())}
-              class="w-full p-4 bg-gray-900 border border-gray-700 rounded flex items-center justify-between hover:border-cyan-400 transition-colors"
-            >
-              <div class="flex items-center gap-2">
-                <h2 class="text-lg font-bold text-cyan-400">Network</h2>
-                <span class="text-sm text-gray-300">{CHAIN_CONFIGS[selectedChain()].name}</span>
-              </div>
-              <span class={`text-gray-400 transition-transform ${showNetworkMenu() ? 'rotate-180' : ''}`}>▼</span>
-            </button>
-
-            <Show when={showNetworkMenu()}>
-              <div class="mt-1 p-4 bg-gray-900 border border-gray-700 rounded-b">
-                <div class="space-y-2">
-                  <For each={Object.entries(CHAIN_CONFIGS)}>
-                    {([chainId, config]) => (
-                      <button
-                        onClick={() => {
-                          setSelectedChain(chainId as ChainId)
-                          setShowNetworkMenu(false)
-                        }}
-                        class={`w-full p-3 text-left rounded transition-colors ${
-                          selectedChain() === chainId
-                            ? 'bg-cyan-900/30 border border-cyan-700'
-                            : 'bg-gray-800 border border-gray-700 hover:bg-gray-700'
-                        }`}
-                      >
-                        <div class="flex items-center justify-between">
-                          <div>
-                            <div class="font-bold">{config.name}</div>
-                            <div class="text-xs text-gray-400">
-                              {config.token} • SS58: {config.ss58}
-                            </div>
-                          </div>
-                          <Show when={selectedChain() === chainId}>
-                            <span class="text-cyan-400">✓</span>
-                          </Show>
-                        </div>
-                      </button>
-                    )}
-                  </For>
-                </div>
-
-                {/* Era and Session Info */}
-                <Show when={currentEra() !== null || currentSession() !== null}>
-                  <div class="mt-4 pt-4 border-t border-gray-700">
-                    <div class="text-sm text-gray-400 mb-2">Network Status:</div>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                      <Show when={currentEra() !== null}>
-                        <div class="bg-gray-800 rounded px-2 py-1">
-                          <span class="text-gray-500">Era:</span>
-                          <span class="text-cyan-400 font-mono ml-1">{currentEra()}</span>
-                        </div>
-                      </Show>
-                      <Show when={currentSession() !== null}>
-                        <div class="bg-gray-800 rounded px-2 py-1">
-                          <span class="text-gray-500">Session:</span>
-                          <span class="text-green-400 font-mono ml-1">{currentSession()}</span>
-                        </div>
-                      </Show>
-                    </div>
-                  </div>
-                </Show>
-
-                {/* Connection Status */}
-                <div class="mt-4 pt-4 border-t border-gray-700">
-                  <div class="text-sm text-gray-400 mb-2">Chain Connections:</div>
-                  <div class="space-y-1 text-xs">
-                    <div class="flex items-center justify-between">
-                      <span>
-                        Relay Chain
-                        <Show when={selectedChain() === 'polkadot'}>
-                          <span class="text-cyan-400 ml-1">(staking, session keys)</span>
-                        </Show>
-                        <Show when={selectedChain() !== 'polkadot'}>
-                          <span class="text-cyan-400 ml-1">(session keys)</span>
-                        </Show>
-                      </span>
-                      <span class={connectionStatus().relay ? 'text-green-400' : 'text-yellow-400'}>
-                        {connectionStatus().relay ? '● Connected' : '○ Connecting...'}
-                      </span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span>
-                        Asset Hub
-                        <Show when={selectedChain() !== 'polkadot'}>
-                          <span class="text-cyan-400 ml-1">(staking)</span>
-                        </Show>
-                      </span>
-                      <span class={connectionStatus().assetHub ? 'text-green-400' : 'text-yellow-400'}>
-                        {connectionStatus().assetHub ? '● Connected' : '○ Connecting...'}
-                      </span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                      <span>People Chain <span class="text-cyan-400 ml-1">(identity)</span></span>
-                      <span class={connectionStatus().peopleChain ? 'text-green-400' : 'text-yellow-400'}>
-                        {connectionStatus().peopleChain ? '● Connected' : '○ Connecting...'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Info about staking location */}
-                  <div class="mt-3 p-2 bg-gray-800 rounded text-xs">
-                    <Show when={selectedChain() === 'polkadot'}>
-                      <div class="text-gray-400">
-                        <span class="text-cyan-400">ℹ</span> Polkadot staking operations remain on the relay chain.
-                      </div>
-                    </Show>
-                    <Show when={selectedChain() !== 'polkadot'}>
-                      <div class="text-gray-400">
-                        <span class="text-cyan-400">ℹ</span> {CHAIN_CONFIGS[selectedChain()].name} staking has migrated to Asset Hub.
-                      </div>
-                    </Show>
-                  </div>
-                </div>
-              </div>
+            <Show when={connectedAccounts().length > 0}>
+              <select
+                class="w-full bg-black border border-gray-700 px-2 py-1 text-sm font-mono"
+                onChange={(e) => {
+                  const addr = e.currentTarget.value
+                  const acc = connectedAccounts().find(a => a.address === addr)
+                  setSelectedAccount(acc || null)
+                }}
+              >
+                <option value="">select account</option>
+                <For each={connectedAccounts()}>
+                  {(acc) => (
+                    <option value={acc.address}>
+                      {acc.meta.name || acc.address.slice(0, 8)}
+                    </option>
+                  )}
+                </For>
+              </select>
             </Show>
           </div>
         </div>
 
-        <Show when={connectedAccounts().length > 0}>
-          {/* Controls Bar */}
-          <div class="mb-6 p-4 bg-gray-900 border border-gray-700 rounded">
-            <div class="flex flex-wrap gap-4 items-center">
-              {/* Search */}
-              <div class="flex-1 min-w-[200px]">
-                <input
-                  id="wallet-search"
-                  type="text"
-                  placeholder="Search... (⌘F)"
-                  class="w-full px-3 py-2 bg-black border border-gray-700 rounded text-sm focus:border-cyan-400 focus:outline-none"
-                  value={searchTerm()}
-                  onInput={(e) => setSearchTerm(e.currentTarget.value)}
-                />
+        {/* Account Info */}
+        <Show when={selectedAccount()}>
+          <div class="mb-6 p-4 bg-gray-900 border border-gray-700">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <div class="text-gray-500">free</div>
+                <div class="font-mono text-cyan-400">
+                  {balance() ? formatBalance(balance()!.free) : '—'} {config().token}
+                </div>
               </div>
-
-              {/* Filter */}
-              <select
-                class="px-3 py-2 bg-black border border-gray-700 rounded text-sm focus:border-cyan-400 focus:outline-none"
-                value={filterType()}
-                onChange={(e) => setFilterType(e.currentTarget.value as any)}
-              >
-                <option value="all">All</option>
-                <option value="validators">Validators</option>
-                <option value="nominators">Nominators</option>
-                <option value="stashes">Stashes</option>
-                <option value="other">Other</option>
-              </select>
-
-              {/* View Mode */}
-              <div class="flex gap-1 bg-black border border-gray-700 rounded p-1">
-                <button
-                  class={`px-3 py-1 rounded text-xs ${viewMode() === 'grid' ? 'bg-cyan-600' : 'hover:bg-gray-800'}`}
-                  onClick={() => setViewMode('grid')}
-                  title="Grid (G)"
-                >
-                  Grid
-                </button>
-                <button
-                  class={`px-3 py-1 rounded text-xs ${viewMode() === 'list' ? 'bg-cyan-600' : 'hover:bg-gray-800'}`}
-                  onClick={() => setViewMode('list')}
-                  title="List (L)"
-                >
-                  List
-                </button>
+              <div>
+                <div class="text-gray-500">bonded</div>
+                <div class="font-mono text-orange-400">
+                  {stakingData() ? formatBalance(stakingData()!.bonded) : '—'} {config().token}
+                </div>
               </div>
-
-              {/* Add Proxy */}
-              <button
-                class="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 rounded text-sm"
-                onClick={() => setShowProxyModal(true)}
-              >
-                Proxy
-              </button>
-
-              {/* Discover Related Accounts */}
-              <button
-                class={`px-3 py-2 rounded text-sm ${
-                  showDiscoveryPanel()
-                    ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
-                onClick={() => setShowDiscoveryPanel(!showDiscoveryPanel())}
-              >
-                Discover
-              </button>
-            </div>
-          </div>
-
-          {/* Account Discovery Panel */}
-          <Show when={showDiscoveryPanel()}>
-            <div class="mb-6">
-              <AccountDiscovery
-                accounts={connectedAccounts()}
-                config={CHAIN_CONFIGS[selectedChain()]}
-                onAddAccount={(address, name) => {
-                  // Create a synthetic account entry for the discovered account
-                  console.log(`Adding discovered account: ${address} (${name})`)
-                  // For now just log - in a real implementation you'd add to tracked accounts
-                }}
-              />
-            </div>
-          </Show>
-
-          {/* Proxy Modal */}
-          <Show when={showProxyModal()}>
-            <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-              <div class="bg-gray-900 border border-gray-700 rounded p-6 max-w-2xl w-full">
-                <h3 class="text-xl font-bold text-cyan-400 mb-4">Proxy Management</h3>
-                <ProxyManager
-                  connectedAccounts={connectedAccounts()}
-                  onProxyAdded={handleProxyAdded}
-                />
-                <button
-                  class="mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
-                  onClick={() => setShowProxyModal(false)}
-                >
-                  Close
-                </button>
+              <div>
+                <div class="text-gray-500">active</div>
+                <div class="font-mono text-green-400">
+                  {stakingData() ? formatBalance(stakingData()!.active) : '—'} {config().token}
+                </div>
+              </div>
+              <div>
+                <div class="text-gray-500">status</div>
+                <div class="font-mono">
+                  {stakingData()?.nominators ? 'nominating' : stakingData()?.validators ? 'validating' : 'idle'}
+                </div>
               </div>
             </div>
-          </Show>
-
-          {/* Accounts Display */}
-          <div class={viewMode() === 'grid' ? 'grid md:grid-cols-2 gap-4' : 'space-y-4'}>
-            <For each={filteredAccounts()}>
-              {(account) => {
-                const isExpanded = () => expandedAccounts().has(account.address)
-                const accountType = getAccountType(account)
-                const operations = getOperations(account)
-                const accountData = getAccountData(account)
-
-                return (
-                  <div
-                    class={`bg-black border rounded transition-all ${
-                      isExpanded()
-                        ? 'border-cyan-400 shadow-lg shadow-cyan-400/20'
-                        : 'border-gray-700 hover:border-gray-600'
-                    }`}
-                  >
-                    {/* Header */}
-                    <div
-                      class="w-full p-4 flex items-start justify-between text-left cursor-pointer"
-                      onClick={() => toggleAccountExpanded(account.address)}
-                    >
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span class="font-mono text-sm text-cyan-400">
-                            {account.meta.name || 'Unnamed Account'}
-                          </span>
-                          <Show when={accountType === 'validator'}>
-                            <span class="px-2 py-0.5 bg-green-900/30 text-green-400 text-xs rounded">
-                              Validator
-                            </span>
-                          </Show>
-                          <Show when={accountType === 'stash'}>
-                            <span class="px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded">
-                              Stash
-                            </span>
-                          </Show>
-                          <Show when={accountType === 'nominator'}>
-                            <span class="px-2 py-0.5 bg-purple-900/30 text-purple-400 text-xs rounded">
-                              Nominator
-                            </span>
-                          </Show>
-                          <Show when={accountData.status}>
-                            <span class="px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded">
-                              {accountData.status}
-                            </span>
-                          </Show>
-                        </div>
-
-                        {/* Address with copy button */}
-                        <div class="flex items-center gap-2 mt-1">
-                          <span class="font-mono text-xs text-gray-500">
-                            {formatAddress(account.address)}
-                          </span>
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              copyAddress(formatAddress(account.address))
-                            }}
-                            class="text-gray-600 hover:text-cyan-400 transition-colors cursor-pointer"
-                            title="Copy address"
-                          >
-                            <Show when={copiedAddress() === formatAddress(account.address)} fallback={
-                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                            }>
-                              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                              </svg>
-                            </Show>
-                          </div>
-                        </div>
-
-                        {/* Basic data always visible */}
-                        <div class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                          <div>
-                            <span class="text-gray-500">Balance:</span>
-                            <span class="text-white ml-1 font-mono">{accountData.balance}</span>
-                          </div>
-                          <Show when={accountType === 'validator' || accountType === 'stash' || accountType === 'nominator' || (accountData.bonded && !accountData.bonded.startsWith('0.0000'))}>
-                            <div>
-                              <span class="text-gray-500">Bonded:</span>
-                              <span class={`ml-1 font-mono ${accountData.bonded.startsWith('0.0000') ? 'text-gray-400' : 'text-orange-400'}`}>
-                                {accountData.bonded}
-                              </span>
-                            </div>
-                          </Show>
-                          <Show when={accountType === 'validator' || accountType === 'stash' || accountType === 'nominator' || (accountData.active && !accountData.active.startsWith('0.0000'))}>
-                            <div>
-                              <span class="text-gray-500">Active:</span>
-                              <span class={`ml-1 font-mono ${accountData.active.startsWith('0.0000') ? 'text-gray-400' : 'text-green-400'}`}>
-                                {accountData.active}
-                              </span>
-                            </div>
-                          </Show>
-                          <Show when={accountData.unlocking}>
-                            <div>
-                              <span class="text-gray-500">Unlocking:</span>
-                              <span class="text-yellow-400 ml-1 font-mono">
-                                {accountData.unlocking}
-                              </span>
-                              <Show when={accountData.unlockingChunks > 0}>
-                                <span class="text-gray-500 ml-1 text-xs">
-                                  ({accountData.unlockingChunks} chunks)
-                                </span>
-                              </Show>
-                            </div>
-                          </Show>
-                          <Show when={accountData.rewardDestination}>
-                            <div>
-                              <span class="text-gray-500">Rewards to:</span>
-                              <span class="text-purple-400 ml-1 text-xs">{accountData.rewardDestination}</span>
-                            </div>
-                          </Show>
-                          <Show when={accountData.rewards && !accountData.rewards.startsWith('0.0000')}>
-                            <div>
-                              <span class="text-gray-500">Pending:</span>
-                              <span class="text-cyan-400 ml-1 font-mono">{accountData.rewards}</span>
-                            </div>
-                          </Show>
-                          <Show when={accountData.commission}>
-                            <div>
-                              <span class="text-gray-500">Commission:</span>
-                              <span class="text-white ml-1">{accountData.commission}</span>
-                            </div>
-                          </Show>
-                          <Show when={accountData.nominators}>
-                            <div>
-                              <span class="text-gray-500">Nominators:</span>
-                              <span class="text-white ml-1">{accountData.nominators}</span>
-                            </div>
-                          </Show>
-                          <Show when={accountData.nominatedValidators > 0}>
-                            <div>
-                              <span class="text-gray-500">Nominating:</span>
-                              <span class="text-blue-400 ml-1">{accountData.nominatedValidators} validators</span>
-                            </div>
-                          </Show>
-                        </div>
-                      </div>
-                      <span class={`text-gray-400 transition-transform ${isExpanded() ? 'rotate-180' : ''}`}>
-                        ▼
-                      </span>
-                    </div>
-
-                    {/* Expanded Content */}
-                    <Show when={isExpanded()}>
-                      <div class="border-t border-gray-800">
-                        {/* Unclaimed Eras */}
-                        <Show when={accountStaking().get(account.address)?.unclaimedEras?.length > 0}>
-                          <div class="p-4 border-b border-gray-800">
-                            <UnclaimedEras
-                              unclaimedEras={accountStaking().get(account.address)?.unclaimedEras || []}
-                              account={account}
-                              currentEra={accountStaking().get(account.address)?.era}
-                              isValidator={getAccountType(account) === 'validator'}
-                              onClaimRewards={(eras) => handleClaimRewards(account, eras)}
-                            />
-                          </div>
-                        </Show>
-
-                        {/* Operations */}
-                        <div class="p-4">
-                          <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            <For each={operations}>
-                              {(op) => (
-                                <button
-                                  class={`p-3 rounded border text-left transition-all ${
-                                    op.highlight
-                                      ? 'bg-cyan-900/20 border-cyan-700 hover:bg-cyan-900/30'
-                                      : 'bg-gray-900 border-gray-700 hover:bg-gray-800'
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    executeAction(op.id, account)
-                                  }}
-                                >
-                                  <div class={`font-bold text-sm ${op.highlight ? 'text-cyan-400' : ''}`}>
-                                    {op.label}
-                                  </div>
-                                  <div class="text-xs text-gray-400 mt-0.5">{op.desc}</div>
-                                </button>
-                              )}
-                            </For>
-                          </div>
-                        </div>
-                      </div>
-                    </Show>
-                  </div>
-                )
-              }}
-            </For>
           </div>
         </Show>
+
+        {/* Tabs */}
+        <div class="border-b border-gray-700 mb-6">
+          <div class="flex gap-1">
+            <button
+              onClick={() => setActiveTab('nominate')}
+              class={`px-4 py-2 text-sm font-mono border-b-2 ${
+                activeTab() === 'nominate' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
+              }`}
+            >
+              nominate
+            </button>
+            <button
+              onClick={() => setActiveTab('bond')}
+              class={`px-4 py-2 text-sm font-mono border-b-2 ${
+                activeTab() === 'bond' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
+              }`}
+            >
+              bond
+            </button>
+            <button
+              onClick={() => setActiveTab('session')}
+              class={`px-4 py-2 text-sm font-mono border-b-2 ${
+                activeTab() === 'session' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
+              }`}
+            >
+              session keys
+            </button>
+            <button
+              onClick={() => setActiveTab('status')}
+              class={`px-4 py-2 text-sm font-mono border-b-2 ${
+                activeTab() === 'status' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
+              }`}
+            >
+              status
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div class="min-h-[300px]">
+          {/* Nominate Tab */}
+          <Show when={activeTab() === 'nominate'}>
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="text-sm text-gray-400">
+                  select validators ({selectedValidators().length}/16)
+                </div>
+                <button
+                  onClick={selectAllRotko}
+                  class="text-xs text-cyan-400 hover:text-cyan-300"
+                >
+                  [select all rotko]
+                </button>
+              </div>
+
+              {/* Rotko Validators */}
+              <div class="space-y-2">
+                <For each={rotkoValidators()}>
+                  {(v) => (
+                    <button
+                      onClick={() => toggleValidator(v.address)}
+                      class={`w-full p-3 text-left border ${
+                        selectedValidators().includes(v.address)
+                          ? 'bg-cyan-900/30 border-cyan-600'
+                          : 'bg-gray-900 border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      <div class="flex items-center justify-between">
+                        <span class="font-mono text-sm">{v.name}</span>
+                        <span class={selectedValidators().includes(v.address) ? 'text-cyan-400' : 'text-gray-600'}>
+                          {selectedValidators().includes(v.address) ? '✓' : '○'}
+                        </span>
+                      </div>
+                      <div class="font-mono text-xs text-gray-500 mt-1">
+                        {v.address.slice(0, 16)}...{v.address.slice(-8)}
+                      </div>
+                    </button>
+                  )}
+                </For>
+              </div>
+
+              {/* Custom validator input */}
+              <div class="pt-4 border-t border-gray-800">
+                <div class="text-xs text-gray-500 mb-2">add custom validator</div>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="validator address"
+                    class="flex-1 bg-black border border-gray-700 px-3 py-2 text-sm font-mono"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        const input = e.currentTarget.value.trim()
+                        if (input && !selectedValidators().includes(input)) {
+                          setSelectedValidators([...selectedValidators(), input])
+                          e.currentTarget.value = ''
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Nominate Button */}
+              <button
+                onClick={handleNominate}
+                disabled={!selectedAccount() || selectedValidators().length === 0}
+                class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 font-mono"
+              >
+                nominate {selectedValidators().length} validator(s)
+              </button>
+            </div>
+          </Show>
+
+          {/* Bond Tab */}
+          <Show when={activeTab() === 'bond'}>
+            <div class="space-y-4">
+              <div>
+                <div class="text-xs text-gray-500 mb-2">amount to bond</div>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="0.0"
+                    value={bondAmount()}
+                    onInput={(e) => setBondAmount(e.currentTarget.value.replace(/[^0-9.]/g, ''))}
+                    class="flex-1 bg-black border border-gray-700 px-3 py-2 font-mono"
+                  />
+                  <span class="px-3 py-2 bg-gray-800 text-gray-400">{config().token}</span>
+                </div>
+                <Show when={balance()}>
+                  <div class="text-xs text-gray-500 mt-1">
+                    available: {formatBalance(balance()!.free)} {config().token}
+                  </div>
+                </Show>
+              </div>
+
+              <button
+                onClick={handleBond}
+                disabled={!selectedAccount() || !bondAmount()}
+                class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 font-mono"
+              >
+                bond
+              </button>
+
+              <Show when={stakingData()?.bonded && stakingData()!.bonded > 0n}>
+                <div class="pt-4 border-t border-gray-800">
+                  <div class="text-xs text-gray-500 mb-2">currently bonded</div>
+                  <div class="font-mono text-orange-400">
+                    {formatBalance(stakingData()!.bonded)} {config().token}
+                  </div>
+                </div>
+              </Show>
+            </div>
+          </Show>
+
+          {/* Session Keys Tab */}
+          <Show when={activeTab() === 'session'}>
+            <div class="space-y-4">
+              <div class="p-3 bg-yellow-900/20 border border-yellow-800 text-sm text-yellow-400">
+                session keys are set on the relay chain ({config().name})
+              </div>
+
+              <div>
+                <div class="text-xs text-gray-500 mb-2">generate keys on your node</div>
+                <pre class="p-3 bg-black border border-gray-700 text-xs font-mono text-gray-400 overflow-x-auto">
+{`curl -H "Content-Type: application/json" \\
+  -d '{"id":1,"jsonrpc":"2.0","method":"author_rotateKeys"}' \\
+  http://YOUR_VALIDATOR:9944`}
+                </pre>
+              </div>
+
+              <div>
+                <div class="text-xs text-gray-500 mb-2">paste session keys (hex)</div>
+                <textarea
+                  placeholder="0x..."
+                  value={sessionKeys()}
+                  onInput={(e) => setSessionKeys(e.currentTarget.value)}
+                  rows={3}
+                  class="w-full bg-black border border-gray-700 px-3 py-2 font-mono text-sm"
+                />
+              </div>
+
+              <button
+                onClick={handleSetKeys}
+                disabled={!selectedAccount() || !sessionKeys()}
+                class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 font-mono"
+              >
+                set session keys
+              </button>
+            </div>
+          </Show>
+
+          {/* Status Tab */}
+          <Show when={activeTab() === 'status'}>
+            <div class="space-y-4">
+              <Show when={!selectedAccount()}>
+                <div class="text-gray-500 text-center py-8">
+                  connect wallet and select account to view status
+                </div>
+              </Show>
+
+              <Show when={selectedAccount() && stakingData()}>
+                <div class="space-y-4">
+                  <div class="p-4 bg-gray-900 border border-gray-700">
+                    <div class="text-xs text-gray-500 mb-2">staking status</div>
+                    <div class="text-lg font-mono">
+                      {stakingData()?.validators ? (
+                        <span class="text-green-400">validating</span>
+                      ) : stakingData()?.nominators ? (
+                        <span class="text-cyan-400">nominating</span>
+                      ) : stakingData()?.bonded && stakingData()!.bonded > 0n ? (
+                        <span class="text-yellow-400">bonded (not nominating)</span>
+                      ) : (
+                        <span class="text-gray-500">not staking</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <Show when={stakingData()?.nominators && stakingData()!.nominators!.length > 0}>
+                    <div class="p-4 bg-gray-900 border border-gray-700">
+                      <div class="text-xs text-gray-500 mb-2">
+                        nominating ({stakingData()!.nominators!.length})
+                      </div>
+                      <div class="space-y-1">
+                        <For each={stakingData()!.nominators}>
+                          {(addr) => (
+                            <div class="font-mono text-xs text-gray-400">
+                              {addr.slice(0, 16)}...{addr.slice(-8)}
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </div>
+                  </Show>
+
+                  <Show when={stakingData()?.unlocking && stakingData()!.unlocking.length > 0}>
+                    <div class="p-4 bg-gray-900 border border-gray-700">
+                      <div class="text-xs text-gray-500 mb-2">unlocking</div>
+                      <For each={stakingData()!.unlocking}>
+                        {(u) => (
+                          <div class="flex justify-between text-sm">
+                            <span class="font-mono text-yellow-400">
+                              {formatBalance(u.value)} {config().token}
+                            </span>
+                            <span class="text-gray-500">era {u.era}</span>
+                          </div>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                </div>
+              </Show>
+            </div>
+          </Show>
+        </div>
 
         {/* Transaction Status */}
         <Show when={txStatus()}>
-          <div class={`fixed bottom-4 right-4 p-4 rounded-lg border ${
-            txStatus()?.type === 'success' ? 'bg-green-900/90 border-green-700 text-green-400' :
-            txStatus()?.type === 'error' ? 'bg-red-900/90 border-red-700 text-red-400' :
-            'bg-blue-900/90 border-blue-700 text-blue-400'
-          } z-50`}>
+          <div class={`fixed bottom-4 right-4 p-4 border font-mono text-sm ${
+            txStatus()!.type === 'success' ? 'bg-green-900/90 border-green-700 text-green-400' :
+            txStatus()!.type === 'error' ? 'bg-red-900/90 border-red-700 text-red-400' :
+            'bg-cyan-900/90 border-cyan-700 text-cyan-400'
+          }`}>
             <div class="flex items-center gap-2">
-              <Show when={txStatus()?.type === 'pending'}>
+              <Show when={txStatus()!.type === 'pending'}>
                 <div class="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
               </Show>
-              <span>{txStatus()?.message}</span>
+              {txStatus()!.msg}
             </div>
+            <button
+              onClick={() => setTxStatus(null)}
+              class="absolute top-1 right-2 text-gray-500 hover:text-white"
+            >
+              ×
+            </button>
           </div>
         </Show>
-
-        {/* Staking Modal (Input Phase) */}
-        <StakingModal
-          show={!!modalOperation()}
-          operation={modalOperation() || 'bond'}
-          account={modalAccount()}
-          token={CHAIN_CONFIGS[selectedChain()].token}
-          decimals={CHAIN_CONFIGS[selectedChain()].decimals}
-          chainId={selectedChain()}
-          chainConfig={CHAIN_CONFIGS[selectedChain()]}
-          currentBonded={modalAccount() ? accountStaking().get(modalAccount()!.address)?.bonded : undefined}
-          maxBalance={modalAccount() ? accountBalances().get(modalAccount()!.address)?.free : undefined}
-          currentNominations={modalAccount() ? accountStaking().get(modalAccount()!.address)?.nominators : undefined}
-          onClose={() => {
-            setModalOperation(null)
-            setModalAccount(null)
-          }}
-          onSubmit={handleModalSubmit}
-        />
-
-        {/* Transaction Confirmation (Review & Sign Phase) */}
-        <TransactionConfirmation
-          show={!!pendingTx()}
-          transaction={pendingTx()}
-          signer={modalAccount()}
-          proxyOption={pendingProxyOption()}
-          token={CHAIN_CONFIGS[selectedChain()].token}
-          decimals={CHAIN_CONFIGS[selectedChain()].decimals}
-          onConfirm={executeTransaction}
-          onCancel={cancelTransaction}
-        />
-
-      </section>
+      </div>
     </MainLayout>
   )
-}
-
-const ValidatorPage: Component = () => {
-  return <ValidatorToolContent />
 }
 
 export default ValidatorPage
