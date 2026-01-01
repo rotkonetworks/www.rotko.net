@@ -1,0 +1,12 @@
+{
+  "version": 0,
+  "descriptorPath": ".papi/descriptors",
+  "entries": {
+    "ksmah": {
+      "wsUrl": "wss://asset-hub-kusama.dotters.network",
+      "metadata": ".papi/metadata/ksmah.scale",
+      "genesis": "0x48239ef607d7928874027a43a67689209727dfb3d3dc5e5b03a39bdc2eda771a",
+      "codeHash": "0xf47d2d399c5e5bec32c579fe26afab0aaac047fff87a13899198133004c9404c"
+    }
+  }
+}

@@ -116,19 +116,22 @@ const StakingPage: Component = () => {
         let totalStake = 0n, ownStake = 0n, commission = 0, nominatorCount = 0, isOversubscribed = false
 
         try {
-          const prefs = await api.query.Staking.Validators.getValue(rv.address)
+          const prefs = await api.query.Staking.ErasValidatorPrefs.getValue(era, rv.address)
           if (prefs) commission = Number(prefs.commission) / 10000000
 
           if (era > 0) {
-            const exposure = await api.query.Staking.ErasStakers.getValue(era, rv.address)
-            if (exposure) {
-              totalStake = BigInt(exposure.total?.toString() || '0')
-              ownStake = BigInt(exposure.own?.toString() || '0')
-              nominatorCount = exposure.others?.length || 0
+            // Use ErasStakersOverview for paged staking (Kusama/Polkadot)
+            const overview = await api.query.Staking.ErasStakersOverview.getValue(era, rv.address)
+            if (overview) {
+              totalStake = BigInt(overview.total?.toString() || '0')
+              ownStake = BigInt(overview.own?.toString() || '0')
+              nominatorCount = Number(overview.nominator_count || 0)
               isOversubscribed = nominatorCount >= 512
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn(`Failed to get staking data for ${rv.address}:`, e)
+        }
 
         results.push({
           address: rv.address,
