@@ -1,36 +1,11 @@
-import { Component, For, onMount, createSignal } from 'solid-js'
+import { Component, For } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
-import NetworkCard from '../components/NetworkCard'
 import ServiceCard from '../components/ServiceCard'
 import { siteData } from '../data/site-data'
-import { fetchCryptoPrices } from '../utils/fetchPrices'
 import BlogPreview from '../components/BlogPreview'
 import NewsPreview from '../components/NewsPreview'
 
 const HomePage: Component = () => {
-  const [networks, setNetworks] = createSignal(siteData.networks)
-
-  onMount(async () => {
-    const ids = siteData.networks
-      .filter(n => n.coingeckoId)
-      .map(n => n.coingeckoId!)
-
-    const prices = await fetchCryptoPrices(ids)
-
-    setNetworks(siteData.networks.map(network => {
-      if (network.coingeckoId && prices[network.coingeckoId]) {
-        return {
-          ...network,
-          price: {
-            current: prices[network.coingeckoId].price,
-            change24h: parseFloat(prices[network.coingeckoId].change24h.toFixed(2)),
-            change30d: parseFloat(prices[network.coingeckoId].change30d.toFixed(2))
-          }
-        }
-      }
-      return network
-    }))
-  })
 
   return (
     <MainLayout>
@@ -89,17 +64,6 @@ const HomePage: Component = () => {
         </div>
       </section>
 
-      {/* Networks */}
-      <section class="py-8 px-4 max-w-6xl mx-auto">
-        <h2 class="text-xl font-bold text-cyan-400 mb-4 border-b border-gray-700 pb-2">
-          {siteData.sections.networks}
-        </h2>
-        <div class="grid md:grid-cols-3 gap-4">
-          <For each={networks()}>
-            {(network) => <NetworkCard network={network} />}
-          </For>
-        </div>
-      </section>
 
       {/* News Preview */}
       <NewsPreview limit={3} />

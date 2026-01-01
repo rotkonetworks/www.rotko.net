@@ -60,7 +60,7 @@ Features:
 ## Networks Supported
 
 - Polkadot: Scalable ubiquitous public compute (12.2% APY, 99.99% uptime)
-- Kusama: Canary network for rapid iteration (14.8% APY, 99.97% uptime)
+- Kusama: Experiment-centric peer network (14.8% APY, 99.97% uptime)
 - Penumbra: End to end encrypted blockchain (2% APY, 99.98% uptime)
 - Paseo: Community testnet for Polkadot (0% APY, 99.98% uptime)
 
@@ -97,4 +97,4 @@ Key facts:
 - Philosophy: Linux-only, open source, no vendor lock-in
 - IRC preferred for support (no accounts needed)
 
-Generated: 2026-01-01T01:26:51.038Z
+Generated: 2026-01-01T02:32:27.771Z
