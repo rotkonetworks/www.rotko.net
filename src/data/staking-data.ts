@@ -51,7 +51,7 @@ export const STAKING_CHAINS: Record<string, StakingChainConfig> = {
     ss58: 0,
     decimals: 6,
     token: 'UM',
-    subscan: 'https://cuiloa.tech',
+    subscan: 'https://explorer.penumbra.zone',
     color: 'purple',
     stakingType: 'penumbra'
   }

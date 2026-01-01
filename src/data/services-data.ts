@@ -25,7 +25,6 @@ export const ENDPOINT_NETWORKS: EndpointNetwork[] = [
   { id: 'polkadot', name: 'Polkadot', token: 'DOT', description: 'Relay, system chains, and parachains' },
   { id: 'kusama', name: 'Kusama', token: 'KSM', description: 'Relay, system chains, and parachains' },
   { id: 'paseo', name: 'Paseo', token: 'PAS', description: 'Relay and system chains' },
-  { id: 'zcash', name: 'Zcash', token: 'ZEC', description: 'Zidecar RPC' },
 ]
 
 export interface Service {
@@ -138,16 +137,9 @@ export const servicesData = {
   networks: [
     "Polkadot",
     "Kusama",
-    "Ethereum",
-    "Cosmos",
-    "Substrate Chains",
-    "Avalanche",
-    "Polygon",
-    "Arbitrum",
-    "Optimism",
-    "Base",
-    "Solana",
-    "Custom Networks"
+    "Paseo",
+    "Penumbra",
+    "Substrate Parachains"
   ],
 
   stats: [
@@ -156,16 +148,16 @@ export const servicesData = {
       label: "Uptime SLA"
     },
     {
-      value: "15+",
-      label: "Networks Supported"
+      value: "4",
+      label: "Networks"
     },
     {
-      value: "500M+",
-      label: "RPC Requests/Month"
+      value: "11",
+      label: "Validators"
     },
     {
       value: "24/7",
-      label: "Monitoring & Support"
+      label: "Monitoring"
     }
   ],
 

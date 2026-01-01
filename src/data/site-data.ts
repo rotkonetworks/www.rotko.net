@@ -84,15 +84,6 @@ export const siteData = {
       price: { current: 0, change24h: 0, change30d: 0 }
     },
     {
-      id: "zcash",
-      name: "Zcash",
-      description: "Privacy-preserving digital currency",
-      type: "mainnet" as const,
-      coingeckoId: "zcash",
-      stats: { apy: 0, uptime: 99.95, staked: 0, inflation: 0 },
-      price: { current: 0, change24h: 0, change30d: 0 }
-    },
-    {
       id: "paseo",
       name: "Paseo",
       description: "Community testnet for Polkadot",

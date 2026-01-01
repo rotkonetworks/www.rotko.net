@@ -16,8 +16,7 @@ const NetworkCard: Component<NetworkCardProps> = (props) => {
     polkadot: { url: '/services/staking/polkadot', label: 'Stake Now' },
     kusama: { url: '/services/staking/kusama', label: 'Stake Now' },
     penumbra: { url: '/services/staking/penumbra', label: 'Stake Now' },
-    paseo: { url: '/services/staking/paseo', label: 'View Validators' },
-    zcash: { url: '/services/endpoints/zcash', label: 'View RPC' }
+    paseo: { url: '/services/staking/paseo', label: 'View Validators' }
   }
 
   const isStaking = props.network.stats.apy > 0 || props.network.stats.staked > 0

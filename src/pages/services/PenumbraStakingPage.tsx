@@ -69,7 +69,7 @@ const PenumbraStakingPage: Component = () => {
                 {([chainId, cfg]) => (
                   <A
                     href={`/services/staking/${chainId}`}
-                    class={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                    class={`px-4 py-2  text-sm transition-colors ${
                       chainId === 'penumbra'
                         ? 'bg-purple-600 text-white'
                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -120,7 +120,7 @@ const PenumbraStakingPage: Component = () => {
           </Show>
 
           <Show when={error()}>
-            <div class="p-4 bg-red-900/20 border border-red-800 rounded-lg text-red-400 mb-6">
+            <div class="p-4 bg-red-900/20 border border-red-800  text-red-400 mb-6">
               {error()}
             </div>
           </Show>
@@ -129,7 +129,7 @@ const PenumbraStakingPage: Component = () => {
             <div class="space-y-4">
               <For each={validators()}>
                 {(validator) => (
-                  <div class={`p-6 rounded-lg border transition-all ${
+                  <div class={`p-6  border transition-all ${
                     validator.status === 'active'
                       ? 'bg-green-900/10 border-green-800/50'
                       : 'bg-gray-900/50 border-gray-800'
@@ -138,7 +138,7 @@ const PenumbraStakingPage: Component = () => {
                       <div>
                         <div class="flex items-center gap-3">
                           <h3 class="text-lg font-semibold text-white">{validator.name}</h3>
-                          <span class={`px-2 py-1 text-xs rounded ${
+                          <span class={`px-2 py-1 text-xs ${
                             validator.status === 'active'
                               ? 'bg-green-900/50 text-green-400'
                               : validator.status === 'jailed'
@@ -149,7 +149,7 @@ const PenumbraStakingPage: Component = () => {
                           </span>
                         </div>
                         <a
-                          href={`https://cuiloa.tech/validator/${validator.address}`}
+                          href={`https://explorer.penumbra.zone/validator/${validator.address}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           class="font-mono text-xs text-gray-500 hover:text-purple-400 mt-1 inline-block break-all"
@@ -188,7 +188,7 @@ const PenumbraStakingPage: Component = () => {
             </div>
 
             {/* Info */}
-            <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800 rounded-lg text-sm text-gray-500">
+            <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800  text-sm text-gray-500">
               <h3 class="text-white font-semibold mb-2">About Penumbra Staking</h3>
               <ul class="space-y-1">
                 <li>• Penumbra is a private PoS network with shielded transactions</li>
@@ -198,12 +198,12 @@ const PenumbraStakingPage: Component = () => {
               </ul>
               <div class="mt-4">
                 <a
-                  href="https://cuiloa.tech/validators"
+                  href="https://explorer.penumbra.zone/validators"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="text-purple-400 hover:text-purple-300"
                 >
-                  View all validators on Cuiloa →
+                  [view all validators]
                 </a>
               </div>
             </div>

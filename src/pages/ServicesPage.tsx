@@ -30,21 +30,21 @@ const ServicesPage: Component = () => {
               {(network) => (
                 <A
                   href={`/services/staking/${network.id}`}
-                  class="block p-6 bg-gray-900 border border-gray-700 hover:border-cyan-600 rounded-lg transition-colors group"
+                  class="block p-4 bg-gray-900 border border-gray-700 hover:border-cyan-600 transition-colors group"
                 >
-                  <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-lg font-semibold text-white group-hover:text-cyan-400 transition-colors">
+                  <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-bold text-cyan-400 group-hover:text-cyan-300">
                       {network.name}
                     </h3>
-                    <span class="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded">
+                    <span class="text-xs font-mono text-gray-500">
                       {network.token}
                     </span>
                   </div>
-                  <div class="text-sm text-gray-400 mb-2">
+                  <div class="text-sm text-gray-400 mb-2 font-mono">
                     {network.validators} validator{network.validators !== 1 ? 's' : ''}
                   </div>
                   <div class="text-xs text-cyan-400 group-hover:text-cyan-300">
-                    View details →
+                    [view details]
                   </div>
                 </A>
               )}
@@ -62,13 +62,13 @@ const ServicesPage: Component = () => {
               {(network) => (
                 <A
                   href={`/services/endpoints/${network.id}`}
-                  class="block p-6 bg-gray-900 border border-gray-700 hover:border-cyan-600 rounded-lg transition-colors group"
+                  class="block p-4 bg-gray-900 border border-gray-700 hover:border-cyan-600 transition-colors group"
                 >
-                  <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-lg font-semibold text-white group-hover:text-cyan-400 transition-colors">
+                  <div class="flex items-center justify-between mb-2">
+                    <h3 class="font-bold text-cyan-400 group-hover:text-cyan-300">
                       {network.name}
                     </h3>
-                    <span class="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded">
+                    <span class="text-xs font-mono text-gray-500">
                       WSS
                     </span>
                   </div>
@@ -76,7 +76,7 @@ const ServicesPage: Component = () => {
                     {network.description}
                   </div>
                   <div class="text-xs text-cyan-400 group-hover:text-cyan-300">
-                    View endpoints →
+                    [view endpoints]
                   </div>
                 </A>
               )}

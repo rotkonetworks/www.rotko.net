@@ -159,7 +159,7 @@ const EndpointsPage: Component = () => {
               <button
                 onClick={testAllEndpoints}
                 disabled={testing()}
-                class={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                class={`px-4 py-2  text-sm transition-colors ${
                   testing()
                     ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                     : 'bg-cyan-600 hover:bg-cyan-500 text-white'
@@ -174,7 +174,7 @@ const EndpointsPage: Component = () => {
               <For each={ENDPOINT_PROVIDERS}>
                 {(provider) => (
                   <div class="flex items-center gap-2">
-                    <span class={`w-3 h-3 rounded-full ${provider.domain === 'dotters.network' ? 'bg-cyan-500' : 'bg-purple-500'}`} />
+                    <span class={`w-2 h-2 ${provider.domain === 'dotters.network' ? 'bg-cyan-500' : 'bg-purple-500'}`} />
                     <span class="text-gray-400">{provider.name}</span>
                     <span class="text-gray-600">({provider.description})</span>
                   </div>
@@ -188,7 +188,7 @@ const EndpointsPage: Component = () => {
                 {([chainId, cfg]) => (
                   <A
                     href={`/services/endpoints/${chainId}`}
-                    class={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                    class={`px-4 py-2  text-sm transition-colors ${
                       network() === chainId
                         ? 'bg-cyan-600 text-white'
                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -214,12 +214,12 @@ const EndpointsPage: Component = () => {
                   statuses().get(`${endpoint.slug}-${provider}`)
 
                 return (
-                  <div class="p-6 bg-gray-900/50 border border-gray-800 rounded-lg">
+                  <div class="p-6 bg-gray-900/50 border border-gray-800 ">
                     <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
                       <div>
                         <div class="flex items-center gap-3">
                           <h3 class="text-lg font-semibold text-white">{endpoint.name}</h3>
-                          <span class={`px-2 py-1 text-xs rounded ${getTypeColor(endpoint.type)}`}>
+                          <span class={`px-2 py-1 text-xs ${getTypeColor(endpoint.type)}`}>
                             {endpoint.type}
                           </span>
                         </div>
@@ -245,8 +245,8 @@ const EndpointsPage: Component = () => {
                           }
 
                           return (
-                            <div class="flex items-center gap-3 p-3 bg-black rounded-lg">
-                              <span class={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            <div class="flex items-center gap-3 p-3 bg-black ">
+                              <span class={`w-2 h-2 flex-shrink-0 ${
                                 provider.domain === 'dotters.network' ? 'bg-cyan-500' : 'bg-purple-500'
                               }`} />
 
@@ -254,7 +254,7 @@ const EndpointsPage: Component = () => {
                                 <div class="flex items-center gap-2 mb-1">
                                   <span class="text-xs text-gray-500">{provider.name}</span>
                                   <Show when={status}>
-                                    <span class={`text-xs px-2 py-0.5 rounded ${
+                                    <span class={`text-xs px-2 py-0.5 ${
                                       status!.connected
                                         ? 'bg-green-900/50 text-green-400'
                                         : 'bg-red-900/50 text-red-400'
@@ -280,7 +280,7 @@ const EndpointsPage: Component = () => {
 
                               <button
                                 onClick={() => copyToClipboard(url)}
-                                class={`px-3 py-1 text-xs rounded transition-colors flex-shrink-0 ${
+                                class={`px-3 py-1 text-xs transition-colors flex-shrink-0 ${
                                   copiedUrl() === url
                                     ? 'bg-green-800 text-green-300'
                                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
@@ -302,13 +302,13 @@ const EndpointsPage: Component = () => {
                       <div class="mt-3 space-y-3">
                         <div>
                           <div class="text-xs text-gray-500 mb-1">polkadot-api</div>
-                          <code class="block p-2 bg-black rounded text-xs text-gray-300 overflow-x-auto">
+                          <code class="block p-2 bg-black text-xs text-gray-300 overflow-x-auto">
                             {`const client = createClient(getWsProvider('${buildEndpointUrl(endpoint.slug, 'dotters.network')}'))`}
                           </code>
                         </div>
                         <div>
                           <div class="text-xs text-gray-500 mb-1">wscat</div>
-                          <code class="block p-2 bg-black rounded text-xs text-gray-300 overflow-x-auto">
+                          <code class="block p-2 bg-black text-xs text-gray-300 overflow-x-auto">
                             {`wscat -c ${buildEndpointUrl(endpoint.slug, 'rotko.net')}`}
                           </code>
                         </div>
@@ -321,7 +321,7 @@ const EndpointsPage: Component = () => {
           </div>
 
           {/* Info */}
-          <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800 rounded-lg text-sm text-gray-500">
+          <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800  text-sm text-gray-500">
             <h3 class="text-white font-semibold mb-2">Endpoint Features</h3>
             <ul class="space-y-1">
               <li>• <span class="text-cyan-400">dotters.network</span> - IBP GeoDNS with global anycast routing</li>

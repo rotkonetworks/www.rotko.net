@@ -196,7 +196,7 @@ const StakingPage: Component = () => {
                 {([chainId, cfg]) => (
                   <A
                     href={`/services/staking/${chainId}`}
-                    class={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                    class={`px-4 py-2  text-sm transition-colors ${
                       network() === chainId
                         ? 'bg-cyan-600 text-white'
                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -258,7 +258,7 @@ const StakingPage: Component = () => {
 
           {/* Error */}
           <Show when={error()}>
-            <div class="p-4 bg-red-900/20 border border-red-800 rounded-lg text-red-400 mb-6">
+            <div class="p-4 bg-red-900/20 border border-red-800  text-red-400 mb-6">
               {error()}
             </div>
           </Show>
@@ -268,7 +268,7 @@ const StakingPage: Component = () => {
             <div class="space-y-4">
               <For each={validators()}>
                 {(validator) => (
-                  <div class={`p-6 rounded-lg border transition-all ${
+                  <div class={`p-6  border transition-all ${
                     validator.isActive
                       ? 'bg-green-900/10 border-green-800/50'
                       : 'bg-gray-900/50 border-gray-800'
@@ -279,7 +279,7 @@ const StakingPage: Component = () => {
                           <h3 class="text-lg font-semibold text-white">{validator.name}</h3>
                           <Show when={validator.grade}>
                             <div
-                              class={`px-2 py-1 rounded text-sm font-bold ${
+                              class={`px-2 py-1 text-sm font-bold ${
                                 turboflakesService.getGradeBgColor(validator.grade!.grade)
                               } ${turboflakesService.getGradeColor(validator.grade!.grade)}`}
                               title={`MVR: ${(validator.grade!.mvr * 100).toFixed(2)}% | BAR: ${(validator.grade!.bar * 100).toFixed(2)}%`}
@@ -287,7 +287,7 @@ const StakingPage: Component = () => {
                               {validator.grade!.grade}
                             </div>
                           </Show>
-                          <span class={`px-2 py-1 text-xs rounded ${
+                          <span class={`px-2 py-1 text-xs ${
                             validator.isActive
                               ? 'bg-green-900/50 text-green-400'
                               : 'bg-gray-800 text-gray-500'
@@ -359,7 +359,7 @@ const StakingPage: Component = () => {
             </div>
 
             {/* Footer Info */}
-            <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800 rounded-lg text-sm text-gray-500">
+            <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800  text-sm text-gray-500">
               <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <Show when={network() === 'polkadot' || network() === 'kusama'}>

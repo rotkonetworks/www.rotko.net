@@ -77,22 +77,9 @@ export const CHAINS: Record<string, ChainConfig> = {
     decimals: 10,
     token: 'PAS',
     color: 'green'
-  },
-  zcash: {
-    name: 'Zcash',
-    endpoints: [
-      { name: 'Zidecar RPC', slug: 'zcash', type: 'relay', description: 'Zcash RPC via Zidecar - block explorer and API' },
-    ],
-    ss58: 0,
-    decimals: 8,
-    token: 'ZEC',
-    color: 'yellow'
   }
 }
 
 export const buildEndpointUrl = (slug: string, provider: 'dotters.network' | 'rotko.net'): string => {
-  if (slug === 'zcash') {
-    return 'https://zcash.rotko.net'
-  }
   return `wss://${slug}.${provider}`
 }
