@@ -1,4 +1,5 @@
 import { Component, createSignal, For, Show, createMemo, onMount, onCleanup, createEffect } from 'solid-js'
+import { useSearchParams } from '@solidjs/router'
 import MainLayout from '../layouts/MainLayout'
 import PageHeader from '../components/PageHeader'
 import { WalletConnector } from '../components/WalletConnector'
@@ -51,6 +52,7 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
 }
 
 const ValidatorToolContent: Component = () => {
+  const [searchParams] = useSearchParams()
   const [connectedAccounts, setConnectedAccounts] = createSignal<InjectedAccountWithMeta[]>([])
   const [proxyAccounts, setProxyAccounts] = createSignal<ProxyAccount[]>([])
   const [searchTerm, setSearchTerm] = createSignal('')
@@ -61,7 +63,18 @@ const ValidatorToolContent: Component = () => {
   const [showNetworkMenu, setShowNetworkMenu] = createSignal(false)
   const [showProxyModal, setShowProxyModal] = createSignal(false)
   const [showDiscoveryPanel, setShowDiscoveryPanel] = createSignal(false)
-  const [selectedChain, setSelectedChain] = createSignal<ChainId>('polkadot')
+  const [preselectedValidator, setPreselectedValidator] = createSignal<string | null>(null)
+
+  // Parse URL params for network and pre-selected validator
+  const getInitialChain = (): ChainId => {
+    const networkParam = searchParams.network?.toLowerCase()
+    if (networkParam && networkParam in CHAIN_CONFIGS) {
+      return networkParam as ChainId
+    }
+    return 'polkadot'
+  }
+
+  const [selectedChain, setSelectedChain] = createSignal<ChainId>(getInitialChain())
   const [copiedAddress, setCopiedAddress] = createSignal<string | null>(null)
   const [connectionStatus, setConnectionStatus] = createSignal({
     relay: false,
@@ -96,6 +109,15 @@ const ValidatorToolContent: Component = () => {
 
     document.addEventListener('keydown', handleKeyPress)
     return () => document.removeEventListener('keydown', handleKeyPress)
+  })
+
+  // Handle URL parameters for pre-selected validator
+  onMount(() => {
+    if (searchParams.nominate) {
+      setPreselectedValidator(searchParams.nominate as string)
+      // Auto-open wallet menu if validator is pre-selected
+      setShowWalletMenu(true)
+    }
   })
 
   // Subscribe to connection status
@@ -667,6 +689,29 @@ const ValidatorToolContent: Component = () => {
           title={validatorData.hero.title}
           subtitle={validatorData.hero.subtitle}
         />
+
+        {/* Pre-selected Validator Banner */}
+        <Show when={preselectedValidator()}>
+          <div class="mb-6 p-4 bg-cyan-900/30 border border-cyan-700 text-sm">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <span class="text-cyan-400 font-bold">Staking on validator: </span>
+                <span class="font-mono text-white break-all">{preselectedValidator()}</span>
+              </div>
+              <div class="flex gap-2">
+                <Show when={connectedAccounts().length === 0}>
+                  <span class="text-gray-400">Connect wallet below to nominate</span>
+                </Show>
+                <button
+                  onClick={() => setPreselectedValidator(null)}
+                  class="text-gray-400 hover:text-white"
+                >
+                  [clear]
+                </button>
+              </div>
+            </div>
+          </div>
+        </Show>
 
         {/* Rotko Validators Status - Always visible */}
         <RotkoValidatorStatus

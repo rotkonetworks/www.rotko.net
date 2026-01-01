@@ -274,15 +274,15 @@ const StakingPage: Component = () => {
                       : 'bg-gray-900/50 border-gray-800'
                   }`}>
                     <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
-                      <div>
-                        <div class="flex items-center gap-3">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-3 flex-wrap">
                           <h3 class="text-lg font-semibold text-white">{validator.name}</h3>
                           <Show when={validator.grade}>
                             <div
                               class={`px-2 py-1 text-sm font-bold ${
                                 turboflakesService.getGradeBgColor(validator.grade!.grade)
                               } ${turboflakesService.getGradeColor(validator.grade!.grade)}`}
-                              title={`MVR: ${(validator.grade!.mvr * 100).toFixed(2)}% | BAR: ${(validator.grade!.bar * 100).toFixed(2)}%`}
+                              title={`Grade based on ${validator.grade!.sessionsCount} sessions (~2 weeks)`}
                             >
                               {validator.grade!.grade}
                             </div>
@@ -304,6 +304,14 @@ const StakingPage: Component = () => {
                           {validator.address}
                         </a>
                       </div>
+                      <Show when={network() !== 'paseo'}>
+                        <A
+                          href={`/software/vctl?nominate=${validator.address}&network=${network()}`}
+                          class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-mono transition-colors"
+                        >
+                          [stake on this validator]
+                        </A>
+                      </Show>
                     </div>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -351,6 +359,24 @@ const StakingPage: Component = () => {
                             {(validator.grade!.bar * 100).toFixed(2)}%
                           </div>
                         </div>
+                        <div>
+                          <div class="text-gray-500 text-sm">Sessions</div>
+                          <div class="text-gray-300 font-mono">
+                            {validator.grade!.sessionsCount}
+                          </div>
+                        </div>
+                        <Show when={validator.grade!.totalVotes > 0}>
+                          <div>
+                            <div class="text-gray-500 text-sm">Votes</div>
+                            <div class="text-xs font-mono">
+                              <span class="text-green-400">{validator.grade!.explicitVotes.toLocaleString()}</span>
+                              <span class="text-gray-600">/</span>
+                              <span class="text-cyan-400">{validator.grade!.implicitVotes.toLocaleString()}</span>
+                              <span class="text-gray-600">/</span>
+                              <span class="text-red-400">{validator.grade!.missedVotes.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </Show>
                       </Show>
                     </div>
                   </div>
@@ -359,16 +385,32 @@ const StakingPage: Component = () => {
             </div>
 
             {/* Footer Info */}
-            <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800  text-sm text-gray-500">
-              <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <Show when={network() === 'polkadot' || network() === 'kusama'}>
-                    Grades from <a href="https://turboflakes.io" target="_blank" class="text-cyan-400 hover:underline">Turboflakes ONE-T</a>.
-                    MVR = Missed Votes Ratio | BAR = Bitfield Availability Ratio
-                  </Show>
+            <div class="mt-8 p-4 bg-gray-900/50 border border-gray-800 text-sm text-gray-500">
+              <Show when={network() === 'polkadot' || network() === 'kusama'}>
+                <div class="mb-3">
+                  <span class="text-white">Performance grades from </span>
+                  <a href="https://turboflakes.io" target="_blank" class="text-cyan-400 hover:underline">Turboflakes ONE-T</a>
+                  <span class="text-white"> based on last ~84 sessions (~2 weeks)</span>
                 </div>
-                <A href="/software/vctl" class="text-cyan-400 hover:text-cyan-300">
-                  Manage Staking with vctl →
+                <div class="grid md:grid-cols-2 gap-4 text-xs mb-4">
+                  <div>
+                    <span class="text-gray-400">MVR</span> = Missed Votes Ratio (lower is better)
+                    <br/>
+                    <span class="text-gray-400">BAR</span> = Bitfield Availability Ratio (higher is better)
+                  </div>
+                  <div>
+                    <span class="text-gray-400">Votes</span> = <span class="text-green-400">explicit</span>/<span class="text-cyan-400">implicit</span>/<span class="text-red-400">missed</span>
+                    <br/>
+                    <span class="text-gray-400">Grade</span> = (1 - MVR) × 0.75 + BAR × 0.25
+                  </div>
+                </div>
+              </Show>
+              <div class="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-gray-800">
+                <div class="text-gray-400">
+                  Connect your wallet to stake on Rotko validators
+                </div>
+                <A href="/software/vctl" class="text-cyan-400 hover:text-cyan-300 font-mono">
+                  [open vctl staking tool]
                 </A>
               </div>
             </div>
