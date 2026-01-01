@@ -40,7 +40,14 @@ const CHAIN_CONFIGS: Record<ChainId, ChainConfig> = {
   }
 }
 
-type TabId = 'nominate' | 'bond' | 'session' | 'status'
+type TabId = 'stake' | 'pool' | 'nominate' | 'session' | 'status'
+
+// Minimum stake thresholds (approximate)
+const MIN_STAKE = {
+  polkadot: { direct: 500n * 10n ** 10n, pool: 1n * 10n ** 10n }, // 500 DOT direct, 1 DOT pool
+  kusama: { direct: 1n * 10n ** 11n, pool: 1n * 10n ** 11n },     // 0.1 KSM direct, 0.1 KSM pool
+  paseo: { direct: 100n * 10n ** 10n, pool: 1n * 10n ** 10n }     // 100 PAS direct, 1 PAS pool
+}
 
 const ValidatorPage: Component = () => {
   const [searchParams] = useSearchParams()
@@ -51,7 +58,7 @@ const ValidatorPage: Component = () => {
   )
   const [connectedAccounts, setConnectedAccounts] = createSignal<InjectedAccountWithMeta[]>([])
   const [selectedAccount, setSelectedAccount] = createSignal<InjectedAccountWithMeta | null>(null)
-  const [activeTab, setActiveTab] = createSignal<TabId>('nominate')
+  const [activeTab, setActiveTab] = createSignal<TabId>('stake')
 
   // Chain data
   const [balance, setBalance] = createSignal<AccountBalance | null>(null)
@@ -60,9 +67,11 @@ const ValidatorPage: Component = () => {
 
   // Operation state
   const [txStatus, setTxStatus] = createSignal<{ msg: string; type: 'pending' | 'success' | 'error' } | null>(null)
-  const [bondAmount, setBondAmount] = createSignal('')
+  const [stakeAmount, setStakeAmount] = createSignal('')
   const [sessionKeys, setSessionKeys] = createSignal('')
   const [selectedValidators, setSelectedValidators] = createSignal<string[]>([])
+  const [poolId, setPoolId] = createSignal('1') // Default pool ID
+  const [poolMember, setPoolMember] = createSignal<{ poolId: number; points: bigint } | null>(null)
 
   // Pre-selected validator from URL
   const preselectedValidator = () => searchParams.nominate as string | undefined
@@ -97,15 +106,18 @@ const ValidatorPage: Component = () => {
     if (!account) {
       setBalance(null)
       setStakingData(null)
+      setPoolMember(null)
       return
     }
 
-    const [bal, staking] = await Promise.all([
+    const [bal, staking, pool] = await Promise.all([
       multiChainServicePapi.getBalance(account.address),
-      multiChainServicePapi.getStakingInfo(account.address)
+      multiChainServicePapi.getStakingInfo(account.address),
+      multiChainServicePapi.getPoolMember(account.address)
     ])
     setBalance(bal)
     setStakingData(staking)
+    setPoolMember(pool)
   })
 
   const formatBalance = (value: bigint): string => {
@@ -135,23 +147,76 @@ const ValidatorPage: Component = () => {
     return match.polkadotSigner
   }
 
-  // Staking operations
-  const handleBond = async () => {
-    const account = selectedAccount()
-    if (!account || !bondAmount()) return
+  // Check if amount meets direct nomination threshold
+  const canDirectNominate = () => {
+    if (!stakeAmount()) return false
+    const amount = parseAmount(stakeAmount())
+    const minStake = MIN_STAKE[selectedChain()]
+    return amount >= minStake.direct
+  }
 
-    setTxStatus({ msg: 'Signing transaction...', type: 'pending' })
+  // Staking operations - direct bond + nominate
+  const handleDirectStake = async () => {
+    const account = selectedAccount()
+    if (!account || !stakeAmount()) return
+
+    setTxStatus({ msg: 'Bonding tokens...', type: 'pending' })
     try {
       const signer = await getSigner(account)
-      const amount = parseAmount(bondAmount())
+      const amount = parseAmount(stakeAmount())
+
+      // Bond first
       await multiChainServicePapi.bond(signer, account.address, amount, 'Staked')
-      setTxStatus({ msg: 'Bonded successfully', type: 'success' })
-      setBondAmount('')
+
+      // Then nominate Rotko validators
+      setTxStatus({ msg: 'Nominating validators...', type: 'pending' })
+      const validators = rotkoValidators().map(v => v.address)
+      await multiChainServicePapi.nominate(signer, validators)
+
+      setTxStatus({ msg: 'Staked successfully', type: 'success' })
+      setStakeAmount('')
+
       // Refresh data
       const staking = await multiChainServicePapi.getStakingInfo(account.address)
       setStakingData(staking)
     } catch (e: any) {
-      setTxStatus({ msg: e.message || 'Bond failed', type: 'error' })
+      setTxStatus({ msg: e.message || 'Stake failed', type: 'error' })
+    }
+  }
+
+  // Join nomination pool
+  const handleJoinPool = async () => {
+    const account = selectedAccount()
+    if (!account || !stakeAmount() || !poolId()) return
+
+    setTxStatus({ msg: 'Joining pool...', type: 'pending' })
+    try {
+      const signer = await getSigner(account)
+      const amount = parseAmount(stakeAmount())
+      await multiChainServicePapi.joinPool(signer, amount, parseInt(poolId()))
+      setTxStatus({ msg: 'Joined pool successfully', type: 'success' })
+      setStakeAmount('')
+
+      // Refresh data
+      const pool = await multiChainServicePapi.getPoolMember(account.address)
+      setPoolMember(pool)
+    } catch (e: any) {
+      setTxStatus({ msg: e.message || 'Join pool failed', type: 'error' })
+    }
+  }
+
+  // Claim pool rewards
+  const handleClaimPoolRewards = async () => {
+    const account = selectedAccount()
+    if (!account) return
+
+    setTxStatus({ msg: 'Claiming rewards...', type: 'pending' })
+    try {
+      const signer = await getSigner(account)
+      await multiChainServicePapi.claimPoolPayout(signer)
+      setTxStatus({ msg: 'Rewards claimed', type: 'success' })
+    } catch (e: any) {
+      setTxStatus({ msg: e.message || 'Claim failed', type: 'error' })
     }
   }
 
@@ -300,7 +365,23 @@ const ValidatorPage: Component = () => {
 
         {/* Tabs */}
         <div class="border-b border-gray-700 mb-6">
-          <div class="flex gap-1">
+          <div class="flex gap-1 flex-wrap">
+            <button
+              onClick={() => setActiveTab('stake')}
+              class={`px-4 py-2 text-sm font-mono border-b-2 ${
+                activeTab() === 'stake' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
+              }`}
+            >
+              stake
+            </button>
+            <button
+              onClick={() => setActiveTab('pool')}
+              class={`px-4 py-2 text-sm font-mono border-b-2 ${
+                activeTab() === 'pool' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
+              }`}
+            >
+              pool
+            </button>
             <button
               onClick={() => setActiveTab('nominate')}
               class={`px-4 py-2 text-sm font-mono border-b-2 ${
@@ -310,20 +391,12 @@ const ValidatorPage: Component = () => {
               nominate
             </button>
             <button
-              onClick={() => setActiveTab('bond')}
-              class={`px-4 py-2 text-sm font-mono border-b-2 ${
-                activeTab() === 'bond' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
-              }`}
-            >
-              bond
-            </button>
-            <button
               onClick={() => setActiveTab('session')}
               class={`px-4 py-2 text-sm font-mono border-b-2 ${
                 activeTab() === 'session' ? 'border-cyan-400 text-cyan-400' : 'border-transparent text-gray-500'
               }`}
             >
-              session keys
+              session
             </button>
             <button
               onClick={() => setActiveTab('status')}
@@ -338,6 +411,147 @@ const ValidatorPage: Component = () => {
 
         {/* Tab Content */}
         <div class="min-h-[300px]">
+          {/* Stake Tab - Simple stake with recommendation */}
+          <Show when={activeTab() === 'stake'}>
+            <div class="space-y-4">
+              <div>
+                <div class="text-xs text-gray-500 mb-2">amount to stake</div>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="0.0"
+                    value={stakeAmount()}
+                    onInput={(e) => setStakeAmount(e.currentTarget.value.replace(/[^0-9.]/g, ''))}
+                    class="flex-1 bg-black border border-gray-700 px-3 py-2 font-mono"
+                  />
+                  <span class="px-3 py-2 bg-gray-800 text-gray-400">{config().token}</span>
+                </div>
+                <Show when={balance()}>
+                  <div class="text-xs text-gray-500 mt-1">
+                    available: {formatBalance(balance()!.free)} {config().token}
+                  </div>
+                </Show>
+              </div>
+
+              {/* Recommendation based on amount */}
+              <Show when={stakeAmount()}>
+                <div class={`p-4 border ${canDirectNominate() ? 'bg-green-900/20 border-green-800' : 'bg-cyan-900/20 border-cyan-800'}`}>
+                  <Show when={canDirectNominate()}>
+                    <div class="text-green-400 text-sm mb-2">✓ eligible for direct nomination</div>
+                    <p class="text-xs text-gray-400">
+                      stake directly with Rotko validators. higher rewards, full control.
+                    </p>
+                  </Show>
+                  <Show when={!canDirectNominate()}>
+                    <div class="text-cyan-400 text-sm mb-2">→ recommended: nomination pool</div>
+                    <p class="text-xs text-gray-400">
+                      minimum for direct nomination: {formatBalance(MIN_STAKE[selectedChain()].direct)} {config().token}.
+                      join a pool to stake any amount.
+                    </p>
+                  </Show>
+                </div>
+              </Show>
+
+              {/* Action buttons */}
+              <div class="grid md:grid-cols-2 gap-4">
+                <button
+                  onClick={handleDirectStake}
+                  disabled={!selectedAccount() || !stakeAmount() || !canDirectNominate()}
+                  class="py-3 bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:text-gray-500 font-mono text-sm"
+                >
+                  direct stake on rotko
+                </button>
+                <button
+                  onClick={() => setActiveTab('pool')}
+                  disabled={!stakeAmount()}
+                  class="py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 font-mono text-sm"
+                >
+                  join nomination pool
+                </button>
+              </div>
+
+              {/* Info */}
+              <div class="text-xs text-gray-500 pt-4 border-t border-gray-800 space-y-1">
+                <div><span class="text-green-400">direct:</span> bond + nominate rotko validators. requires {formatBalance(MIN_STAKE[selectedChain()].direct)} {config().token}</div>
+                <div><span class="text-cyan-400">pool:</span> join existing pool. stake any amount from {formatBalance(MIN_STAKE[selectedChain()].pool)} {config().token}</div>
+              </div>
+            </div>
+          </Show>
+
+          {/* Pool Tab */}
+          <Show when={activeTab() === 'pool'}>
+            <div class="space-y-4">
+              {/* Current pool membership */}
+              <Show when={poolMember()}>
+                <div class="p-4 bg-green-900/20 border border-green-800">
+                  <div class="text-green-400 text-sm mb-2">✓ pool member</div>
+                  <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div class="text-gray-500">pool id</div>
+                      <div class="font-mono">{poolMember()!.poolId}</div>
+                    </div>
+                    <div>
+                      <div class="text-gray-500">staked</div>
+                      <div class="font-mono text-cyan-400">{formatBalance(poolMember()!.points)} {config().token}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleClaimPoolRewards}
+                    disabled={!selectedAccount()}
+                    class="mt-4 w-full py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 font-mono text-sm"
+                  >
+                    claim rewards
+                  </button>
+                </div>
+              </Show>
+
+              {/* Join pool form */}
+              <Show when={!poolMember()}>
+                <div>
+                  <div class="text-xs text-gray-500 mb-2">amount to stake in pool</div>
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="0.0"
+                      value={stakeAmount()}
+                      onInput={(e) => setStakeAmount(e.currentTarget.value.replace(/[^0-9.]/g, ''))}
+                      class="flex-1 bg-black border border-gray-700 px-3 py-2 font-mono"
+                    />
+                    <span class="px-3 py-2 bg-gray-800 text-gray-400">{config().token}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-xs text-gray-500 mb-2">pool id</div>
+                  <input
+                    type="text"
+                    placeholder="1"
+                    value={poolId()}
+                    onInput={(e) => setPoolId(e.currentTarget.value.replace(/[^0-9]/g, ''))}
+                    class="w-full bg-black border border-gray-700 px-3 py-2 font-mono"
+                  />
+                  <div class="text-xs text-gray-600 mt-1">
+                    find pools at <a href="https://staking.polkadot.cloud" target="_blank" class="text-cyan-400 hover:underline">staking.polkadot.cloud</a>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleJoinPool}
+                  disabled={!selectedAccount() || !stakeAmount() || !poolId()}
+                  class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 font-mono"
+                >
+                  join pool {poolId()}
+                </button>
+              </Show>
+
+              {/* Pool info */}
+              <div class="text-xs text-gray-500 pt-4 border-t border-gray-800">
+                <p>nomination pools allow you to stake with less than the minimum direct stake.</p>
+                <p class="mt-1">rewards are distributed proportionally to all pool members.</p>
+              </div>
+            </div>
+          </Show>
+
           {/* Nominate Tab */}
           <Show when={activeTab() === 'nominate'}>
             <div class="space-y-4">
@@ -408,47 +622,6 @@ const ValidatorPage: Component = () => {
               >
                 nominate {selectedValidators().length} validator(s)
               </button>
-            </div>
-          </Show>
-
-          {/* Bond Tab */}
-          <Show when={activeTab() === 'bond'}>
-            <div class="space-y-4">
-              <div>
-                <div class="text-xs text-gray-500 mb-2">amount to bond</div>
-                <div class="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="0.0"
-                    value={bondAmount()}
-                    onInput={(e) => setBondAmount(e.currentTarget.value.replace(/[^0-9.]/g, ''))}
-                    class="flex-1 bg-black border border-gray-700 px-3 py-2 font-mono"
-                  />
-                  <span class="px-3 py-2 bg-gray-800 text-gray-400">{config().token}</span>
-                </div>
-                <Show when={balance()}>
-                  <div class="text-xs text-gray-500 mt-1">
-                    available: {formatBalance(balance()!.free)} {config().token}
-                  </div>
-                </Show>
-              </div>
-
-              <button
-                onClick={handleBond}
-                disabled={!selectedAccount() || !bondAmount()}
-                class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-700 disabled:text-gray-500 font-mono"
-              >
-                bond
-              </button>
-
-              <Show when={stakingData()?.bonded && stakingData()!.bonded > 0n}>
-                <div class="pt-4 border-t border-gray-800">
-                  <div class="text-xs text-gray-500 mb-2">currently bonded</div>
-                  <div class="font-mono text-orange-400">
-                    {formatBalance(stakingData()!.bonded)} {config().token}
-                  </div>
-                </div>
-              </Show>
             </div>
           </Show>
 

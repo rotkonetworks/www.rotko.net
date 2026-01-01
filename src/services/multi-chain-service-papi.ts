@@ -1050,6 +1050,164 @@ export class MultiChainServicePapi {
     return this.clients.relay.getUnsafeApi()
   }
 
+  // Nomination pool operations
+  async joinPool(signer: any, amount: bigint, poolId: number) {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) throw new Error('Not connected to staking chain')
+
+    console.log(`[joinPool] Joining pool ${poolId} with ${amount}`)
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.NominationPools.join({ amount, pool_id: poolId })
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[joinPool] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[joinPool] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[joinPool] Transaction failed:', error)
+      throw error
+    }
+  }
+
+  async claimPoolPayout(signer: any) {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) throw new Error('Not connected to staking chain')
+
+    console.log('[claimPoolPayout] Claiming pool payout')
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.NominationPools.claim_payout(undefined)
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[claimPoolPayout] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[claimPoolPayout] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[claimPoolPayout] Transaction failed:', error)
+      throw error
+    }
+  }
+
+  async unbondPool(signer: any, memberAccount: string, unbondingPoints: bigint) {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) throw new Error('Not connected to staking chain')
+
+    console.log(`[unbondPool] Unbonding ${unbondingPoints} from pool`)
+
+    try {
+      const api = await client.getUnsafeApi()
+      const tx = api.tx.NominationPools.unbond({ member_account: memberAccount, unbonding_points: unbondingPoints })
+
+      const signedTx = await tx.sign(signer, {})
+      console.log('[unbondPool] Transaction signed, submitting...')
+
+      const result = await client.submit(signedTx)
+      console.log('[unbondPool] Transaction submitted successfully:', result)
+      return result
+    } catch (error) {
+      console.error('[unbondPool] Transaction failed:', error)
+      throw error
+    }
+  }
+
+  async getPoolMember(address: string): Promise<{ poolId: number; points: bigint; unbondingEras: any[] } | null> {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) return null
+
+    try {
+      const api = await client.getUnsafeApi()
+      const member = await api.query.NominationPools.PoolMembers.getValue(address)
+
+      if (!member) return null
+
+      return {
+        poolId: member.pool_id,
+        points: BigInt(member.points?.toString() || '0'),
+        unbondingEras: member.unbonding_eras || []
+      }
+    } catch (error) {
+      console.error('Failed to get pool member:', error)
+      return null
+    }
+  }
+
+  async getPoolInfo(poolId: number): Promise<{ state: string; points: bigint; memberCounter: number } | null> {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) return null
+
+    try {
+      const api = await client.getUnsafeApi()
+      const pool = await api.query.NominationPools.BondedPools.getValue(poolId)
+
+      if (!pool) return null
+
+      return {
+        state: pool.state?.type || pool.state?.toString() || 'Unknown',
+        points: BigInt(pool.points?.toString() || '0'),
+        memberCounter: Number(pool.member_counter || 0)
+      }
+    } catch (error) {
+      console.error('Failed to get pool info:', error)
+      return null
+    }
+  }
+
+  async getMinNominatorBond(): Promise<bigint> {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) return 0n
+
+    try {
+      const api = await client.getUnsafeApi()
+      const minBond = await api.query.Staking.MinNominatorBond.getValue()
+      return BigInt(minBond?.toString() || '0')
+    } catch (error) {
+      console.error('Failed to get min nominator bond:', error)
+      return 0n
+    }
+  }
+
+  async getMinPoolJoinBond(): Promise<bigint> {
+    const client = this.config?.stakingLocation === 'relay'
+      ? this.clients.relay
+      : this.clients.assetHub
+
+    if (!client) return 0n
+
+    try {
+      const api = await client.getUnsafeApi()
+      const minBond = await api.query.NominationPools.MinJoinBond.getValue()
+      return BigInt(minBond?.toString() || '0')
+    } catch (error) {
+      console.error('Failed to get min pool join bond:', error)
+      return 0n
+    }
+  }
+
   // Get accounts that this address can proxy for
   async getProxiedAccounts(proxyAddress: string, knownAddresses: string[]): Promise<{
     account: string
