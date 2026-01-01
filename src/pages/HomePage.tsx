@@ -35,6 +35,28 @@ const HomePage: Component = () => {
         </div>
       </section>
 
+      {/* Stake CTA */}
+      <section class="py-6 px-4 max-w-6xl mx-auto">
+        <a
+          href="/software/vctl"
+          class="block p-6 bg-gradient-to-r from-cyan-900/30 to-purple-900/30 border border-cyan-700 hover:border-cyan-500 transition-colors group"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-cyan-400 group-hover:text-cyan-300 mb-1">
+                Stake with Rotko
+              </h2>
+              <p class="text-gray-400 text-sm">
+                Polkadot, Kusama, Penumbra — direct nomination or pools
+              </p>
+            </div>
+            <div class="text-cyan-400 group-hover:text-cyan-300 font-mono">
+              [open vctl →]
+            </div>
+          </div>
+        </a>
+      </section>
+
       {/* Stats */}
       <section class="py-8 px-4 max-w-6xl mx-auto">
         <div class="border border-gray-700 bg-gray-900 p-6">

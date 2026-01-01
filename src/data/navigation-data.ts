@@ -6,40 +6,39 @@ export interface NavItem {
 
 export const navigationData: NavItem[] = [
   { label: "Home", href: "/" },
+  { label: "Stake", href: "/software/vctl" },
   { label: "Services", href: "/services" },
   { label: "Software", href: "/software" },
   { label: "Infrastructure", href: "/infrastructure" },
-  { label: "Team", href: "/team" },
   { label: "Blog", href: "/blog" },
-  { label: "News", href: "/news" },
   { label: "Contact", href: "/contact" }
 ]
 
 export const footerData = {
   sections: [
     {
-      title: "Company",
+      title: "Staking",
       links: [
-        { label: "Team", href: "/team" },
-        { label: "Blog", href: "/blog" },
-        { label: "News", href: "/news" },
-        { label: "Contact", href: "/contact" }
+        { label: "Stake Now", href: "/software/vctl" },
+        { label: "Polkadot", href: "/services/staking/polkadot" },
+        { label: "Kusama", href: "/services/staking/kusama" },
+        { label: "Penumbra", href: "/services/staking/penumbra" }
       ]
     },
     {
       title: "Infrastructure",
       links: [
-        { label: "Network", href: "/infrastructure" },
         { label: "Services", href: "/services" },
+        { label: "Endpoints", href: "/services/endpoints/polkadot" },
         { label: "Status", href: "https://status.rotko.net", external: true }
       ]
     },
     {
       title: "Resources",
       links: [
-        { label: "GitHub", href: "https://github.com/rotkonetworks", external: true },
-        { label: "Documentation", href: "/docs" },
-        { label: "Software", href: "/software" }
+        { label: "Software", href: "/software" },
+        { label: "Blog", href: "/blog" },
+        { label: "GitHub", href: "https://github.com/rotkonetworks", external: true }
       ]
     },
   //   {
