@@ -68,8 +68,8 @@ export const siteData = {
     {
       id: "kusama",
       name: "Kusama",
-      description: "Canary network for rapid iteration",
-      type: "canary" as const,
+      description: "Experiment-centric peer network",
+      type: "mainnet" as const,
       coingeckoId: "kusama",
       stats: { apy: 14.8, uptime: 99.97, staked: 44.4, inflation: 10.0 },
       price: { current: 0, change24h: 0, change30d: 0 }
