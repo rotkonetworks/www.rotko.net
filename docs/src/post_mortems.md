@@ -39,9 +39,3 @@ In contrast, our postmortems:
   - Impact: 18-minute network outage affecting lower era points for validator and RPC nodes downtime
   - Root Cause: Misconfiguration between a router and switch.
   - Status: Fully recover
-
-### 2026
-- [2026-1-29: Hurricane Electric Graceful Shutdown Incident](he_graceful_shutdown_260129.md)
-  - Impact: 8-day degraded IPv6 transit capacity, reduced path diversity at BKNIX and AMS-IX
-  - Root Cause: HE's BGP implementation breaks sessions on receiving graceful shutdown community
-  - Status: Resolved after manual intervention by HE

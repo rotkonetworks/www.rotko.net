@@ -1,4 +1,10 @@
-# hurricane electric and the graceful shutdown disaster (2026-01-20)
+---
+title: "hurricane electric graceful shutdown incident"
+description: "bgp sessions with he remained idle for 8 days after we followed rfc 8326 graceful shutdown during maintenance"
+date: "2026-01-29"
+tags: ["bgp", "peering", "incident", "hurricane-electric"]
+draft: false
+---
 
 ## summary
 
@@ -6,16 +12,18 @@ on january 20, 2026, we performed scheduled maintenance on our edge infrastructu
 
 hurricane electric's sessions remained in idle state for 8 days until we manually escalated and they "cleared" them.
 
-## what happened
+## timeline
 
 - **2026-01-20 14:00 ICT**: scheduled maintenance begins, graceful shutdown community sent to all peers
 - **2026-01-20 18:00 ICT**: maintenance complete, our side ready to peer
 - **2026-01-20 - 2026-01-28**: he sessions stuck in idle
 - **2026-01-28**: he responds, admits they "do not support graceful shutdown", manually clears sessions
 
-affected sessions:
+**affected sessions:**
 - bknix: 203.159.68.168 / 2001:df5:b881::168
 - ams-ix: 80.249.212.139 / 2001:7f8:1:0:a500:14:2108:1
+
+you can verify our peering status on [hurricane electric's bgp toolkit](https://bgp.he.net/AS142108#_peers).
 
 ## the problem
 
