@@ -42,32 +42,25 @@ const NewsPreview: Component<NewsPreviewProps> = (props) => {
         <Show when={news().length > 0} fallback={
           <div class="text-gray-400">No news yet.</div>
         }>
-          <div class="space-y-4">
+          <div class="divide-y divide-gray-700 border border-gray-700 bg-gray-900">
             <For each={news()}>
               {(item) => (
                 <A
                   href={`/news/${item.slug}`}
-                  class="block bg-gray-900 border border-gray-700 hover:border-gray-600 p-4 transition-all"
+                  class="block px-4 py-3 hover:bg-gray-800 transition-colors"
                 >
-                  <div class="flex justify-between items-start mb-2">
-                    <h3 class="text-lg font-bold text-cyan-400 group-hover:text-cyan-300">
-                      {item.title}
-                    </h3>
-                    <time class="text-xs text-gray-500 font-mono ml-4 flex-shrink-0">
+                  <div class="flex items-baseline gap-3">
+                    <time class="text-xs text-gray-500 font-mono flex-shrink-0 w-20">
                       {new Date(item.date).toLocaleDateString()}
                     </time>
-                  </div>
-                  <p class="text-gray-400 text-sm mb-2">
-                    {item.description}
-                  </p>
-                  <div class="flex flex-wrap gap-2">
-                    <For each={item.tags}>
-                      {(tag) => (
-                        <span class="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded border border-gray-700">
-                          {tag}
-                        </span>
-                      )}
-                    </For>
+                    <div class="min-w-0">
+                      <h3 class="text-sm font-bold text-cyan-400 truncate">
+                        {item.title}
+                      </h3>
+                      <p class="text-gray-500 text-xs mt-0.5 line-clamp-1">
+                        {item.description}
+                      </p>
+                    </div>
                   </div>
                 </A>
               )}
