@@ -1,0 +1,59 @@
+---
+title: "change in validator commissions"
+description: "rotko polkadot validator commission set to 13.1415% to sustain rpc infrastructure and development operations"
+date: "2026-03-23"
+tags: ["polkadot", "kusama", "staking", "commission"]
+draft: false
+---
+
+## what changed
+
+- **dot01** (polkadot): commission adjusted to **13.1415%** (a nod to pi day, since the issuance reduction landed on march 14)
+- **ksm02, ksm03** (kusama): commission adjusted to 20%
+- **ksm01** (kusama): retiring from active set
+
+## what we're funding
+
+we run more than validators. [dotters.network](https://dotters.network) provides free public rpc endpoints for asset hub and other polkadot parachains. on top of that, we're actively building open source tools on asset hub:
+
+- [sonotxt.com](https://sonotxt.com) — ai marketplace on pallet-revive
+- [syndigate.org](https://syndigate.org) — organization registry with wyoming dao llc filing
+- [whodb.org](https://whodb.org) — identity search engine
+- [w3registrar](https://github.com/rotkonetworks/w3registrar) — identity registrar
+
+the updated commission helps sustain both validation and the public infrastructure we provide to the network.
+
+## the numbers
+
+| | monthly commission income | monthly infra cost |
+|---|---|---|
+| dot01 (13.14%) | ~2,500 DOT (~$3,500) | ~$300 (2U + ~80mbit/s) |
+| ksm02 (20%) | ~21 KSM (~$85) | ~$300 (2U + ~80mbit/s) |
+| ksm03 (20%) | ~21 KSM (~$85) | ~$300 (2U + ~80mbit/s) |
+| rpc infra | $0 (unpaid) | ~$200 (servers + bandwidth) |
+
+polkadot validator commission currently subsidizes kusama operations and rpc infrastructure. with the upcoming dap phase 2 (q2-q3 2026), validators will receive a proposed $2,000/month stablecoin operational reward plus vested dot rewards proportional to self-stake — properly compensating infrastructure operators going forward.
+
+## ksm01 retiring
+
+ksm01 is no longer in the kusama active set. nominators on ksm01 should move to **ksm02** or **ksm03**.
+
+## good things coming for nominators
+
+starting end of march 2026 (runtime 2.1.1):
+
+- 10% minimum commission network-wide (we're already above this)
+- 10,000 DOT minimum validator self-stake (we meet this)
+- session key management moves to asset hub (~60 DOT deposit)
+
+and for nominators (expected q2 2026):
+
+- nominators become **unslashable** — validators absorb all slashing risk
+- unbonding drops from 28 days to **24-48 hours**
+
+## summary
+
+- polkadot nominators: commission is now 13.1415%
+- kusama nominators on ksm02/ksm03: commission is now 20%
+- kusama nominators on ksm01: please move nominations to ksm02 or ksm03
+- coming soon: zero slashing risk and faster unbonding for all nominators
