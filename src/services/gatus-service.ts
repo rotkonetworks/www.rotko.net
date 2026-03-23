@@ -1,4 +1,6 @@
-const GATUS_API = 'https://status.rotko.net/api/v1/endpoints/statuses'
+// In production, nginx proxies /api/gatus/ to status.rotko.net/api/v1/
+// In dev, Vite proxy handles the same path
+const GATUS_API = '/api/gatus/endpoints/statuses'
 
 interface GatusConditionResult {
   condition: string

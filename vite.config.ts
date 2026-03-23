@@ -21,6 +21,13 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    proxy: {
+      '/api/gatus': {
+        target: 'https://status.rotko.net',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/gatus/, '/api/v1'),
+      },
+    },
   },
   build: {
     target: 'esnext',
