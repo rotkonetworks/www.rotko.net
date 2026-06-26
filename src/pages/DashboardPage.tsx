@@ -57,6 +57,12 @@ const DashboardPage: Component = () => {
           }
         >
           <div class="flex items-center gap-3 text-sm">
+            <a
+              href="/hosting"
+              class="px-3.5 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
+            >
+              + Deploy a server
+            </a>
             <span class="text-gray-400 font-mono">{identityLabel()}</span>
             <button onClick={() => { logout(); navigate('/') }} class="text-gray-500 hover:text-white">
               Sign out
@@ -87,6 +93,24 @@ const DashboardPage: Component = () => {
           </div>
         </div>
 
+        {/* Account */}
+        <div class={card + ' mb-8'}>
+          <h2 class="text-base font-semibold text-white mb-3">Account</h2>
+          <div class="grid sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <div class="text-gray-500 text-xs mb-0.5">Identity</div>
+              <div class="text-gray-200 font-mono break-all">{session()?.identity}</div>
+            </div>
+            <div>
+              <div class="text-gray-500 text-xs mb-0.5">How billing works</div>
+              <div class="text-gray-400">
+                Paying an order credits your prepaid balance; active services bill
+                against it each month. Pay with DOT, USDC, or USDt.
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Services */}
         <div class={card + ' mb-8'}>
           <div class="flex items-center justify-between mb-4">
@@ -95,7 +119,14 @@ const DashboardPage: Component = () => {
           </div>
           <Show
             when={(account()?.subscriptions ?? []).length}
-            fallback={<p class="text-sm text-gray-500">No active services yet.</p>}
+            fallback={
+              <div class="text-sm text-gray-500">
+                <p>No active services yet.</p>
+                <a href="/hosting" class="inline-block mt-3 text-cyan-400 hover:text-cyan-300">
+                  Deploy your first server →
+                </a>
+              </div>
+            }
           >
             <div class="divide-y divide-gray-800">
               <For each={account()?.subscriptions}>
@@ -130,7 +161,14 @@ const DashboardPage: Component = () => {
           <h2 class="text-base font-semibold text-white mb-4">Orders</h2>
           <Show
             when={(orders() ?? []).length}
-            fallback={<p class="text-sm text-gray-500">No orders yet.</p>}
+            fallback={
+              <div class="text-sm text-gray-500">
+                <p>No orders yet.</p>
+                <a href="/hosting" class="inline-block mt-3 text-cyan-400 hover:text-cyan-300">
+                  Browse servers →
+                </a>
+              </div>
+            }
           >
             <div class="divide-y divide-gray-800">
               <For each={orders()}>

@@ -1,11 +1,21 @@
-import { Component, For } from 'solid-js'
+import { Component, For, createResource } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { siteData } from '../data/site-data'
 import { OFFERINGS } from '../data/services-data'
+import { fetchFleetUptime } from '../services/gatus-service'
 import BlogPreview from '../components/BlogPreview'
 import NewsPreview from '../components/NewsPreview'
 
 const HomePage: Component = () => {
+  // Live fleet uptime from status.rotko.net; falls back to the static value
+  // baked into site-data when Gatus is unreachable.
+  const [liveUptime] = createResource(fetchFleetUptime)
+  const stats = () =>
+    Object.entries(siteData.infrastructure).map(([key, stat]) =>
+      key === 'uptime' && liveUptime() != null
+        ? { ...stat, value: `${liveUptime()!.toFixed(2)}%` }
+        : stat,
+    )
 
   return (
     <MainLayout>
@@ -48,7 +58,7 @@ const HomePage: Component = () => {
       {/* Stats */}
       <section class="py-8 px-4 max-w-6xl mx-auto">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <For each={Object.values(siteData.infrastructure)}>
+          <For each={stats()}>
             {(stat) => (
               <div class="rounded-xl border border-gray-800 bg-gray-900/40 px-5 py-4">
                 <div class="text-2xl md:text-3xl font-bold text-white font-mono">{stat.value}</div>

@@ -29,6 +29,26 @@ export interface EndpointHealth {
   lastChecked: string | null
 }
 
+/** Fleet-wide uptime %: successful checks / total checks across every monitored
+ *  endpoint (status.rotko.net). Weighted by check count, so it reflects real
+ *  availability rather than a per-endpoint average. Throws on failure so callers
+ *  can fall back to a static value. */
+export async function fetchFleetUptime(): Promise<number> {
+  const res = await fetch(GATUS_API)
+  if (!res.ok) throw new Error(`Gatus API returned ${res.status}`)
+  const endpoints: GatusEndpoint[] = await res.json()
+  let ok = 0
+  let total = 0
+  for (const ep of endpoints) {
+    for (const r of ep.results || []) {
+      total++
+      if (r.success) ok++
+    }
+  }
+  if (total === 0) throw new Error('Gatus returned no results')
+  return Math.round((ok / total) * 10000) / 100 // 2 decimals
+}
+
 export async function fetchGatusHealth(): Promise<Map<string, EndpointHealth>> {
   const res = await fetch(GATUS_API)
   if (!res.ok) throw new Error(`Gatus API returned ${res.status}`)
