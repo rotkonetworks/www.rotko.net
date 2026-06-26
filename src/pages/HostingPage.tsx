@@ -2,6 +2,7 @@ import { Component, createSignal, createMemo, For, Show } from 'solid-js'
 import { A } from '@solidjs/router'
 import MainLayout from '../layouts/MainLayout'
 import OrderForm, { OS_OPTIONS } from '../components/OrderForm'
+import TrialSection from '../components/TrialSection'
 import { hostingData as H } from '../data/hosting-data'
 
 // Show cents only when needed (micro VMs land on e.g. $1.50).
@@ -77,6 +78,7 @@ const HostingPage: Component = () => {
 
   return (
     <MainLayout>
+      <TrialSection />
       <section class="pt-12 pb-16 px-4 max-w-6xl mx-auto">
         {/* Header */}
         <div class="text-sm text-gray-500 mb-4">

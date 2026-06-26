@@ -182,3 +182,31 @@ export interface AccountView {
 
 export const getAccount = () => api<AccountView>('/v1/me/account')
 export const getMyOrders = () => api<any[]>('/v1/me/orders')
+
+// ---------------------------------------------------------------------------
+// Free trial
+// ---------------------------------------------------------------------------
+
+export interface TrialResult {
+  vmid: number
+  ipv6: string
+  ssh: string
+  /** Unix seconds: free period ends (VM locks). */
+  free_until: number
+  /** Unix seconds: VM is deleted unless kept. */
+  delete_at: number
+  keep: {
+    order_id: string
+    amount: string
+    method: string
+    destination: string
+    price_usd_month: number
+  }
+}
+
+/** Launch a free trial VM (signed-in users only). */
+export const startTrial = (ssh_key: string, method = 'usdc_polkadot') =>
+  api<TrialResult>('/v1/trial', {
+    method: 'POST',
+    body: JSON.stringify({ ssh_key, method }),
+  })
