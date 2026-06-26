@@ -17,10 +17,10 @@ export const colocationData = {
   maxUnits: 26,
 
   bandwidth: [
-    { id: 'bw-1g-10t', label: '1 Gbps port · 10 TB / mo', price: 40 },
-    { id: 'bw-1g-unmetered', label: '1 Gbps unmetered', price: 150 },
-    { id: 'bw-10g-100t', label: '10 Gbps port · 100 TB / mo', price: 400 },
-    { id: 'bw-10g-unmetered', label: '10 Gbps unmetered', price: 900 },
+    { id: 'bw-1g-10t', label: '1 Gbps port · 10 TB / mo', price: 150 },
+    { id: 'bw-1g-unmetered', label: '1 Gbps unmetered', price: 400 },
+    { id: 'bw-10g-100t', label: '10 Gbps port · 100 TB / mo', price: 1200 },
+    { id: 'bw-10g-unmetered', label: '10 Gbps unmetered', price: 2500 },
   ] as PriceOption[],
 
   power: [
@@ -52,10 +52,10 @@ export const colocationData = {
   // Ryzen-only fleet (no EPYC). Specs are indicative of what we stock —
   // confirm exact RAM/NVMe on order.
   bareMetal: [
-    { id: 'r5950x', cpu: 'Ryzen 9 5950X', cores: '16c / 32t · Zen 3', ram: '64 GB DDR4', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 290 },
-    { id: 'r7950x', cpu: 'Ryzen 9 7950X', cores: '16c / 32t · Zen 4', ram: '64 GB DDR5', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 350 },
-    { id: 'r9950x', cpu: 'Ryzen 9 9950X', cores: '16c / 32t · Zen 5', ram: '64 GB DDR5', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 420 },
-    { id: 'r7945hx', cpu: 'Ryzen 9 7945HX', cores: '16c / 32t · Zen 4', ram: '64 GB DDR5', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 330 },
+    { id: 'r5950x', cpu: 'Ryzen 9 5950X', cores: '16c / 32t · Zen 3', ram: '64 GB DDR4', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 330 },
+    { id: 'r7950x', cpu: 'Ryzen 9 7950X', cores: '16c / 32t · Zen 4', ram: '64 GB DDR5', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 400 },
+    { id: 'r9950x', cpu: 'Ryzen 9 9950X', cores: '16c / 32t · Zen 5', ram: '64 GB DDR5', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 480 },
+    { id: 'r7945hx', cpu: 'Ryzen 9 7945HX', cores: '16c / 32t · Zen 4', ram: '64 GB DDR5', disk: '2×2 TB / 2×4 TB PCIe 4.0 NVMe', price: 380 },
   ],
 
   addons: [
