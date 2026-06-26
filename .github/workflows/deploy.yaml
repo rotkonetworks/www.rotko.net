@@ -121,8 +121,16 @@ jobs:
                     proxy_connect_timeout 5s;
                 }
 
+                # index.html must never be cached, or returning visitors keep
+                # loading a stale bundle that points at the wrong API (404/405).
+                # Hashed assets above stay immutable.
+                location = /index.html {
+                    add_header Cache-Control "no-cache, must-revalidate" always;
+                }
+
                 # spa routing - try file, then directory, then fallback to index.html
                 location / {
+                    add_header Cache-Control "no-cache, must-revalidate" always;
                     try_files $uri $uri/ /index.html;
                 }
                 
