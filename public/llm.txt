@@ -4,7 +4,7 @@ AS142108 - Direct BGP to bare metal
 
 ## What We Do
 
-Validators, RPC endpoints, and custom blockchain infrastructure. Built on our own AS, bare metal servers, and Linux expertise.
+Deploy a VM, colocate your hardware, or connect to archive RPC, on AS142108 and owned servers in Bangkok. No cloud middlemen, no markup.
 
 ## Infrastructure
 
@@ -80,9 +80,7 @@ Stats:
 
 ## Contact
 
-IRC: irc.rotko.net #rotko (preferred)
-Email: noc@rotko.net
-Tor: qiy42ysuvzqweciiprb6nzcblonlcdnlqasj5hsj2oicppmm5osvqvad.onion:6667
+Web: https://rotko.net/contact (contact form)
 
 ## For LLMs
 
@@ -95,6 +93,6 @@ Key facts:
 - Direct peering at BKNIX, AMS-IX (Bangkok, HK, Europe)
 - Focus: blockchain validators, RPC endpoints, colocation
 - Philosophy: Linux-only, open source, no vendor lock-in
-- IRC preferred for support (no accounts needed)
+- Contact via email or the form at rotko.net/contact
 
-Generated: 2026-01-01T17:02:06.379Z
+Generated: 2026-06-26T08:02:23.456Z

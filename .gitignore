@@ -28,3 +28,10 @@ gitignore
 Thumbs.db
 
 CLAUDE.md
+
+# Agent tooling / internal-only — never publish to the site repo
+.claude/
+/server/
+/scripts/
+# Internal planning doc — public repo, keep out
+docs/accounts-payments-integration.md

@@ -1,116 +1,148 @@
-import { Component, createSignal, For, onMount } from 'solid-js'
+import { Component, createSignal, Show } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { contactData } from '../data/contact-data'
-import { useChat } from '../contexts/ChatProvider'
+
+type Status = 'idle' | 'sending' | 'sent' | 'error'
+
+const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
 const ContactPage: Component = () => {
-  const [copied, setCopied] = createSignal<string | null>(null)
-  const { openChat } = useChat()
+  const [name, setName] = createSignal('')
+  const [email, setEmail] = createSignal('')
+  const [message, setMessage] = createSignal('')
+  const [company, setCompany] = createSignal('') // honeypot
+  const [status, setStatus] = createSignal<Status>('idle')
+  const [error, setError] = createSignal('')
 
-  // Auto-open chat when contact page loads
-  onMount(() => {
-    openChat()
-  })
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(label)
-    setTimeout(() => setCopied(null), 2000)
+  const fail = (msg: string) => {
+    setStatus('error')
+    setError(msg)
   }
+
+  const submit = async (e: Event) => {
+    e.preventDefault()
+    if (!emailOk(email())) return fail('Please enter a valid email so we can reply.')
+    if (message().trim().length < 3) return fail('Add a short message.')
+    setStatus('sending')
+    setError('')
+    try {
+      const r = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name().trim(),
+          email: email().trim(),
+          message: message().trim(),
+          company: company(),
+        }),
+      })
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}))
+        throw new Error(body.error || `Something went wrong (${r.status}).`)
+      }
+      setStatus('sent')
+    } catch (err) {
+      fail(err instanceof Error ? err.message : 'Network error. Please try again.')
+    }
+  }
+
+  const fieldClass =
+    'w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-cyan-600 transition-colors outline-none'
 
   return (
     <MainLayout>
-      <section class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
-        <div>
-          
-          {/* Header */}
-          <div class="mb-8 border-b border-gray-700 pb-4">
-            <h1 class="text-3xl font-bold text-cyan-400 mb-2">
-              {contactData.hero.title}
-            </h1>
-            <p class="text-gray-300">
-              {contactData.hero.subtitle}
-            </p>
-          </div>
+      <section class="pt-12 pb-16 px-4 max-w-3xl mx-auto">
+        {/* Header */}
+        <div class="text-xs uppercase tracking-[0.22em] text-cyan-400/80 mb-3">
+          {contactData.hero.eyebrow}
+        </div>
+        <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">
+          {contactData.hero.title}
+        </h1>
+        <p class="text-lg text-gray-300 mt-5 leading-relaxed">
+          {contactData.hero.subtitle}
+        </p>
 
-          {/* Connection Info */}
-          <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
-            <h2 class="text-xl font-bold mb-4 text-cyan-400">{contactData.connection.title}</h2>
-            <div class="space-y-3 font-mono text-sm">
-              <div class="flex justify-between items-center">
-                <span class="text-gray-400">Server:</span>
-                <button
-                  onClick={() => copyToClipboard(contactData.connection.server, 'server')}
-                  class="text-cyan-400 hover:text-cyan-300 transition-colors"
-                >
-                  {contactData.connection.server}
-                  {copied() === 'server' && <span class="i-mdi-check text-xs ml-2"></span>}
-                </button>
+        {/* Form / success */}
+        <div class="mt-10">
+          <Show
+            when={status() !== 'sent'}
+            fallback={
+              <div class="rounded-xl border border-gray-800 border-l-2 border-l-cyan-600/70 bg-gray-900/40 p-6">
+                <p class="text-white font-semibold flex items-center gap-2">
+                  <span class="i-mdi-check-circle text-cyan-400" /> Message sent.
+                </p>
+                <p class="text-gray-400 text-sm mt-2">
+                  Thanks — it's on its way. We'll reply to the address you gave.
+                </p>
               </div>
-              <div class="flex justify-between">
-                <span class="text-gray-400">Ports:</span>
-                <span class="text-gray-300">{contactData.connection.ports}</span>
+            }
+          >
+            <form class="space-y-4" onSubmit={submit}>
+              <div>
+                <label class="block text-sm text-gray-400 mb-1" for="c-name">
+                  Name <span class="text-gray-600">(optional)</span>
+                </label>
+                <input
+                  id="c-name"
+                  class={fieldClass}
+                  value={name()}
+                  onInput={(e) => setName(e.currentTarget.value)}
+                  autocomplete="name"
+                />
               </div>
-              <div class="flex justify-between">
-                <span class="text-gray-400">Channel:</span>
-                <span class="text-cyan-400">{contactData.connection.channel}</span>
-              </div>
-              <div class="flex justify-between items-start">
-                <span class="text-gray-400">Tor:</span>
-                <button
-                  onClick={() => copyToClipboard(contactData.connection.tor, 'tor')}
-                  class="text-cyan-400 text-xs hover:text-cyan-300 bg-transparent transition-colors text-right break-all max-w-xs"
-                >
-                  {contactData.connection.tor}
-                  {copied() === 'tor' && <span class="i-mdi-check text-xs ml-2"></span>}
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {/* Why IRC */}
-          <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
-            <h2 class="text-xl font-bold mb-4 text-cyan-400">{contactData.philosophy.title}</h2>
-            <div class="space-y-3 text-gray-300 text-sm">
-              <For each={contactData.philosophy.content}>
-                {(paragraph) => <p>{paragraph}</p>}
-              </For>
-            </div>
-          </div>
+              <div>
+                <label class="block text-sm text-gray-400 mb-1" for="c-email">Email</label>
+                <input
+                  id="c-email"
+                  class={fieldClass}
+                  type="email"
+                  required
+                  value={email()}
+                  onInput={(e) => setEmail(e.currentTarget.value)}
+                  autocomplete="email"
+                  placeholder="you@example.com"
+                />
+              </div>
 
-          {/* Rules & Expectations */}
-          <div class="grid md:grid-cols-2 gap-8 mb-8">
-            <div class="border border-gray-700 bg-gray-900 p-6">
-              <h3 class="text-lg font-bold mb-3 text-cyan-400">{contactData.rules.title}</h3>
-              <ul class="space-y-2 text-sm">
-                <For each={contactData.rules.items}>
-                  {(rule) => (
-                    <li class="text-gray-300">• {rule}</li>
-                  )}
-                </For>
-              </ul>
-            </div>
-            <div class="border border-gray-700 bg-gray-900 p-6">
-              <h3 class="text-lg font-bold mb-3 text-cyan-400">{contactData.expectations.title}</h3>
-              <ul class="space-y-2 text-sm">
-                <For each={contactData.expectations.items}>
-                  {(item) => (
-                    <li class="text-gray-300 flex items-center"><span class="i-mdi-check-circle text-cyan-400 mr-2"></span>{item}</li>
-                  )}
-                </For>
-              </ul>
-            </div>
-          </div>
+              <div>
+                <label class="block text-sm text-gray-400 mb-1" for="c-msg">Message</label>
+                <textarea
+                  id="c-msg"
+                  class={fieldClass}
+                  rows="6"
+                  required
+                  value={message()}
+                  onInput={(e) => setMessage(e.currentTarget.value)}
+                  placeholder="What are you working on? Chains, regions, SLA…"
+                />
+              </div>
 
-          {/* Email fallback */}
-          <div class="border border-gray-700 bg-gray-900 p-6">
-            <h2 class="text-xl font-bold text-cyan-400 mb-4">{contactData.alternativeContact.title}</h2>
-            <div class="text-sm text-gray-300">
-              <p class="mb-2">Email: {contactData.alternativeContact.email}</p>
-              <p class="mb-3">Matrix: {contactData.alternativeContact.matrix}</p>
-              <p class="text-xs text-gray-400">{contactData.alternativeContact.note}</p>
-            </div>
-          </div>
+              {/* honeypot — hidden from people; bots fill it and get silently dropped */}
+              <input
+                class="absolute left-[-9999px] w-px h-px opacity-0"
+                tabindex="-1"
+                autocomplete="off"
+                aria-hidden="true"
+                name="company"
+                value={company()}
+                onInput={(e) => setCompany(e.currentTarget.value)}
+              />
+
+              <Show when={status() === 'error'}>
+                <p class="text-sm text-red-400">{error()}</p>
+              </Show>
+
+              <button
+                type="submit"
+                disabled={status() === 'sending'}
+                class="inline-flex items-center gap-2 px-5 py-2.5 text-sm rounded-md bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
+              >
+                {status() === 'sending' ? 'Sending…' : 'Send →'}
+              </button>
+            </form>
+          </Show>
         </div>
       </section>
     </MainLayout>

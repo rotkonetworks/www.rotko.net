@@ -1,4 +1,4 @@
-import { Component, For, Show } from 'solid-js'
+import { Component, For } from 'solid-js'
 import { Service } from '../data/site-data'
 
 interface ServiceCardProps {
@@ -6,50 +6,21 @@ interface ServiceCardProps {
 }
 
 const ServiceCard: Component<ServiceCardProps> = (props) => {
-  const statusColors = {
-    operational: 'text-green-400',
-    degraded: 'text-yellow-400',
-    maintenance: 'text-red-400'
-  }
-
   return (
-    <div class="border border-gray-700 p-4 bg-gray-900">
-      <div class="flex justify-between items-start mb-2">
-        <h3 class="text-cyan-400 font-bold">{props.service.name}</h3>
-        <span class={`${statusColors[props.service.status]} text-xs`}>
-          [{props.service.status}]
-        </span>
-      </div>
+    <div class="rounded-xl border border-gray-800 bg-gray-900/40 p-6 h-full">
+      <h3 class="text-white font-semibold text-lg">{props.service.name}</h3>
+      <p class="text-gray-400 text-sm mt-2 leading-relaxed">{props.service.description}</p>
 
-      <p class="text-gray-400 text-sm mb-3">{props.service.description}</p>
-
-      <ul class="text-sm space-y-1">
+      <ul class="mt-4 space-y-2">
         <For each={props.service.features}>
           {(feature) => (
-            <li class="text-gray-300">
-              <span class="text-cyan-500 mr-1">•</span>
-              {feature}
+            <li class="text-sm text-gray-300 flex items-start gap-2">
+              <span class="i-mdi-check text-cyan-500 mt-0.5 flex-shrink-0" />
+              <span>{feature}</span>
             </li>
           )}
         </For>
       </ul>
-
-      <Show when={props.service.metrics}>
-        <div class="mt-3 pt-3 border-t border-gray-700 text-xs">
-          <div class="flex justify-between">
-            <span class="text-gray-400">Requests/24h:</span>
-            <span class="text-cyan-400 font-mono">
-              {(props.service.metrics!.requests24h / 1000000).toFixed(1)}M
-            </span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-gray-400">Latency:</span>
-            <span class="text-cyan-400 font-mono">
-              {props.service.metrics!.latency}ms
-            </span>
-          </div>
-        </div>
-      </Show>
     </div>
   )
 }

@@ -41,9 +41,9 @@ export const validatorData = {
   chains: {
     polkadot: {
       name: 'Polkadot',
-      relay: 'wss://polkadot.dotters.network',
-      assetHub: 'wss://asset-hub-polkadot.dotters.network',
-      peopleChain: 'wss://people-polkadot.dotters.network',
+      relay: 'wss://polkadot.rotko.net',
+      assetHub: 'wss://asset-hub-polkadot.rotko.net',
+      peopleChain: 'wss://people-polkadot.rotko.net',
       stakingLocation: 'assetHub',
       ss58: 0,
       decimals: 10,
@@ -51,9 +51,9 @@ export const validatorData = {
     },
     kusama: {
       name: 'Kusama',
-      relay: 'wss://kusama.dotters.network',
-      assetHub: 'wss://asset-hub-kusama.dotters.network',
-      peopleChain: 'wss://people-kusama.dotters.network',
+      relay: 'wss://kusama.rotko.net',
+      assetHub: 'wss://asset-hub-kusama.rotko.net',
+      peopleChain: 'wss://people-kusama.rotko.net',
       stakingLocation: 'assetHub',
       ss58: 2,
       decimals: 12,
@@ -61,9 +61,9 @@ export const validatorData = {
     },
     paseo: {
       name: 'Paseo',
-      relay: 'wss://paseo.dotters.network',
-      assetHub: 'wss://asset-hub-paseo.dotters.network',
-      peopleChain: 'wss://people-paseo.dotters.network',
+      relay: 'wss://paseo.rotko.net',
+      assetHub: 'wss://asset-hub-paseo.rotko.net',
+      peopleChain: 'wss://people-paseo.rotko.net',
       stakingLocation: 'assetHub',
       ss58: 0,
       decimals: 10,

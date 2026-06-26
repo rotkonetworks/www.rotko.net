@@ -1,18 +1,23 @@
 export interface NavItem {
   label: string
-  href: string
+  href?: string
   external?: boolean
+  children?: NavItem[]
 }
 
 export const navigationData: NavItem[] = [
   { label: "Home", href: "/" },
-  { label: "Stake", href: "/software/vctl" },
   { label: "Services", href: "/services" },
-  { label: "Software", href: "/software" },
   { label: "Infrastructure", href: "/infrastructure" },
-  { label: "News", href: "/news" },
-  { label: "Blog", href: "/blog" },
-  { label: "Team", href: "/team" },
+  { label: "Software", href: "/software" },
+  {
+    label: "About",
+    children: [
+      { label: "Team", href: "/team" },
+      { label: "News", href: "/news" },
+      { label: "Blog", href: "/blog" }
+    ]
+  },
   { label: "Contact", href: "/contact" }
 ]
 
@@ -32,6 +37,8 @@ export const footerData = {
       links: [
         { label: "Services", href: "/services" },
         { label: "Endpoints", href: "/services/endpoints/polkadot" },
+        { label: "VM Hosting", href: "/hosting" },
+        { label: "Colocation", href: "/colocation" },
         { label: "Status", href: "https://status.rotko.net", external: true }
       ]
     },
@@ -53,7 +60,11 @@ export const footerData = {
   //   }
   ],
   copyright: "© 2025 Rotko Networks. AS142108.",
-  tagline: "Where bits flow through iron will."
+  tagline: "Where bits flow through.",
+  social: [
+    { label: "GitHub", href: "https://github.com/rotkonetworks", icon: "i-mdi-github" },
+    { label: "LinkedIn", href: "https://www.linkedin.com/company/rotko-networks", icon: "i-mdi-linkedin" }
+  ]
 }
 
 export const headerData = {

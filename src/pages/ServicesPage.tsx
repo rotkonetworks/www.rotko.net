@@ -1,167 +1,105 @@
 import { Component, For } from 'solid-js'
 import { A } from '@solidjs/router'
 import MainLayout from '../layouts/MainLayout'
-import { servicesData, STAKING_NETWORKS, ENDPOINT_NETWORKS } from '../data/services-data'
+import { servicesData, STAKING_NETWORKS, OFFERINGS } from '../data/services-data'
+import WhitelabelSection from '../components/WhitelabelSection'
 
 const ServicesPage: Component = () => {
   const totalValidators = () => STAKING_NETWORKS.reduce((sum, n) => sum + n.validators, 0)
 
   return (
     <MainLayout>
-      <section class="pt-12 pb-8 px-4 max-w-6xl mx-auto">
+      <section class="pt-12 pb-12 px-4 max-w-6xl mx-auto">
         {/* Header */}
-        <div class="mb-8 border-b border-gray-700 pb-4">
-          <h1 class="text-3xl font-bold text-cyan-400 mb-2">
+        <div class="mb-10">
+          <div class="text-xs uppercase tracking-[0.22em] text-cyan-400/80 mb-3">Services</div>
+          <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">
             {servicesData.hero.title}
           </h1>
-          <p class="text-gray-300">
+          <p class="text-lg text-gray-300 mt-5 max-w-2xl leading-relaxed">
             {servicesData.hero.subtitle}
           </p>
         </div>
 
-        {/* Staking Services */}
-        <div class="mb-8">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-cyan-400">Staking Services</h2>
-            <span class="text-sm text-gray-500">{totalValidators()} validators</span>
-          </div>
-          <div class="grid md:grid-cols-3 gap-4">
-            <For each={STAKING_NETWORKS}>
-              {(network) => (
-                <A
-                  href={`/services/staking/${network.id}`}
-                  class="block p-4 bg-gray-900 border border-gray-700 hover:border-cyan-600 transition-colors group"
-                >
-                  <div class="flex items-center justify-between mb-2">
-                    <h3 class="font-bold text-cyan-400 group-hover:text-cyan-300">
-                      {network.name}
-                    </h3>
-                    <span class="text-xs font-mono text-gray-500">
-                      {network.token}
-                    </span>
+        {/* Core offerings */}
+        <div class="grid md:grid-cols-2 gap-4">
+          <For each={OFFERINGS}>
+            {(o) => (
+              <A
+                href={o.href}
+                class="group block rounded-xl border border-gray-800 bg-gray-900/40 hover:border-gray-700 transition-colors p-6"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <span class={`${o.icon} text-cyan-400 text-2xl`} />
+                    <h2 class="text-lg font-semibold text-white">{o.title}</h2>
                   </div>
-                  <div class="text-sm text-gray-400 mb-2 font-mono">
-                    {network.validators} validator{network.validators !== 1 ? 's' : ''}
-                  </div>
-                  <div class="text-xs text-cyan-400 group-hover:text-cyan-300">
-                    [view details]
-                  </div>
-                </A>
-              )}
-            </For>
-          </div>
-        </div>
-
-        {/* RPC Endpoints */}
-        <div class="mb-8">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-cyan-400">RPC Endpoints</h2>
-          </div>
-          <div class="grid md:grid-cols-3 gap-4">
-            <For each={ENDPOINT_NETWORKS}>
-              {(network) => (
-                <A
-                  href={`/services/endpoints/${network.id}`}
-                  class="block p-4 bg-gray-900 border border-gray-700 hover:border-cyan-600 transition-colors group"
-                >
-                  <div class="flex items-center justify-between mb-2">
-                    <h3 class="font-bold text-cyan-400 group-hover:text-cyan-300">
-                      {network.name}
-                    </h3>
-                    <span class="text-xs font-mono text-gray-500">
-                      WSS
-                    </span>
-                  </div>
-                  <div class="text-sm text-gray-400 mb-2">
-                    {network.description}
-                  </div>
-                  <div class="text-xs text-cyan-400 group-hover:text-cyan-300">
-                    [view endpoints]
-                  </div>
-                </A>
-              )}
-            </For>
-          </div>
-        </div>
-
-        {/* Other Services Grid */}
-        <div class="mb-12">
-          <h2 class="text-xl font-bold text-cyan-400 mb-4">Other Services</h2>
-          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <For each={servicesData.services.filter(s =>
-              s.title !== 'Staking Services' && s.title !== 'RPC Endpoints'
-            )}>
-              {(service) => (
-                <div class="border border-gray-700 p-6 bg-gray-900 h-full flex flex-col">
-                  <div class="flex items-center gap-3 mb-4">
-                    <div class={`${service.iconClass} text-2xl text-cyan-400`}></div>
-                    <h3 class="text-lg font-bold text-cyan-400">{service.title}</h3>
-                  </div>
-                  <p class="text-gray-400 text-sm mb-4">{service.description}</p>
-                  <ul class="text-sm space-y-1 flex-1">
-                    <For each={service.features.slice(0, 4)}>
-                      {(feature) => (
-                        <li class="text-gray-300 flex items-start">
-                          <span class="text-cyan-500 mr-2">•</span>
-                          {feature}
-                        </li>
-                      )}
-                    </For>
-                  </ul>
+                  <span class="text-xs font-mono text-gray-500 flex-shrink-0">{o.price}</span>
                 </div>
-              )}
-            </For>
-          </div>
+                <p class="text-sm text-gray-400 mt-3 leading-relaxed">{o.desc}</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm text-cyan-400 group-hover:text-cyan-300">
+                  {o.cta} →
+                </span>
+              </A>
+            )}
+          </For>
         </div>
 
-        {/* Network Support */}
-        <div class="mb-12 border border-gray-700 p-6 bg-gray-900">
-          <h2 class="text-xl font-bold text-cyan-400 mb-4">Supported Networks</h2>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-            <For each={servicesData.networks}>
-              {(network) => (
-                <div class="text-gray-300">• {network}</div>
-              )}
-            </For>
-          </div>
+        {/* Whitelabel / dedicated infrastructure */}
+        <div class="mt-12">
+          <WhitelabelSection />
         </div>
 
-        {/* Stats */}
-        <div class="mb-12 border border-gray-700 p-6 bg-gray-900">
-          <h2 class="text-xl font-bold text-cyan-400 mb-4">Service Metrics</h2>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <For each={servicesData.stats}>
-              {(stat) => (
-                <div>
-                  <span class="text-cyan-400 font-mono font-bold">{stat.value}</span>
-                  <span class="text-gray-400 ml-2">{stat.label}</span>
+        {/* Staking — secondary */}
+        <div class="mt-12">
+          <div class="text-xs uppercase tracking-[0.22em] text-cyan-400/80 mb-3">Also</div>
+          <A
+            href="/software/vctl"
+            class="group block rounded-xl border border-gray-800 bg-gray-900/40 hover:border-gray-700 transition-colors p-6"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-3">
+                  <span class="i-mdi-shield-lock text-cyan-400 text-2xl" />
+                  <h2 class="text-lg font-semibold text-white">Staking &amp; validators</h2>
                 </div>
-              )}
-            </For>
-          </div>
+                <p class="text-sm text-gray-400 mt-2 max-w-xl">
+                  Non-custodial validators on Polkadot, Kusama and Penumbra — nominate directly or via pools.
+                </p>
+              </div>
+              <div class="text-right">
+                <div class="text-xl font-bold text-white font-mono">{totalValidators()}</div>
+                <span class="text-xs text-gray-500">validators · </span>
+                <span class="text-sm text-cyan-400 group-hover:text-cyan-300">Stake →</span>
+              </div>
+            </div>
+          </A>
         </div>
 
-        {/* Contact */}
-        <div class="border border-gray-700 p-6 bg-gray-900">
-          <h2 class="text-xl font-bold text-cyan-400 mb-2">{servicesData.cta.title}</h2>
-          <p class="text-gray-400 text-sm mb-4">{servicesData.cta.description}</p>
-          <div class="flex gap-4">
-            <a
-              href={servicesData.cta.primaryButton.href}
-              class="text-cyan-400 hover:text-cyan-300 underline"
-            >
-              {servicesData.cta.primaryButton.text}
-            </a>
-            <span class="text-gray-600">|</span>
-            <a
-              href={servicesData.cta.secondaryButton.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-cyan-400 hover:text-cyan-300 underline"
-            >
-              {servicesData.cta.secondaryButton.text}
-            </a>
+        {/* Metrics strip */}
+        <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <For each={servicesData.stats}>
+            {(stat) => (
+              <div class="rounded-xl border border-gray-800 bg-gray-900/40 px-5 py-4">
+                <div class="text-2xl font-bold text-white font-mono">{stat.value}</div>
+                <div class="text-xs text-gray-500 mt-1">{stat.label}</div>
+              </div>
+            )}
+          </For>
+        </div>
+
+        {/* Contact CTA */}
+        <div class="mt-12 rounded-xl border border-gray-800 border-l-2 border-l-cyan-600/70 bg-gray-900/40 p-6 md:p-8 flex flex-wrap items-center justify-between gap-4">
+          <div class="max-w-xl">
+            <h2 class="text-xl font-semibold text-white">{servicesData.cta.title}</h2>
+            <p class="text-sm text-gray-400 mt-1">{servicesData.cta.description}</p>
           </div>
+          <A
+            href="/contact"
+            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm rounded-md bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
+          >
+            Get in touch →
+          </A>
         </div>
       </section>
     </MainLayout>

@@ -53,14 +53,11 @@ const PenumbraStakingPage: Component = () => {
               <span class="text-white">Penumbra</span>
             </div>
 
-            <div class="flex items-center gap-4 mb-6">
-              <img src="/images/rotko-icon.svg" alt="Rotko" class="w-12 h-12" />
-              <div>
-                <h1 class="text-2xl font-bold text-purple-400">
-                  Penumbra Validators
-                </h1>
-                <p class="text-gray-400">Private PoS with shielded staking</p>
-              </div>
+            <div class="mb-6">
+              <h1 class="text-2xl font-bold text-purple-400">
+                Penumbra Validators
+              </h1>
+              <p class="text-gray-400">Private PoS with shielded staking</p>
             </div>
 
             {/* Network Tabs */}

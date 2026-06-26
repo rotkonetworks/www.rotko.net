@@ -38,8 +38,8 @@ export const siteData = {
   },
   
   hero: {
-    title: "Infra for resilient networks",
-    subtitle: "Validators, RPC endpoints, and custom blockchain infrastructure. Built on our own AS, bare metal servers, and Linux expertise.",
+    title: "Bare-metal infrastructure, on our own network",
+    subtitle: "Deploy a VM, colocate your hardware, or connect to archive RPC, on AS142108 and owned servers in Bangkok. No cloud middlemen, no markup.",
     points: [
       "AS142108 with full BGP tables",
       "Direct peering, no transit markup",
@@ -52,7 +52,7 @@ export const siteData = {
     network: { value: "12Gbps", label: "Transit + Peering" },
     hardware: { value: "48U", label: "Dedicated Rack" },
     compute: { value: "728", label: "Physical Cores" },
-    uptime: { value: "99.96%", label: "SLA" }
+    uptime: { value: "99.84%", label: "Uptime (90d)" }
   },
 
   networks: [
@@ -104,8 +104,7 @@ export const siteData = {
         "Anycast failover",
         "Custom rate limits"
       ],
-      status: "operational" as const,
-      metrics: { requests24h: 2847293, latency: 12 }
+      status: "operational" as const
     },
     {
       id: "validators",
@@ -141,7 +140,7 @@ export const siteData = {
   cta: {
     title: "Need infrastructure that works?",
     subtitle: "Talk to engineers, not sales.",
-    button: "Connect on IRC"
+    button: "Get in touch"
   },
 
   navigation: [
@@ -154,10 +153,7 @@ export const siteData = {
   ],
 
   contact: {
-    email: "noc@rotko.net",
-    irc: {
-      server: "irc.rotko.net",
-      channel: "#rotko"
-    }
+    email: "hq@rotko.net",
+    matrix: "@tommi:matrix.rotko.net"
   }
 }

@@ -32,6 +32,11 @@ jobs:
       
       # build everything
       - name: Build site and docs
+        env:
+          # Customer API base. Unset → apiConfigured() is false → Buy/Sign-in
+          # gracefully fall back to the contact form. Set the repo variable
+          # VITE_API_URL=https://api.rotko.net to flip commerce live.
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
         run: |
           npm install
           #npm run build

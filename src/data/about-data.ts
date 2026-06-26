@@ -141,13 +141,7 @@ export const aboutData = {
  contact: {
    title: "Let's Build Something",
    description: "Tell us what you need. We'll tell you if we can build it. No sales calls, no BS.",
-   cta: "Engineers available on IRC 24/7. Real answers, not chatbots.",
-   irc: {
-     server: "irc.rotko.net",
-     ports: "6667 (plain) / 6697 (TLS)",
-     tor: "qiy42ysuvzqweciiprb6nzcblonlcdnlqasj5hsj2oicppmm5osvqvad.onion:6667",
-     channel: "#rotko",
-     webchat: "wss://irc.rotko.net/webirc"
-   }
+   cta: "Real engineers, real answers, not chatbots.",
+   email: "hq@rotko.net"
  }
 }

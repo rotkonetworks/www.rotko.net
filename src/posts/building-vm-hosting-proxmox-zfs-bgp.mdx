@@ -1,0 +1,55 @@
+---
+title: "Renting our metal: how Rotko VM hosting works"
+description: "KVM VMs on PCIe 4.0 NVMe, IPv6-first on a routed BGP fabric, provisioned by a small Rust control plane. No cloud underneath, so you pay metal cost, not platform rent."
+date: "2026-06-22"
+tags: ["hosting", "infrastructure", "nvme", "bgp", "ipv6"]
+draft: false
+---
+
+*tl;dr: we opened our Bangkok metal for rent. VMs are KVM on fast local NVMe, every
+guest gets a routed IPv6 /64, IPv4 is opt-in, and you configure exact cores (down to a
+fraction) and pay for what you allocate.*
+
+## no cloud underneath
+
+Most "crypto-friendly" hosts resell AWS, GCP or OVH. We don't. We run our own autonomous
+system, **AS142108**, on owned EPYC and Ryzen hardware in Bangkok. There's no hyperscaler
+in the path taking a cut, so the price you pay reflects power, transit and amortized
+hardware, not platform margin.
+
+## the substrate: fast local NVMe
+
+VMs run as KVM guests backed by **local PCIe 4.0 NVMe** (~6000 MB/s): snapshots, data
+volumes and integrity checks, with no SAN in the way. Local disk is what keeps fsync-heavy
+workloads (chain RPC, validators, databases) fast.
+(For why the storage layer matters so much for stateful workloads, see our
+[LXC storage post-mortem](/news/2025-10-27-lxc-storage-performance), where the wrong layout
+cost a validator 2x throughput.)
+
+## IPv6-first, routed, no NAT
+
+Each node owns a real, BGP-announced IPv6 **/48**. Every VM gets its own routed **/64**:
+not a shared subnet behind NAT, but real addresses on the public fabric. The edge runs
+**BIRD**, and each node announces an aggregate once, so spinning up a VM never touches routing
+config. IPv4 is scarce in Asia, so it's **opt-in and billable** from a small per-node slice.
+
+## one POST to provision
+
+A small Rust control plane (we call it HermesHost) turns a request into a running VM: clone
+a cloud-init template, derive a dual-stack address, attach the guest to its routed bridge,
+add any extra NVMe data volumes, cap the NIC burst, and power on. Cloud-init delivers the
+static network config at first boot. No DHCP.
+
+## traffic that won't surprise you
+
+Each VM ships with a traffic allowance and you add more by the terabyte, priced close to
+Hetzner's Asia rate and far under the per-gigabyte egress the hyperscalers charge in
+Singapore. No four-figure egress bills.
+
+## build it exactly
+
+There are no fixed tiers. Dial in shared (oversubscribed, fractional, true micro-VMs) or
+dedicated pinned cores, the RAM, NVMe and traffic you need, pick Zen 3 or Zen 4, and you
+see the price update live.
+
+[Build a VM](/hosting) · [Bare metal & colocation](/colocation)

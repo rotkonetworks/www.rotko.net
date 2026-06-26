@@ -21,47 +21,6 @@ const InfrastructurePage: Component = () => {
         {/* Stats */}
         <InfrastructureStats />
 
-        {/* Network Info */}
-        <div class="mb-8 border border-gray-700 bg-gray-900 p-6">
-          <h2 class="text-xl font-bold text-cyan-400 mb-4">{infrastructureData.network.title}</h2>
-          <div class="grid md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="text-gray-400">ASN:</span>
-              <span class="text-gray-300 ml-2">AS{infrastructureData.network.asn}</span>
-            </div>
-            <div>
-              <span class="text-gray-400">Organization:</span>
-              <span class="text-gray-300 ml-2">{infrastructureData.network.organization}</span>
-            </div>
-            <div>
-              <span class="text-gray-400">Primary Site:</span>
-              <span class="text-gray-300 ml-2">{infrastructureData.network.primarySite}</span>
-            </div>
-            <div>
-              <span class="text-gray-400">Peering Policy:</span>
-              <span class="text-gray-300 ml-2">{infrastructureData.network.policy}</span>
-            </div>
-          </div>
-          <div class="mt-4 flex gap-4">
-            <a
-              href={infrastructureData.network.peeringDb}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-cyan-400 hover:text-cyan-300 underline text-sm"
-            >
-              [PeeringDB]
-            </a>
-            <a
-              href={infrastructureData.network.peeringInfo}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-cyan-400 hover:text-cyan-300 underline text-sm"
-            >
-              [Peering Info]
-            </a>
-          </div>
-        </div>
-
         {/* Rack Diagram and Hardware Inventory Side by Side */}
         <div class="grid lg:grid-cols-2 gap-8 mb-8">
           {/* Rack Diagram Box */}
@@ -198,6 +157,33 @@ const InfrastructurePage: Component = () => {
                 )}
               </For>
             </div>
+          </div>
+        </div>
+
+        {/* Network Info */}
+        <div class="mt-8 border border-gray-700 bg-gray-900 p-6">
+          <h2 class="text-xl font-bold text-cyan-400 mb-4">{infrastructureData.network.title}</h2>
+          <div class="grid md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-400">ASN:</span>
+              <span class="text-gray-300 ml-2">AS{infrastructureData.network.asn}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Organization:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.network.organization}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Primary Site:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.network.primarySite}</span>
+            </div>
+            <div>
+              <span class="text-gray-400">Peering Policy:</span>
+              <span class="text-gray-300 ml-2">{infrastructureData.network.policy}</span>
+            </div>
+          </div>
+          <div class="mt-4 flex gap-4">
+            <a href={infrastructureData.network.peeringDb} target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 text-sm">PeeringDB →</a>
+            <a href={infrastructureData.network.peeringInfo} target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 text-sm">Peering info →</a>
           </div>
         </div>
       </section>

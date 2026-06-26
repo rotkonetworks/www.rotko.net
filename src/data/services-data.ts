@@ -24,7 +24,6 @@ export const STAKING_NETWORKS: StakingNetwork[] = [
 export const ENDPOINT_NETWORKS: EndpointNetwork[] = [
   { id: 'polkadot', name: 'Polkadot', token: 'DOT', description: 'Relay, system chains, and parachains' },
   { id: 'kusama', name: 'Kusama', token: 'KSM', description: 'Relay, system chains, and parachains' },
-  { id: 'paseo', name: 'Paseo', token: 'PAS', description: 'Relay and system chains' },
 ]
 
 export interface Service {
@@ -33,7 +32,62 @@ export interface Service {
   features: string[]
   iconClass: string
   gradient: string
+  contact?: boolean
 }
+
+// The products we actually sell, revenue-first. Shared by the homepage and the
+// services page so they never drift.
+export interface Offering {
+  title: string
+  desc: string
+  href: string
+  icon: string
+  price: string
+  cta: string
+}
+
+export const OFFERINGS: Offering[] = [
+  {
+    title: 'VM Hosting',
+    desc: 'KVM virtual machines on PCIe 4.0 NVMe, IPv6-first and routed on AS142108. Deploy in minutes.',
+    href: '/hosting',
+    icon: 'i-mdi-cloud-outline',
+    price: 'from $3/mo',
+    cta: 'Deploy a VM',
+  },
+  {
+    title: 'Bare Metal',
+    desc: 'Rent a dedicated EPYC or Ryzen server in our rack, single-tenant, 1-3 day delivery in Asia. No hardware to ship.',
+    href: '/colocation',
+    icon: 'i-mdi-server',
+    price: 'from $350/mo',
+    cta: 'See servers',
+  },
+  {
+    title: 'Colocation',
+    desc: 'Your own hardware in our Bangkok rack, direct BGP, redundant power, and your own IPv4/IPv6 space.',
+    href: '/colocation',
+    icon: 'i-mdi-server-network',
+    price: 'from $45/U·mo',
+    cta: 'Build & price',
+  },
+  {
+    title: 'RPC Endpoints',
+    desc: 'Full-archive WSS / HTTPS / gRPC across the Polkadot ecosystem and Penumbra. Public, or dedicated whitelabel.',
+    href: '/services/endpoints',
+    icon: 'i-mdi-lightning-bolt',
+    price: 'public & whitelabel',
+    cta: 'View endpoints',
+  },
+  {
+    title: 'Network engineering',
+    desc: 'BGP, peering and routing configuration, plus infrastructure architecture, audits and disaster-recovery design.',
+    href: '/contact',
+    icon: 'i-mdi-lan',
+    price: 'consulting',
+    cta: 'Discuss your project',
+  },
+]
 
 export interface ServiceStat {
   value: string
@@ -42,9 +96,9 @@ export interface ServiceStat {
 
 export const servicesData = {
   hero: {
-    title: "Infrastructure Services",
-    subtitle: "Enterprise-grade blockchain infrastructure powering the decentralized web",
-    description: "Professional validator operations, high-performance RPC endpoints, and essential network bootstrap nodes with guaranteed uptime and security."
+    title: "Infrastructure services",
+    subtitle: "Hosting, colocation, RPC and the network engineering behind them, on our own AS142108 and bare metal in Bangkok.",
+    description: "Deploy a VM, colocate your hardware, connect to archive RPC, or have us run it for you."
   },
 
   services: [
@@ -77,20 +131,6 @@ export const servicesData = {
       gradient: "from-blue-600 to-cyan-600"
     },
     {
-      title: "Boot Nodes",
-      description: "Essential network bootstrap nodes ensuring reliable peer discovery and network connectivity.",
-      features: [
-        "High availability boot nodes",
-        "Geographic distribution",
-        "Optimized peer discovery",
-        "Network health monitoring",
-        "Custom network support",
-        "Private network setup"
-      ],
-      iconClass: "i-mdi-web",
-      gradient: "from-green-600 to-teal-600"
-    },
-    {
       title: "Archive Nodes",
       description: "Full historical blockchain data access for analytics, forensics, and compliance requirements.",
       features: [
@@ -120,17 +160,18 @@ export const servicesData = {
     },
     {
       title: "Consulting Services",
-      description: "Expert guidance on blockchain infrastructure, security, and best practices for your project.",
+      description: "Expert guidance on blockchain infrastructure, networking, security, and best practices for your project.",
       features: [
+        "Network configuration: BGP, peering & routing",
         "Infrastructure architecture design",
         "Security audits and reviews",
         "Performance optimization",
         "Disaster recovery planning",
-        "Team training and workshops",
         "Custom solution development"
       ],
       iconClass: "i-mdi-lightbulb",
-      gradient: "from-yellow-600 to-orange-600"
+      gradient: "from-yellow-600 to-orange-600",
+      contact: true
     }
   ],
 
@@ -144,8 +185,8 @@ export const servicesData = {
 
   stats: [
     {
-      value: "99.95%",
-      label: "Uptime SLA"
+      value: "99.84%",
+      label: "Uptime (90d)"
     },
     {
       value: "4",

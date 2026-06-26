@@ -62,21 +62,22 @@ export const teamData: TeamMember[] = [
       shell: "zsh",
     },
   },
-  {
-    name: "Allan",
-    title: "Fullstack Developer",
-    description:
-      "Brazilian developer who stars Jetpack Compose chart libraries and Rust components like he's building a wishlist for the perfect stack. Contributes to company's identity registrar and peering infrastructure while somehow finding time to explore everything from Android memory leak detection to terminal emulators. Part-time contributor who ships more features than most full-timers. Has an eye for UI libraries that actually work across different screen sizes and network conditions.",
-    image: "allan.webp",
-    location: "Pacific Coast",
-    github: "https://github.com/allanveloso",
-    setup: {
-      editor: "android_studio",
-      os: "Windows",
-      de: "Windows 11",
-      shell: "wsl",
-    },
-  },
+  // Temporarily removed from the team listing — restore to re-add.
+  // {
+  //   name: "Allan",
+  //   title: "Fullstack Developer",
+  //   description:
+  //     "Brazilian developer who stars Jetpack Compose chart libraries and Rust components like he's building a wishlist for the perfect stack. Contributes to company's identity registrar and peering infrastructure while somehow finding time to explore everything from Android memory leak detection to terminal emulators. Part-time contributor who ships more features than most full-timers. Has an eye for UI libraries that actually work across different screen sizes and network conditions.",
+  //   image: "allan.webp",
+  //   location: "Pacific Coast",
+  //   github: "https://github.com/allanveloso",
+  //   setup: {
+  //     editor: "android_studio",
+  //     os: "Windows",
+  //     de: "Windows 11",
+  //     shell: "wsl",
+  //   },
+  // },
   {
     name: "Mikko",
     title: "Advisor",
@@ -112,7 +113,7 @@ export const teamPageData = {
     title: "Careers at Rotko",
     description: [
       "Interested in joining our team? We're always looking for talented individuals who share our passion for innovation and quality.",
-      "Connect with us on IRC to discuss opportunities, ask questions, or just chat about technology."
+      "Reach out through the contact form to discuss opportunities, ask questions, or just chat about technology."
     ],
     contactLink: {
       text: "[Contact Us]",

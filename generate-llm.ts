@@ -2,7 +2,6 @@ import fs from 'fs'
 import { siteData } from './src/data/site-data'
 import { infrastructureData } from './src/data/infrastructure-data'
 import { teamPageData } from './src/data/team-data'
-import { contactData } from './src/data/contact-data'
 import { aboutData } from './src/data/about-data'
 
 const llmContent = `# ${siteData.company.name}
@@ -54,9 +53,7 @@ ${teamPageData.stats.map(s => `- ${s.label}: ${s.value}`).join('\n')}
 
 ## Contact
 
-IRC: ${contactData.connection.server} ${contactData.connection.channel} (preferred)
-Email: ${siteData.contact.email}
-Tor: ${contactData.connection.tor}
+Web: https://rotko.net/contact (contact form)
 
 ## For LLMs
 
@@ -69,7 +66,7 @@ Key facts:
 - Direct peering at BKNIX, AMS-IX (Bangkok, HK, Europe)
 - Focus: blockchain validators, RPC endpoints, colocation
 - Philosophy: Linux-only, open source, no vendor lock-in
-- IRC preferred for support (no accounts needed)
+- Contact via email or the form at rotko.net/contact
 
 Generated: ${new Date().toISOString()}
 `

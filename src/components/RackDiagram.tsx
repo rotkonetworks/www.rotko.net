@@ -1,4 +1,5 @@
 import { Component, For, Show } from 'solid-js'
+import { A } from '@solidjs/router'
 import { rackConfiguration } from '../data/rack-config'
 
 const RackDiagram: Component = () => {
@@ -8,9 +9,31 @@ const RackDiagram: Component = () => {
   // Generate all U numbers from 1 to rack_u
   const uNumbers = Array.from({ length: rack_u }, (_, i) => i + 1)
 
+  // Units not occupied by any device are available for colocation. Group
+  // contiguous free units into blocks so they render as single clickable
+  // "available" slots instead of a stack of 1U fragments.
+  const occupied = new Set<number>()
+  for (const d of devices) {
+    for (let u = d.bottom_u; u < d.bottom_u + d.height_u; u++) occupied.add(u)
+  }
+  const emptyRanges: { start: number; size: number }[] = []
+  let run = 0
+  for (let u = 1; u <= rack_u; u++) {
+    if (!occupied.has(u)) {
+      run++
+    } else if (run > 0) {
+      emptyRanges.push({ start: u - run, size: run })
+      run = 0
+    }
+  }
+  if (run > 0) emptyRanges.push({ start: rack_u - run + 1, size: run })
+
   return (
     <div class="w-full max-w-lg">
-      <h3 class="text-xl font-bold mb-4 text-cyan-400 text-center">{rack_u}U Rack - Bangkok DC</h3>
+      <h3 class="text-xl font-bold mb-1 text-cyan-400 text-center">{rack_u}U Rack - Bangkok DC</h3>
+      <p class="text-xs text-gray-500 text-center mb-4">
+        Dashed units are available. <A href="/colocation" class="text-cyan-400 hover:text-cyan-300">enquire about colocation →</A>
+      </p>
 
       <div class="flex">
         {/* U Labels Column */}
@@ -61,6 +84,30 @@ const RackDiagram: Component = () => {
                     <div class="absolute left-1 top-1/2 transform -translate-y-1/2 w-1 h-1 bg-gray-700"></div>
                     <div class="absolute right-1 top-1/2 transform -translate-y-1/2 w-1 h-1 bg-gray-700"></div>
                   </div>
+                )}
+              </For>
+
+              {/* Available units — clickable colocation slots */}
+              <For each={emptyRanges}>
+                {(slot) => (
+                  <A
+                    href="/colocation"
+                    class="absolute left-2 right-2 group"
+                    style={{
+                      bottom: `${(slot.start - 1) * unit_height}px`,
+                      height: `${slot.size * unit_height - 2}px`
+                    }}
+                  >
+                    <div class="w-full h-full flex items-center justify-center text-[10px] font-mono border border-dashed border-gray-600 text-gray-500 hover:border-cyan-400 hover:text-cyan-300 hover:bg-cyan-400/5 transition-colors">
+                      <span class="truncate px-2">+ {slot.size}U available</span>
+                    </div>
+                    {/* Tooltip */}
+                    <div class="absolute left-0 bottom-full mb-1 hidden group-hover:block z-10 pointer-events-none">
+                      <div class="bg-black border border-cyan-400 px-2 py-1 text-xs text-white whitespace-nowrap">
+                        Colocation available, click to enquire
+                      </div>
+                    </div>
+                  </A>
                 )}
               </For>
 
@@ -153,6 +200,10 @@ const RackDiagram: Component = () => {
         <div class="flex items-center gap-2">
           <div class="w-3 h-3 border border-gray-600" style="background-color: #FFE666"></div>
           <span class="text-gray-400">Uplink</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 border border-dashed border-gray-600"></div>
+          <span class="text-gray-400">Available (colocation)</span>
         </div>
       </div>
     </div>

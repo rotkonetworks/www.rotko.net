@@ -183,14 +183,11 @@ const StakingPage: Component = () => {
               <span class="text-white">{config().name}</span>
             </div>
 
-            <div class="flex items-center gap-4 mb-6">
-              <img src="/images/rotko-icon.svg" alt="Rotko" class="w-12 h-12" />
-              <div>
-                <h1 class="text-2xl font-bold text-cyan-400">
-                  {config().name} Validators
-                </h1>
-                <p class="text-gray-400">Rotko Networks staking on {config().name}</p>
-              </div>
+            <div class="mb-6">
+              <h1 class="text-2xl font-bold text-cyan-400">
+                {config().name} Validators
+              </h1>
+              <p class="text-gray-400">Rotko Networks staking on {config().name}</p>
             </div>
 
             {/* Network Tabs */}
