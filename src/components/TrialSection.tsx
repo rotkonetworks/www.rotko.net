@@ -6,9 +6,11 @@ import SignInModal from './SignInModal'
 const fmtAmount = (amount: string, method: string): string => {
   const n = Number(amount)
   const m = method.toLowerCase()
-  if (m.includes('dot')) return `${(n / 1e10).toFixed(4)} DOT`
+  // Check the stablecoins first: "usdcpolkadot" / "usdtpolkadot" also contain
+  // "dot" (from "polkadot"), so a leading dot-check would mis-scale/mislabel them.
   if (m.includes('usdt')) return `$${(n / 1e6).toFixed(2)} USDt`
   if (m.includes('usdc')) return `$${(n / 1e6).toFixed(2)} USDC`
+  if (m.includes('dot')) return `${(n / 1e10).toFixed(4)} DOT`
   return amount
 }
 
