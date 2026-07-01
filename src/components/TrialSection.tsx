@@ -84,6 +84,10 @@ const TrialSection: Component = () => {
                 minutes and is deleted within the hour unless you pay to keep it.
                 Paste your SSH public key and go.
               </p>
+              <p class="text-xs text-gray-500 mt-2 max-w-2xl">
+                Reachable over IPv6 via SSH — you'll need an IPv6-capable network
+                to connect.
+              </p>
 
               <div class="mt-4 flex flex-col gap-3 max-w-2xl">
                 <textarea
@@ -134,6 +138,11 @@ const TrialSection: Component = () => {
                 <code class="block text-sm font-mono text-cyan-300 break-all">
                   {result()!.ssh}
                 </code>
+                <p class="text-xs text-gray-500 mt-2 leading-relaxed">
+                  IPv6-only, SSH (port&nbsp;22) only — connect from an
+                  IPv6-capable network. On an IPv4-only connection you won't
+                  reach it (and ICMP/ping is disabled).
+                </p>
                 <div class="text-xs text-gray-500 mt-3">
                   <Show
                     when={!locked()}
