@@ -11,4 +11,11 @@ export const contactData = {
     // recipient; this is used as the mailto fallback.
     emailTo: "hq@rotko.net",
   },
+
+  booking: {
+    label: "Book a call",
+    note: "Prefer to talk? Grab a slot directly.",
+    // Cal.com scheduling for Rotko Networks (account: rotkonetworks@gmail.com).
+    url: "https://cal.com/rotko",
+  },
 }

@@ -63,6 +63,19 @@ const ContactPage: Component = () => {
           {contactData.hero.subtitle}
         </p>
 
+        {/* Booking option */}
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <a
+            href={contactData.booking.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm rounded-md border border-cyan-600/60 text-cyan-300 hover:bg-cyan-600/10 transition-colors"
+          >
+            <span class="i-mdi-calendar-clock" /> {contactData.booking.label}
+          </a>
+          <span class="text-gray-500 text-sm">{contactData.booking.note}</span>
+        </div>
+
         {/* Form / success */}
         <div class="mt-10">
           <Show
