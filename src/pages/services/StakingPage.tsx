@@ -4,7 +4,7 @@ import { createClient } from 'polkadot-api'
 import { getWsProvider } from 'polkadot-api/ws-provider/web'
 import MainLayout from '../../layouts/MainLayout'
 import { ROTKO_VALIDATORS } from '../../data/validator-data'
-import { STAKING_CHAINS } from '../../data/staking-data'
+import { STAKING_CHAINS, STAKE_DOT } from '../../data/staking-data'
 import { turboflakesService, type ValidatorGrade } from '../../services/turboflakes-service'
 
 interface ValidatorStatus {
@@ -112,7 +112,10 @@ const StakingPage: Component = () => {
       const results: ValidatorStatus[] = []
 
       for (const rv of rotkoValidators) {
-        const isActive = activeSet.has(rv.address)
+        // Session.Validators lives on the relay, not Asset Hub, so activeSet is
+        // often empty post-AHM. Era points this era are equally hard proof of
+        // being in the active set.
+        const isActive = activeSet.has(rv.address) || (eraPointsMap.get(rv.address) || 0) > 0
         let totalStake = 0n, ownStake = 0n, commission = 0, nominatorCount = 0, isOversubscribed = false
 
         try {
@@ -245,6 +248,120 @@ const StakingPage: Component = () => {
             </div>
           </div>
         </div>
+
+        {/* Stake DOT funnel — Polkadot only */}
+        <Show when={network() === 'polkadot'}>
+          <div class="border-b border-gray-800">
+            <div class="max-w-6xl mx-auto px-4 py-10">
+              <h2 class="text-xl font-bold text-white mb-1">Stake DOT with Rotko</h2>
+              <p class="text-gray-400 text-sm mb-6">Two ways to put DOT to work on our bare-metal validators in Bangkok.</p>
+
+              {/* Products */}
+              <div class="grid md:grid-cols-2 gap-4 mb-10">
+                {/* Nomination Pool */}
+                <div class="p-6 bg-gray-900/50 border border-gray-800 flex flex-col">
+                  <div class="flex items-center justify-between gap-3 mb-3">
+                    <h3 class="text-lg font-semibold text-white">{STAKE_DOT.products.pool.title}</h3>
+                    <Show
+                      when={STAKE_DOT.products.pool.poolId !== null}
+                      fallback={<span class="px-2 py-1 text-xs bg-gray-800 text-gray-400">Launching soon</span>}
+                    >
+                      <span class="px-2 py-1 text-xs bg-green-900/50 text-green-400">Live</span>
+                    </Show>
+                  </div>
+                  <p class="text-gray-400 text-sm leading-relaxed flex-1">{STAKE_DOT.products.pool.blurb}</p>
+                  <div class="mt-4">
+                    <Show
+                      when={STAKE_DOT.products.pool.poolId !== null}
+                      fallback={
+                        <div class="text-sm text-gray-500">
+                          Until the pool opens, larger holders can nominate{' '}
+                          <span class="text-gray-300 font-mono">{STAKE_DOT.validator.name}</span> directly on the{' '}
+                          <a href={STAKE_DOT.products.pool.dashboardUrl} target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">
+                            Polkadot staking dashboard
+                          </a>.
+                        </div>
+                      }
+                    >
+                      <a
+                        href={STAKE_DOT.products.pool.dashboardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-block px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-mono transition-colors"
+                      >
+                        [join pool #{STAKE_DOT.products.pool.poolId}]
+                      </a>
+                    </Show>
+                  </div>
+                </div>
+
+                {/* SaaV / svDOT */}
+                <div class="p-6 bg-gray-900/50 border border-cyan-900/60 flex flex-col">
+                  <div class="flex items-center justify-between gap-3 mb-3">
+                    <h3 class="text-lg font-semibold text-white">
+                      {STAKE_DOT.products.saav.title}
+                      <span class="ml-2 text-cyan-400 font-mono text-sm">{STAKE_DOT.products.saav.ticker}</span>
+                    </h3>
+                    <span class="px-2 py-1 text-xs bg-cyan-900/50 text-cyan-300">{STAKE_DOT.products.saav.status}</span>
+                  </div>
+                  <p class="text-gray-400 text-sm leading-relaxed flex-1">{STAKE_DOT.products.saav.blurb}</p>
+                  <div class="mt-4 flex flex-wrap items-center gap-3">
+                    <a
+                      href={STAKE_DOT.products.saav.bookingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-block px-4 py-2 border border-cyan-600/60 text-cyan-300 hover:bg-cyan-600/10 text-sm font-mono transition-colors"
+                    >
+                      [book a call]
+                    </a>
+                    <A href="/contact" class="text-sm text-gray-500 hover:text-cyan-400">or get in touch</A>
+                  </div>
+                </div>
+              </div>
+
+              {/* New to DOT: wallet + buy */}
+              <h3 class="text-white font-semibold mb-4">New to DOT? Two steps.</h3>
+              <div class="grid md:grid-cols-2 gap-4">
+                {/* Step 1: wallet */}
+                <div class="p-5 bg-gray-900/30 border border-gray-800">
+                  <div class="text-gray-500 text-xs font-mono mb-2">step 1</div>
+                  <div class="mb-3">
+                    <a href={STAKE_DOT.wallet.url} target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline font-semibold">
+                      {STAKE_DOT.wallet.name}
+                    </a>
+                    <span class="text-gray-500 text-sm ml-2">{STAKE_DOT.wallet.platform}</span>
+                  </div>
+                  <ol class="text-sm text-gray-400 space-y-2 list-decimal list-inside">
+                    <For each={STAKE_DOT.wallet.steps}>{(step) => <li>{step}</li>}</For>
+                  </ol>
+                  <p class="text-xs text-gray-600 mt-3">{STAKE_DOT.wallet.note}</p>
+                </div>
+
+                {/* Step 2: buy */}
+                <div class="p-5 bg-gray-900/30 border border-gray-800 flex flex-col">
+                  <div class="text-gray-500 text-xs font-mono mb-2">step 2</div>
+                  <div class="mb-3">
+                    <span class="text-white font-semibold">Buy DOT with card or bank transfer</span>
+                  </div>
+                  <p class="text-sm text-gray-400 flex-1">{STAKE_DOT.onramp.feeNote}</p>
+                  <div class="mt-4">
+                    <a
+                      href={STAKE_DOT.onramp.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-block px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-mono transition-colors"
+                    >
+                      [buy DOT via {STAKE_DOT.onramp.name}]
+                    </a>
+                  </div>
+                  <p class="text-xs text-gray-600 mt-3">
+                    Guardarian is an independent, licensed exchange service. Rotko never holds your funds.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Show>
 
         {/* Content */}
         <div class="max-w-6xl mx-auto px-4 py-8">
