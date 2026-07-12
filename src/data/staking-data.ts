@@ -39,7 +39,10 @@ export const STAKE_DOT = {
       // On-chain pool id once created; null renders the launching-soon state.
       poolId: null as number | null,
       dashboardUrl: 'https://staking.polkadot.cloud',
-      blurb: 'Pooled staking on our validators. Join with any amount from 1 DOT, rewards flow automatically, unstake anytime after the unbonding period.',
+      // Refs 1909/1910 (approved 2026-07-06): ~2-day unbonding + nominators
+      // no longer slashable. Chain still reports 28 eras — keep "rolling out"
+      // until BondingDuration actually changes on AH.
+      blurb: 'Pooled staking, auto-nominating the highest-return validators in the active set. Join with any amount from 1 DOT. Under Polkadot’s July 2026 staking reforms, nominators are no longer slashable and unbonding drops from 28 days to ~2 (rolling out network-wide).',
     },
     saav: {
       title: 'Staking as a Validator',
