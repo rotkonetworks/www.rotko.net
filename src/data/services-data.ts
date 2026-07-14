@@ -72,6 +72,14 @@ export const OFFERINGS: Offering[] = [
     cta: 'Build & price',
   },
   {
+    title: 'Staking',
+    desc: 'Stake DOT with our Bangkok bare-metal validators — join the nomination pool from 1 DOT, or run your stake as a validator. Non-custodial.',
+    href: '/services/staking',
+    icon: 'i-mdi-chart-line-variant',
+    price: 'from 1 DOT',
+    cta: 'Stake DOT',
+  },
+  {
     title: 'RPC Endpoints',
     desc: 'Full-archive WSS / HTTPS / gRPC across the Polkadot ecosystem and Penumbra. Public, or dedicated whitelabel.',
     href: '/services/endpoints',
