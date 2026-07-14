@@ -224,6 +224,33 @@ export const getAccount = () => api<AccountView>('/v1/me/account')
 export const getMyOrders = () => api<any[]>('/v1/me/orders')
 
 // ---------------------------------------------------------------------------
+// Notifications (in-app for everyone; also emailed when an email is on file)
+// ---------------------------------------------------------------------------
+
+export interface Notification {
+  id: string
+  /** e.g. payment_confirmed, vm_ready, trial_started, trial_expiring,
+   *  trial_deleted, balance_low. */
+  kind: string
+  title: string
+  body: string
+  /** RFC3339 UTC timestamp. */
+  created_at: string
+  read: boolean
+}
+
+/** The signed-in account's notifications, newest first. */
+export const getNotifications = () => api<Notification[]>('/v1/me/notifications')
+
+/** Mark notifications read: pass ids to mark those, or omit to mark ALL read.
+ *  Returns the account's remaining unread count. */
+export const markNotificationsRead = (ids?: string[]) =>
+  api<{ ok: boolean; unread: number }>('/v1/me/notifications/read', {
+    method: 'POST',
+    body: JSON.stringify(ids && ids.length ? { ids } : {}),
+  })
+
+// ---------------------------------------------------------------------------
 // VMs (per-VM control panel)
 // ---------------------------------------------------------------------------
 

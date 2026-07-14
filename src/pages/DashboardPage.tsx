@@ -11,6 +11,7 @@ import {
 } from '../lib/auth'
 import SignInModal from '../components/SignInModal'
 import VmCard from '../components/VmCard'
+import NotificationBell from '../components/NotificationBell'
 
 const money = (n: number) => '$' + (Number.isInteger(n) ? n : n.toFixed(2))
 
@@ -70,6 +71,7 @@ const DashboardPage: Component = () => {
           }
         >
           <div class="flex items-center gap-3 text-sm">
+            <NotificationBell />
             <a
               href="/console/demo"
               class="px-3.5 py-2 rounded-md border border-cyan-700/60 text-cyan-300 hover:bg-cyan-600/15 transition-colors"
