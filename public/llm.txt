@@ -95,4 +95,4 @@ Key facts:
 - Philosophy: Linux-only, open source, no vendor lock-in
 - Contact via email or the form at rotko.net/contact
 
-Generated: 2026-06-26T08:02:23.456Z
+Generated: 2026-07-12T22:09:38.491Z

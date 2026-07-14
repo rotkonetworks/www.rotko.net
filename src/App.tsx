@@ -20,6 +20,7 @@ import ValidatorPage from './pages/ValidatorPage'
 import DashboardPage from './pages/DashboardPage'
 import AuthVerifyPage from './pages/AuthVerifyPage'
 import ConsolePage from './pages/ConsolePage'
+import DemoConsolePage from './pages/DemoConsolePage'
 
 const App: Component = () => {
   return (
@@ -44,6 +45,7 @@ const App: Component = () => {
       <Route path="/hosting" component={HostingPage} />
       <Route path="/contact" component={ContactPage} />
       <Route path="/dashboard" component={DashboardPage} />
+      <Route path="/console/demo" component={DemoConsolePage} />
       <Route path="/console/:vmid" component={ConsolePage} />
       <Route path="/auth/verify" component={AuthVerifyPage} />
     </>

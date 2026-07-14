@@ -1,6 +1,8 @@
 import { Component, createSignal, Show, onCleanup } from 'solid-js'
+import { useNavigate } from '@solidjs/router'
 import { isSignedIn, startTrial, type TrialResult } from '../lib/auth'
 import SignInModal from './SignInModal'
+import CopyCmd from './CopyCmd'
 
 /** Format a chain-native amount for display from the payment method. */
 const fmtAmount = (amount: string, method: string): string => {
@@ -23,7 +25,11 @@ const mmss = (secs: number): string => {
 /** "Try free for 30 minutes" — provisions a real VM at no cost; it locks after
  *  30 min and self-deletes within an hour unless the user pays to keep it. */
 const TrialSection: Component = () => {
+  const navigate = useNavigate()
   const [showSignIn, setShowSignIn] = createSignal(false)
+  // What to do after a sign-in triggered from this card: launch the trial, or
+  // open the demo shell.
+  const [pending, setPending] = createSignal<'launch' | 'demo'>('launch')
   const [sshKey, setSshKey] = createSignal('')
   const [loading, setLoading] = createSignal(false)
   const [error, setError] = createSignal('')
@@ -33,9 +39,19 @@ const TrialSection: Component = () => {
   const timer = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
   onCleanup(() => clearInterval(timer))
 
+  const openDemo = () => {
+    if (!isSignedIn()) {
+      setPending('demo')
+      setShowSignIn(true)
+      return
+    }
+    navigate('/console/demo')
+  }
+
   const launch = async () => {
     setError('')
     if (!isSignedIn()) {
+      setPending('launch')
       setShowSignIn(true)
       return
     }
@@ -100,7 +116,7 @@ const TrialSection: Component = () => {
                 <Show when={error()}>
                   <p class="text-sm text-red-400">{error()}</p>
                 </Show>
-                <div>
+                <div class="flex flex-wrap items-center gap-3">
                   <button
                     onClick={launch}
                     disabled={loading()}
@@ -111,6 +127,12 @@ const TrialSection: Component = () => {
                       : isSignedIn()
                         ? 'Launch free VM →'
                         : 'Sign in to launch →'}
+                  </button>
+                  <button
+                    onClick={openDemo}
+                    class="inline-flex items-center gap-2 px-5 py-2.5 text-sm rounded-md border border-cyan-700/60 text-cyan-300 hover:bg-cyan-600/15 transition-colors"
+                  >
+                    Try a live shell →
                   </button>
                 </div>
               </div>
@@ -134,15 +156,17 @@ const TrialSection: Component = () => {
           >
             <div class="mt-3 grid gap-4 md:grid-cols-2">
               <div class="rounded-lg border border-gray-800 bg-gray-950/40 p-4">
-                <div class="text-xs text-gray-500 mb-1">Connect</div>
-                <code class="block text-sm font-mono text-cyan-300 break-all">
-                  {result()!.ssh}
-                </code>
+                <div class="text-xs text-gray-500 mb-1">Connect (IPv6)</div>
+                <CopyCmd cmd={result()!.ssh} />
                 <p class="text-xs text-gray-500 mt-2 leading-relaxed">
                   IPv6-only, SSH (port&nbsp;22) only — connect from an
                   IPv6-capable network. On an IPv4-only connection you won't
                   reach it (and ICMP/ping is disabled).
                 </p>
+                <Show when={result()!.ssh_gateway}>
+                  <div class="text-xs text-gray-500 mt-3 mb-1">SSH from any network (IPv4)</div>
+                  <CopyCmd cmd={result()!.ssh_gateway!.command} />
+                </Show>
                 <div class="text-xs text-gray-500 mt-3">
                   <Show
                     when={!locked()}
@@ -181,7 +205,8 @@ const TrialSection: Component = () => {
           onClose={() => setShowSignIn(false)}
           onSignedIn={() => {
             setShowSignIn(false)
-            launch()
+            if (pending() === 'demo') navigate('/console/demo')
+            else launch()
           }}
         />
       </Show>

@@ -118,26 +118,52 @@ const toHex = (bytes: Uint8Array) =>
   '0x' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
 const utf8Hex = (s: string) => toHex(new TextEncoder().encode(s))
 
-/** Polkadot via an injected extension (Talisman / Polkadot.js / SubWallet). */
-export async function signInPolkadot(): Promise<Session> {
+export interface WalletAccount {
+  address: string
+  name?: string
+}
+
+/**
+ * Polkadot via an injected extension (Talisman / Polkadot.js / SubWallet).
+ *
+ * Two-phase: enable the extension ONCE, then return every account it exposes
+ * plus a `signIn(address)` closure bound to that same enabled extension. Unlike
+ * MetaMask/Phantom, Polkadot extensions hand back all accounts programmatically
+ * with no in-wallet account prompt, so the UI must let the user pick which one.
+ */
+export async function connectPolkadot(): Promise<{
+  accounts: WalletAccount[]
+  signIn: (address: string) => Promise<Session>
+}> {
   const injected = (window as any).injectedWeb3
   if (!injected || Object.keys(injected).length === 0) {
     throw new Error('No Polkadot wallet found. Install Talisman or Polkadot.js.')
   }
   const key = injected['talisman'] ? 'talisman' : Object.keys(injected)[0]
   const ext = await injected[key].enable('Rotko Networks')
-  const accounts = await ext.accounts.get()
-  if (!accounts.length) throw new Error('No accounts in your Polkadot wallet.')
-  const address = accounts[0].address
-  const message = await challenge('polkadot', address)
-  // signRaw(type:'bytes') wraps the decoded bytes in <Bytes>…</Bytes> and
-  // sr25519-signs — matching the backend's verification.
-  const { signature } = await ext.signer.signRaw({
-    address,
-    data: utf8Hex(message),
-    type: 'bytes',
-  })
-  return verifyWallet('polkadot', address, signature)
+  const raw = await ext.accounts.get()
+  if (!raw.length) throw new Error('No accounts in your Polkadot wallet.')
+  const accounts: WalletAccount[] = raw.map((a: any) => ({ address: a.address, name: a.name }))
+
+  const signIn = async (address: string): Promise<Session> => {
+    const message = await challenge('polkadot', address)
+    // signRaw(type:'bytes') wraps the decoded bytes in <Bytes>…</Bytes> and
+    // sr25519-signs — matching the backend's verification.
+    const { signature } = await ext.signer.signRaw({
+      address,
+      data: utf8Hex(message),
+      type: 'bytes',
+    })
+    return verifyWallet('polkadot', address, signature)
+  }
+
+  return { accounts, signIn }
+}
+
+/** Single-account convenience: connect and auto-sign when there's exactly one. */
+export async function signInPolkadot(): Promise<Session> {
+  const { accounts, signIn } = await connectPolkadot()
+  return signIn(accounts[0].address)
 }
 
 /** Ethereum via window.ethereum (MetaMask, etc.) using personal_sign. */
@@ -165,6 +191,14 @@ export async function signInSolana(): Promise<Session> {
 // Panel data
 // ---------------------------------------------------------------------------
 
+/** Shared-IPv4 SSH gateway: reach an IPv6-only VM from any network via a
+ *  port-forwarding relay. Optional — null when the gateway is disabled. */
+export interface SshGateway {
+  host: string
+  port: number
+  command: string
+}
+
 export interface Subscription {
   id: string
   vmid: number | null
@@ -172,6 +206,12 @@ export interface Subscription {
   monthly_micros: number
   next_due: number
   status: string
+  /** Current VM specs (present once provisioned) — drive the resize panel. */
+  vcpu?: number
+  ram_gb?: number
+  disk_gb?: number
+  /** Shared-IPv4 SSH command, when the gateway is enabled for this VM. */
+  ssh_gateway?: SshGateway | null
 }
 
 export interface AccountView {
@@ -191,6 +231,8 @@ export interface TrialResult {
   vmid: number
   ipv6: string
   ssh: string
+  /** Shared-IPv4 SSH command, when the gateway is enabled. Null = disabled. */
+  ssh_gateway?: SshGateway | null
   /** Unix seconds: free period ends (VM locks). */
   free_until: number
   /** Unix seconds: VM is deleted unless kept. */
@@ -209,4 +251,45 @@ export const startTrial = (ssh_key: string, method = 'usdc_polkadot') =>
   api<TrialResult>('/v1/trial', {
     method: 'POST',
     body: JSON.stringify({ ssh_key, method }),
+  })
+
+// ---------------------------------------------------------------------------
+// Consoles
+// ---------------------------------------------------------------------------
+
+/** ws:// base derived from VITE_API_URL (http→ws, https→wss). */
+export const WS_BASE = (import.meta.env.VITE_API_URL || '')
+  .replace(/^http/, 'ws')
+  .replace(/\/+$/, '')
+
+/** Websocket URL for a VM's SSH console. */
+export function openVmConsole(vmid: number | string): string {
+  return `${WS_BASE}/v1/me/vms/${vmid}/console?token=${session()?.token ?? ''}`
+}
+
+/** Websocket URL for the shared demo web shell (signed-in users). */
+export function openDemoConsole(): string {
+  return `${WS_BASE}/v1/me/console/demo?token=${session()?.token ?? ''}`
+}
+
+// ---------------------------------------------------------------------------
+// Resize / upgrade
+// ---------------------------------------------------------------------------
+
+export interface ResizeSpec {
+  vcpu: number
+  ram_gb: number
+  disk_gb: number
+}
+
+export interface ResizeResult {
+  price_usd_month: number
+  applied: ResizeSpec
+}
+
+/** Resize a VM (disk is grow-only, enforced server-side too). */
+export const resizeVm = (vmid: number | string, spec: ResizeSpec) =>
+  api<ResizeResult>(`/v1/me/vms/${vmid}/resize`, {
+    method: 'POST',
+    body: JSON.stringify(spec),
   })

@@ -9,6 +9,8 @@ import {
   getMyOrders,
 } from '../lib/auth'
 import SignInModal from '../components/SignInModal'
+import ResizePanel from '../components/ResizePanel'
+import CopyCmd from '../components/CopyCmd'
 
 const money = (n: number) => '$' + (Number.isInteger(n) ? n : n.toFixed(2))
 
@@ -57,6 +59,12 @@ const DashboardPage: Component = () => {
           }
         >
           <div class="flex items-center gap-3 text-sm">
+            <a
+              href="/console/demo"
+              class="px-3.5 py-2 rounded-md border border-cyan-700/60 text-cyan-300 hover:bg-cyan-600/15 transition-colors"
+            >
+              Try a live shell →
+            </a>
             <a
               href="/hosting"
               class="px-3.5 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
@@ -131,24 +139,50 @@ const DashboardPage: Component = () => {
             <div class="divide-y divide-gray-800">
               <For each={account()?.subscriptions}>
                 {(s) => (
-                  <div class="flex items-center justify-between py-3 text-sm">
-                    <div>
-                      <div class="text-gray-200">{s.label}</div>
-                      <div class="text-xs text-gray-500">
-                        {s.vmid ? `VM ${s.vmid}` : 'provisioning'} · {s.status}
+                  <div class="py-4 text-sm">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <div class="text-gray-200">{s.label}</div>
+                        <div class="text-xs text-gray-500">
+                          {s.vmid ? `VM ${s.vmid}` : 'provisioning'} · {s.status}
+                          <Show when={s.vcpu != null}>
+                            {' · '}
+                            <span class="font-mono text-gray-400">
+                              {s.vcpu} vCPU / {s.ram_gb} GB / {s.disk_gb} GB
+                            </span>
+                          </Show>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-4">
+                        <Show when={s.vmid}>
+                          <a
+                            href={`/console/${s.vmid}`}
+                            class="text-xs px-2.5 py-1 rounded-md border border-cyan-700/50 text-cyan-300 hover:bg-cyan-600/15 transition-colors"
+                          >
+                            Console →
+                          </a>
+                        </Show>
+                        <span class="font-mono text-gray-300">{money(s.monthly_micros / 1e6)}/mo</span>
                       </div>
                     </div>
-                    <div class="flex items-center gap-4">
-                      <Show when={s.vmid}>
-                        <a
-                          href={`/console/${s.vmid}`}
-                          class="text-xs px-2.5 py-1 rounded-md border border-cyan-700/50 text-cyan-300 hover:bg-cyan-600/15 transition-colors"
-                        >
-                          Console →
-                        </a>
-                      </Show>
-                      <span class="font-mono text-gray-300">{money(s.monthly_micros / 1e6)}/mo</span>
-                    </div>
+
+                    {/* Shared-IPv4 SSH command, when the gateway is enabled. */}
+                    <Show when={s.ssh_gateway}>
+                      <div class="mt-3 rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                        <div class="text-xs text-gray-500 mb-1">SSH from any network (IPv4)</div>
+                        <CopyCmd cmd={s.ssh_gateway!.command} />
+                      </div>
+                    </Show>
+
+                    {/* Resize / upgrade */}
+                    <Show when={s.vmid && s.vcpu != null}>
+                      <ResizePanel
+                        vmid={s.vmid!}
+                        current={{ vcpu: s.vcpu!, ram_gb: s.ram_gb!, disk_gb: s.disk_gb! }}
+                        currentPrice={s.monthly_micros / 1e6}
+                        onApplied={refresh}
+                      />
+                    </Show>
                   </div>
                 )}
               </For>
