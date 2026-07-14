@@ -224,6 +224,52 @@ export const getAccount = () => api<AccountView>('/v1/me/account')
 export const getMyOrders = () => api<any[]>('/v1/me/orders')
 
 // ---------------------------------------------------------------------------
+// VMs (per-VM control panel)
+// ---------------------------------------------------------------------------
+
+export type VmStatus = 'running' | 'stopped'
+
+/** Per-VM traffic usage for the current billing period (optional). */
+export interface VmTraffic {
+  p95_mbps: number
+  peak_mbps: number
+  commit_mbps: number
+  over_commit: boolean
+}
+
+/** An owned VM, as returned by GET /v1/me/vms. */
+export interface Vm {
+  vmid: number
+  name: string
+  status: VmStatus | null
+  vcpu: number
+  ram_gb: number
+  disk_gb: number
+  ipv6: string
+  ipv4: string | null
+  node: string
+  location: string
+  created_at: string
+  traffic?: VmTraffic | null
+  ssh_gateway?: SshGateway | null
+}
+
+/** List the signed-in account's VMs. */
+export const getVms = () => api<Vm[]>('/v1/me/vms')
+
+export interface VmActionResult {
+  ok: boolean
+  status: VmStatus
+}
+
+const vmAction = (vmid: number | string, action: 'start' | 'stop' | 'reboot') =>
+  api<VmActionResult>(`/v1/me/vms/${vmid}/${action}`, { method: 'POST' })
+
+export const startVm = (vmid: number | string) => vmAction(vmid, 'start')
+export const stopVm = (vmid: number | string) => vmAction(vmid, 'stop')
+export const rebootVm = (vmid: number | string) => vmAction(vmid, 'reboot')
+
+// ---------------------------------------------------------------------------
 // Free trial
 // ---------------------------------------------------------------------------
 

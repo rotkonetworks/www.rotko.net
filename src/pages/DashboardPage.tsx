@@ -7,24 +7,34 @@ import {
   logout,
   getAccount,
   getMyOrders,
+  getVms,
 } from '../lib/auth'
 import SignInModal from '../components/SignInModal'
-import ResizePanel from '../components/ResizePanel'
-import CopyCmd from '../components/CopyCmd'
+import VmCard from '../components/VmCard'
 
 const money = (n: number) => '$' + (Number.isInteger(n) ? n : n.toFixed(2))
 
-// Customer control panel: balance/runway, subscriptions, and orders, scoped to
-// the signed-in account. All data comes from /v1/me/* with the session token.
+// Customer control panel: per-VM cards (the centerpiece), plus balance/runway
+// and orders, scoped to the signed-in account. Data comes from /v1/me/* with
+// the session token.
 const DashboardPage: Component = () => {
   const navigate = useNavigate()
   const [showSignIn, setShowSignIn] = createSignal(!isSignedIn())
   const [account, { refetch: refetchAcct }] = createResource(session, () =>
     isSignedIn() ? getAccount() : Promise.resolve(null),
   )
+  const [vms, { refetch: refetchVms }] = createResource(session, () =>
+    isSignedIn() ? getVms() : Promise.resolve([]),
+  )
   const [orders, { refetch: refetchOrders }] = createResource(session, () =>
     isSignedIn() ? getMyOrders() : Promise.resolve([]),
   )
+
+  // Monthly price per VM, joined from the subscription list by vmid.
+  const priceFor = (vmid: number): number | undefined => {
+    const sub = (account()?.subscriptions ?? []).find((s) => s.vmid === vmid)
+    return sub ? sub.monthly_micros / 1e6 : undefined
+  }
 
   // Runway: at the current monthly burn, how long does the balance last?
   const monthlyBurn = () =>
@@ -40,6 +50,7 @@ const DashboardPage: Component = () => {
   const card = 'rounded-xl border border-gray-800 bg-gray-900/40 p-6'
   const refresh = () => {
     refetchAcct()
+    refetchVms()
     refetchOrders()
   }
 
@@ -83,6 +94,36 @@ const DashboardPage: Component = () => {
         when={isSignedIn()}
         fallback={<p class="text-gray-400">Sign in to view your balance, services, and orders.</p>}
       >
+        {/* Servers — the centerpiece */}
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-white">
+            Servers
+            <Show when={(vms() ?? []).length}>
+              <span class="ml-2 text-sm text-gray-500 font-normal">{vms()!.length}</span>
+            </Show>
+          </h2>
+          <button onClick={refresh} class="text-xs text-gray-500 hover:text-cyan-400">Refresh</button>
+        </div>
+        <Show
+          when={(vms() ?? []).length}
+          fallback={
+            <div class={card + ' mb-8 text-sm text-gray-500'}>
+              <Show when={!vms.loading} fallback={<p>Loading servers…</p>}>
+                <p>No servers yet.</p>
+                <a href="/hosting" class="inline-block mt-3 text-cyan-400 hover:text-cyan-300">
+                  Deploy your first server →
+                </a>
+              </Show>
+            </div>
+          }
+        >
+          <div class="grid gap-5 lg:grid-cols-2 mb-8">
+            <For each={vms()}>
+              {(vm) => <VmCard vm={vm} price={priceFor(vm.vmid)} onChanged={refresh} />}
+            </For>
+          </div>
+        </Show>
+
         {/* Balance + runway */}
         <div class="grid gap-5 md:grid-cols-3 mb-8">
           <div class={card}>
@@ -119,76 +160,29 @@ const DashboardPage: Component = () => {
           </div>
         </div>
 
-        {/* Services */}
-        <div class={card + ' mb-8'}>
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-base font-semibold text-white">Services</h2>
-            <button onClick={refresh} class="text-xs text-gray-500 hover:text-cyan-400">Refresh</button>
-          </div>
-          <Show
-            when={(account()?.subscriptions ?? []).length}
-            fallback={
-              <div class="text-sm text-gray-500">
-                <p>No active services yet.</p>
-                <a href="/hosting" class="inline-block mt-3 text-cyan-400 hover:text-cyan-300">
-                  Deploy your first server →
-                </a>
-              </div>
-            }
-          >
+        {/* Services / billing summary — per-VM controls live on the cards above. */}
+        <Show when={(account()?.subscriptions ?? []).length}>
+          <div class={card + ' mb-8'}>
+            <h2 class="text-base font-semibold text-white mb-4">Services</h2>
             <div class="divide-y divide-gray-800">
               <For each={account()?.subscriptions}>
                 {(s) => (
-                  <div class="py-4 text-sm">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <div class="text-gray-200">{s.label}</div>
-                        <div class="text-xs text-gray-500">
-                          {s.vmid ? `VM ${s.vmid}` : 'provisioning'} · {s.status}
-                          <Show when={s.vcpu != null}>
-                            {' · '}
-                            <span class="font-mono text-gray-400">
-                              {s.vcpu} vCPU / {s.ram_gb} GB / {s.disk_gb} GB
-                            </span>
-                          </Show>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-4">
-                        <Show when={s.vmid}>
-                          <a
-                            href={`/console/${s.vmid}`}
-                            class="text-xs px-2.5 py-1 rounded-md border border-cyan-700/50 text-cyan-300 hover:bg-cyan-600/15 transition-colors"
-                          >
-                            Console →
-                          </a>
-                        </Show>
-                        <span class="font-mono text-gray-300">{money(s.monthly_micros / 1e6)}/mo</span>
+                  <div class="py-3 text-sm flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                      <div class="text-gray-200 truncate">{s.label}</div>
+                      <div class="text-xs text-gray-500">
+                        {s.vmid ? `VM ${s.vmid}` : 'provisioning'} · {s.status}
                       </div>
                     </div>
-
-                    {/* Shared-IPv4 SSH command, when the gateway is enabled. */}
-                    <Show when={s.ssh_gateway}>
-                      <div class="mt-3 rounded-lg border border-gray-800 bg-gray-950/40 p-3">
-                        <div class="text-xs text-gray-500 mb-1">SSH from any network (IPv4)</div>
-                        <CopyCmd cmd={s.ssh_gateway!.command} />
-                      </div>
-                    </Show>
-
-                    {/* Resize / upgrade */}
-                    <Show when={s.vmid && s.vcpu != null}>
-                      <ResizePanel
-                        vmid={s.vmid!}
-                        current={{ vcpu: s.vcpu!, ram_gb: s.ram_gb!, disk_gb: s.disk_gb! }}
-                        currentPrice={s.monthly_micros / 1e6}
-                        onApplied={refresh}
-                      />
-                    </Show>
+                    <span class="font-mono text-gray-300 shrink-0">
+                      {money(s.monthly_micros / 1e6)}/mo
+                    </span>
                   </div>
                 )}
               </For>
             </div>
-          </Show>
-        </div>
+          </div>
+        </Show>
 
         {/* Orders */}
         <div class={card}>
