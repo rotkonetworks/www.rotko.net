@@ -1,11 +1,25 @@
-import { Component, For } from 'solid-js'
+import { Component, For, createResource } from 'solid-js'
 import { A } from '@solidjs/router'
 import MainLayout from '../layouts/MainLayout'
 import { servicesData, STAKING_NETWORKS, OFFERINGS } from '../data/services-data'
 import WhitelabelSection from '../components/WhitelabelSection'
+import { fetchFleetUptime30d } from '../services/gatus-service'
 
 const ServicesPage: Component = () => {
   const totalValidators = () => STAKING_NETWORKS.reduce((sum, n) => sum + n.validators, 0)
+
+  // Live 30-day median uptime from status.rotko.net; the static stat is fallback.
+  const [liveUptime] = createResource(fetchFleetUptime30d)
+  const stats = () =>
+    servicesData.stats.map((stat) =>
+      /uptime/i.test(stat.label)
+        ? {
+            label: 'Uptime (30d)',
+            value: liveUptime() != null ? `${liveUptime()!.toFixed(2)}%` : stat.value,
+            href: 'https://status.rotko.net',
+          }
+        : stat,
+    )
 
   return (
     <MainLayout>
@@ -78,13 +92,24 @@ const ServicesPage: Component = () => {
 
         {/* Metrics strip */}
         <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <For each={servicesData.stats}>
-            {(stat) => (
-              <div class="rounded-xl border border-gray-800 bg-gray-900/40 px-5 py-4">
-                <div class="text-2xl font-bold text-white font-mono">{stat.value}</div>
-                <div class="text-xs text-gray-500 mt-1">{stat.label}</div>
-              </div>
-            )}
+          <For each={stats()}>
+            {(stat) => {
+              const href = (stat as { href?: string }).href
+              return (
+                <div class="rounded-xl border border-gray-800 bg-gray-900/40 px-5 py-4">
+                  <div class="text-2xl font-bold text-white font-mono">
+                    {href ? (
+                      <a href={href} target="_blank" rel="noopener noreferrer" class="hover:text-cyan-400 transition-colors" title="Live status — status.rotko.net">
+                        {stat.value}
+                      </a>
+                    ) : (
+                      stat.value
+                    )}
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{stat.label}</div>
+                </div>
+              )
+            }}
           </For>
         </div>
 

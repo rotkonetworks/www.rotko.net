@@ -185,8 +185,8 @@ export const servicesData = {
 
   stats: [
     {
-      value: "99.84%",
-      label: "Uptime (90d)"
+      value: "99.9%",
+      label: "Uptime (30d)"
     },
     {
       value: "4",

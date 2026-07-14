@@ -2,18 +2,22 @@ import { Component, For, createResource } from 'solid-js'
 import MainLayout from '../layouts/MainLayout'
 import { siteData } from '../data/site-data'
 import { OFFERINGS } from '../data/services-data'
-import { fetchFleetUptime } from '../services/gatus-service'
+import { fetchFleetUptime30d } from '../services/gatus-service'
 import BlogPreview from '../components/BlogPreview'
 import NewsPreview from '../components/NewsPreview'
 
 const HomePage: Component = () => {
-  // Live fleet uptime from status.rotko.net; falls back to the static value
-  // baked into site-data when Gatus is unreachable.
-  const [liveUptime] = createResource(fetchFleetUptime)
+  // Live 30-day fleet uptime (median across endpoints) from status.rotko.net;
+  // falls back to the static value baked into site-data when Gatus is unreachable.
+  const [liveUptime] = createResource(fetchFleetUptime30d)
   const stats = () =>
     Object.entries(siteData.infrastructure).map(([key, stat]) =>
-      key === 'uptime' && liveUptime() != null
-        ? { ...stat, value: `${liveUptime()!.toFixed(2)}%` }
+      key === 'uptime'
+        ? {
+            ...stat,
+            value: liveUptime() != null ? `${liveUptime()!.toFixed(2)}%` : stat.value,
+            href: 'https://status.rotko.net',
+          }
         : stat,
     )
 
@@ -59,12 +63,29 @@ const HomePage: Component = () => {
       <section class="py-8 px-4 max-w-6xl mx-auto">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <For each={stats()}>
-            {(stat) => (
-              <div class="rounded-xl border border-gray-800 bg-gray-900/40 px-5 py-4">
-                <div class="text-2xl md:text-3xl font-bold text-white font-mono">{stat.value}</div>
-                <div class="text-xs text-gray-500 mt-1">{stat.label}</div>
-              </div>
-            )}
+            {(stat) => {
+              const href = (stat as { href?: string }).href
+              return (
+                <div class="rounded-xl border border-gray-800 bg-gray-900/40 px-5 py-4">
+                  <div class="text-2xl md:text-3xl font-bold text-white font-mono">
+                    {href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="hover:text-cyan-400 transition-colors"
+                        title="Live status — status.rotko.net"
+                      >
+                        {stat.value}
+                      </a>
+                    ) : (
+                      stat.value
+                    )}
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">{stat.label}</div>
+                </div>
+              )
+            }}
           </For>
         </div>
       </section>

@@ -52,7 +52,7 @@ export const siteData = {
     network: { value: "12Gbps", label: "Transit + Peering" },
     hardware: { value: "48U", label: "Dedicated Rack" },
     compute: { value: "728", label: "Physical Cores" },
-    uptime: { value: "99.84%", label: "Uptime (90d)" }
+    uptime: { value: "99.9%", label: "Uptime (30d)" }
   },
 
   networks: [

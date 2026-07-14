@@ -19,7 +19,7 @@ export const infrastructureData = {
    capacity: "12G",
    ram: "3TB",
    cores: "728",
-   uptime: "99.84%"
+   uptime: "99.9%"
  },
  
  ibpStats: {

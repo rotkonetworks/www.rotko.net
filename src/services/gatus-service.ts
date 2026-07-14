@@ -49,6 +49,38 @@ export async function fetchFleetUptime(): Promise<number> {
   return Math.round((ok / total) * 10000) / 100 // 2 decimals
 }
 
+/** Median 30-day uptime (%) across every monitored endpoint, straight from
+ *  status.rotko.net's per-endpoint `/uptimes/30d` figures. Median (not mean) so a
+ *  couple of struggling endpoints can't skew the headline number. One request for
+ *  the endpoint list, then one per endpoint (run in parallel). Throws on failure
+ *  so callers can fall back to a static value. */
+export async function fetchFleetUptime30d(): Promise<number> {
+  const res = await fetch(GATUS_API)
+  if (!res.ok) throw new Error(`Gatus API returned ${res.status}`)
+  const endpoints: GatusEndpoint[] = await res.json()
+  const keys = endpoints.map((e) => e.key).filter(Boolean)
+  if (keys.length === 0) throw new Error('Gatus returned no endpoints')
+
+  const uptimes = await Promise.all(
+    keys.map(async (key) => {
+      try {
+        const r = await fetch(`/api/gatus/endpoints/${key}/uptimes/30d`)
+        if (!r.ok) return null
+        const v = parseFloat((await r.text()).trim()) // e.g. "0.999530"
+        return Number.isFinite(v) ? v : null
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  const vals = uptimes.filter((v): v is number => v != null).sort((a, b) => a - b)
+  if (vals.length === 0) throw new Error('Gatus returned no 30d uptime data')
+  const mid = Math.floor(vals.length / 2)
+  const median = vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2
+  return Math.round(median * 10000) / 100 // percentage, 2 decimals
+}
+
 export async function fetchGatusHealth(): Promise<Map<string, EndpointHealth>> {
   const res = await fetch(GATUS_API)
   if (!res.ok) throw new Error(`Gatus API returned ${res.status}`)
