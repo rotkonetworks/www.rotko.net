@@ -1,0 +1,83 @@
+---
+title: "Post-Mortem: dot01 Offline for One Era"
+description: "A planned BKNIX port change and RPKI reconfig fed our validator's BGP daemon a bogus next-hop. BIRD 3.2.1 segfaulted with no auto-restart. Then a remote power-off jammed the BMC. dot01 was offline for part of one era. No slashing, no principal at risk."
+date: "2026-07-16"
+tags: ["validators", "incident", "post-mortem", "networking", "bgp", "polkadot"]
+draft: false
+---
+
+*tl;dr: dot01 (1ArdZ) went offline for part of one era. trigger was a planned BKNIX 10G port
+removal + RPKI reconfig that made our edge feed the validator host a full table with a bogus
+next-hop. BIRD 3.2.1 segfaulted, had no `Restart=`, and the anycast /32 went dark for ~4h. a
+remote power-off then jammed the BMC and needed physical hands. we kept dot01 producing by
+rotating its session keys to a backup node, then rotated them back. no slashing, no principal
+loss, at most one era of missed rewards.*
+
+---
+
+## the node
+
+dot01, Polkadot active set, 0% commission. ~1,660,660 DOT backing across 86 nominators. runs on
+our own hardware in Bangkok, public address announced over BGP on AS142108 (anycast /32).
+
+## what broke
+
+we pulled ourselves off a BKNIX 10G port and reconfigured RPKI on the edge. during the change the
+edge router (bkk00) handed the validator host the full table carrying a **bogus next-hop**
+(`10.155.112.0` — a network address, not a gateway). BIRD 3.2.1 hit it and **segfaulted**. fuck c...
+
+the unit had no `Restart=`. so it stayed dead, and dot01's `/32` was unreachable for ~4 hours. the
+`polkadot` process never went down — locally it looked healthy. what died was the route to it.
+
+then it got worse. to clear a suspected boot hang we issued a **power-off over IPMI**. the command
+**jammed the BMC** — the controller stopped bringing the box back and could not be recovered over
+the network. that turned a reboot into a **smart-hands request, ~1h to be actioned**.
+
+## keeping it producing
+
+we did not wait on the datacenter. a validator's on-chain identity (stash) is separate from the
+session keys its node signs with, so the workload moves without touching funds:
+
+1. generated **fresh** session keys on a backup node with a valid ownership proof.
+2. submitted `set_keys` for dot01's stash through its **staking proxy** — a restricted key that can
+   manage staking but cannot transfer or unstake.
+3. backup started authoring at the next session.
+4. primary recovered ~21:47, resynced, we rotated keys back to it. backup is now a hot spare.
+
+primary and backup were never given the same keys — fresh keys on the backup, primary kept its own.
+no double-signing risk. every on-chain action went through the proxy, which cannot reach funds.
+
+## why detection took ~4h
+
+we monitor grade from TurboFlakes ONE-T → Alertmanager → Pushover. it fired — late. grade is a
+**session-averaged** metric. one node going unreachable doesn't crater it; it **decays session by
+session** until it crosses the threshold (grade ≈ 0 / F). that decay is most of the 4 hours.
+
+the signal was accurate but lagging. we had no **real-time** alert on the two things that actually
+failed: BGP session state and off-net reachability of the public address. a validator that's up but
+unroutable is exactly the case grade catches slowly and a reachability probe catches in seconds.
+
+## impact
+
+- **no slashing.** Polkadot does not slash for being offline. an offline validator earns no era
+  points for the affected era and is disabled until the next era, then re-enters automatically.
+- **no principal at risk.** staked DOT is never exposed by an offline event.
+- **rewards:** normal points before the incident (era 2231 ≈ 84,840, era 2232 ≈ 82,520, both near
+  network average), **0 points** for the era spanning the outage. one era of gross yield on this
+  stake is on the order of a few hundred DOT, split across 86 nominators by stake — a few DOT each
+  at most, less in practice since recovery was partway through the era. missed opportunity, not lost
+  capital.
+
+## fixes
+
+- `Restart=on-failure` on every BIRD unit fleet-wide. a segfault should self-heal in seconds.
+- filter the validator host's import. it needs a default + internal routes, not the full table —
+  that removes the class of malformed route that triggered this.
+- fix the edge: find why bkk00 advertised next-hop `10.155.112.0`, and stage RPKI/peering changes
+  so they can't reach validator hosts mid-flight.
+- real-time alerts next to grade: **BGP session/daemon state** + an **off-net reachability probe**
+  on the public address, so a dropped announcement pages in seconds instead of after grade erodes.
+- remote power-off is now last resort after this BMC jam. key-rotation failover worked cleanly and
+  is the primary tool for keeping the validator producing through a host problem.
+- keep a warm backup ready to take dot01's keys — future host issues are a minutes-long rotation,
+  not a wait on physical hands.
