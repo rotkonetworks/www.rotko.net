@@ -24,7 +24,7 @@ our own hardware in Bangkok, public address announced over BGP on AS142108 (anyc
 
 we pulled ourselves off a BKNIX 10G port and reconfigured RPKI on the edge. during the change the
 edge router (bkk00) handed the validator host the full table carrying a **bogus next-hop**
-(`10.155.112.0` — a network address, not a gateway). BIRD 3.2.1 hit it and **segfaulted**. fuck c...
+(`10.155.112.0` — a network address, not a gateway). BIRD 3.2.1 hit it and **segfaulted**.
 
 the unit had no `Restart=`. so it stayed dead, and dot01's `/32` was unreachable for ~4 hours. the
 `polkadot` process never went down — locally it looked healthy. what died was the route to it.
