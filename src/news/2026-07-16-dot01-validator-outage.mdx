@@ -1,83 +1,263 @@
 ---
 title: "Post-Mortem: dot01 Offline for One Era"
-description: "A planned BKNIX port change and RPKI reconfig fed our validator's BGP daemon a bogus next-hop. BIRD 3.2.1 segfaulted with no auto-restart. Then a remote power-off jammed the BMC. dot01 was offline for part of one era. No slashing, no principal at risk."
+description: "A planned edge change re-advertised the full BGP table to our validator. BIRD 3.2.1 segfaulted and its unit had Restart=no, so it stayed dead for about 4 hours. A later remote power-off jammed the BMC. dot01 was offline for part of one era. Polkadot does not slash for downtime and no stake was affected."
 date: "2026-07-16"
 tags: ["validators", "incident", "post-mortem", "networking", "bgp", "polkadot"]
 draft: false
 ---
 
-*tl;dr: dot01 (1ArdZ) went offline for part of one era. trigger was a planned BKNIX 10G port
-removal + RPKI reconfig that made our edge feed the validator host a full table with a bogus
-next-hop. BIRD 3.2.1 segfaulted, had no `Restart=`, and the anycast /32 went dark for ~4h. a
-remote power-off then jammed the BMC and needed physical hands. we kept dot01 producing by
-rotating its session keys to a backup node, then rotated them back. no slashing, no principal
-loss, at most one era of missed rewards.*
+*tl;dr: dot01 (1ArdZ) was offline for part of one era. a planned edge change on bkk00 (pulling a
+BKNIX 10G port and reconfiguring RPKI) re-advertised the full table to the validator host, BIRD
+3.2.1 segfaulted under it, and the bird unit had Restart=no, so the node's /32 was unreachable for
+about 4 hours. a later remote power-off jammed the BMC and needed physical hands. we kept dot01
+producing by moving its session keys to a backup node and later moved them back. Polkadot does not
+slash for downtime and no stake was affected.*
 
 ---
 
 ## the node
 
-dot01, Polkadot active set, 0% commission. ~1,660,660 DOT backing across 86 nominators. runs on
-our own hardware in Bangkok, public address announced over BGP on AS142108 (anycast /32).
+dot01 is a Polkadot active-set validator at 0% commission. 399 nominators nominate it (about 3.3M
+DOT of nomination intent); for era 2233 Phragmen elected 29 of them, 1,610,072 DOT, alongside our
+10,537 DOT self-bond. it runs on our own hardware in Bangkok (bkk12) with its /32 announced over BGP
+on AS142108. the host takes two point-to-point route-reflector uplinks, RR1 to the edge router bkk00
+over vlan112 and RR2 to bkk20 over vlan212.
 
-## what broke
+## what happened
 
-we pulled ourselves off a BKNIX 10G port and reconfigured RPKI on the edge. during the change the
-edge router (bkk00) handed the validator host the full table carrying a **bogus next-hop**
-(`10.155.112.0` — a network address, not a gateway). BIRD 3.2.1 hit it and **segfaulted**.
+we made a planned change on bkk00: we pulled ourselves off a BKNIX 10G port and reconfigured RPKI
+on the edge. RPKI origin validation lives inside bkk00's route-filter chains, so changing it, on top
+of dropping a transit port, made bkk00 re-evaluate and re-advertise a large part of the BGP table to
+its route-reflector clients. bkk12 is one of those clients.
 
-the unit had no `Restart=`. so it stayed dead, and dot01's `/32` was unreachable for ~4 hours. the
-`polkadot` process never went down — locally it looked healthy. what died was the route to it.
+we carry the full table on validators on purpose. having every route lets us influence our own path
+selection so the node keeps tight connectivity and does not miss votes. that design is not the
+problem. the problem is what the daemon did when the full table churned.
 
-then it got worse. to clear a suspected boot hang we issued a **power-off over IPMI**. the command
-**jammed the BMC** — the controller stopped bringing the box back and could not be recovered over
-the network. that turned a reboot into a **smart-hands request, ~1h to be actioned**.
+**BIRD 3.2.1 on bkk12 segfaulted.** the coredump is unambiguous:
 
-## keeping it producing
+```
+Signal: 11 (SEGV)
+Timestamp: Thu 2026-07-16 15:43:28 +07
+Command Line: /usr/bin/bird     (BIRD 3.2.1)
+Size on Disk: 137.8M
+```
 
-we did not wait on the datacenter. a validator's on-chain identity (stash) is separate from the
-session keys its node signs with, so the workload moves without touching funds:
+a 137 MB core is the full routing table sitting in memory at the moment it died. one crash, at
+15:43:28, right in the middle of the edge reconvergence.
 
-1. generated **fresh** session keys on a backup node with a valid ownership proof.
-2. submitted `set_keys` for dot01's stash through its **staking proxy** — a restricted key that can
-   manage staking but cannot transfer or unstake.
-3. backup started authoring at the next session.
-4. primary recovered ~21:47, resynced, we rotated keys back to it. backup is now a hot spare.
+it should have restarted and did not, because the bird unit on bkk12 was set to `Restart=no`:
 
-primary and backup were never given the same keys — fresh keys on the backup, primary kept its own.
-no double-signing risk. every on-chain action went through the proxy, which cannot reach funds.
+```
+FragmentPath=/usr/lib/systemd/system/bird.service
+Restart=no
+```
+
+so a single segfault took the daemon down and left it down. with bird dead, bkk12 stopped announcing
+its /32 (160.22.181.12 and 2401:a860:1012::) and the address was unreachable for about 4 hours. the
+polkadot process itself never went down. locally the node looked healthy, which is why the failure
+was invisible to anything watching the process rather than the route.
+
+recovery made it worse before it made it better. we restarted bird, then power-cycled the host over
+IPMI to clear a suspected hang. the power-off jammed the BMC. it would not bring the box back and
+could not be recovered over the network, so we opened a datacenter smart-hands request, which took
+about an hour. the host came back at 21:47, bird started on boot, and all four RR sessions
+re-established.
+
+## failover
+
+we did not wait on the host. a validator's session keys are separate from its stash, so we moved the
+signing workload without touching funds.
+
+1. generated new session keys on a backup node with a valid ownership proof
+2. submitted set_keys for dot01's stash through its staking proxy, a key restricted to staking calls
+   that cannot transfer or unstake
+3. the backup started authoring at the next session
+4. the primary recovered at 21:47, resynced, and we set the keys back to it
+
+the two nodes never held the same keys, so there was no double-signing exposure.
 
 ## why detection took ~4h
 
-we monitor grade from TurboFlakes ONE-T → Alertmanager → Pushover. it fired — late. grade is a
-**session-averaged** metric. one node going unreachable doesn't crater it; it **decays session by
-session** until it crosses the threshold (grade ≈ 0 / F). that decay is most of the 4 hours.
-
-the signal was accurate but lagging. we had no **real-time** alert on the two things that actually
-failed: BGP session state and off-net reachability of the public address. a validator that's up but
-unroutable is exactly the case grade catches slowly and a reachability probe catches in seconds.
+we page on validator grade from TurboFlakes ONE-T through Alertmanager to Pushover. it fired, but
+late. grade is a session average, so one unreachable node does not crater it. the number decayed
+over several sessions before it crossed the alert threshold, which accounts for most of the 4 hours.
+we had no alert on BGP session state and no probe checking the /32 from outside our own network, so
+the fast, unambiguous signal (bird is dead, the address is unreachable) never paged us.
 
 ## impact
 
-- **no slashing.** Polkadot does not slash for being offline. an offline validator earns no era
-  points for the affected era and is disabled until the next era, then re-enters automatically.
-- **no principal at risk.** staked DOT is never exposed by an offline event.
-- **rewards:** normal points before the incident (era 2231 ≈ 84,840, era 2232 ≈ 82,520, both near
-  network average), **0 points** for the era spanning the outage. one era of gross yield on this
-  stake is on the order of a few hundred DOT, split across 86 nominators by stake — a few DOT each
-  at most, less in practice since recovery was partway through the era. missed opportunity, not lost
-  capital.
+Polkadot does not slash for downtime. an offline validator is disabled for the rest of the era
+(dot01 sits at validator index 21 in the relay's disabled set for era 2233), earns no points, and
+re-enters automatically at the next era. its validate intention and session keys stayed intact
+throughout, so it resumes at era 2234 with no action needed. dot01 earned normal points before the
+incident, 84,840 in era 2231 and 82,520 in era 2232, and 0 in era 2233. the forgone reward is one
+era of its yield, about 110 DOT in total (era 2232 as the reference), which would have gone to the
+29 nominators elected to back it that era. no stake was ever touched.
+
+## reimbursement
+
+we run dot01 at 0% commission, and we cover our own mistakes. we are reimbursing the full era-2233
+reward to every nominator elected to back dot01 that era, out of our own funds. no nominator needs to
+do anything: the credit arrives at the same wallet your staking rewards do (your configured payee,
+which for some of you is a separate payout account).
+
+how we sized it. Polkadot pays validators by era points, so dot01's reward for an era is the
+network's total validator reward that era times its share of the points. dot01 was disabled and
+scored 0 in era 2233, so we use era 2232, a normal era for it, as the reference. all three inputs are
+on-chain in Asset Hub staking storage:
+
+```
+dot01 era reward = ErasValidatorReward(2232) x dot01_points / total_points
+                 = 69,215.64 DOT x 82,520 / 51,692,480
+                 = 110.49 DOT
+```
+
+that is about 2.5% APY on dot01's stake (110.49 x 365 eras / 1,610,072 DOT), in line with the current
+network reward rate, so the figure is not inflated. it is the actual DOT minted to validators that
+era, not an assumed rate.
+
+with 0% commission nothing comes off the top, so each nominator's share is pro-rata by their era-2233
+stake:
+
+```
+nominator share = 110.49 DOT x nominator_stake / 1,610,072 DOT
+```
+
+the 29 elected nominators sum to **109.77 DOT**. the remaining 0.72 DOT is our own self-bond's share,
+which we absorb. paid on Asset Hub.
+
+we will fund these over the coming week, out of our own funds. each payout transaction is linked on
+Subscan in the table below as it settles, so the reimbursement is fully verifiable on-chain. the
+`payout tx` column reads `pending` until a payment lands.
+
+| reward address | stake (DOT) | reimbursed (DOT) | payout tx |
+|---|--:|--:|---|
+| [12oC6EBv…jiyBru](https://assethub-polkadot.subscan.io/account/12oC6EBvXTce697K9z4vCKCd69F9XSiYJ5ps7RknJejiyBru) | 967,813 | 66.4174 | pending |
+| [13dmrnRU…SU6QNT](https://assethub-polkadot.subscan.io/account/13dmrnRUra9gTddwFX7cnSe4CgUBKn2j8Qg4kHiLAuSU6QNT) | 72,416 | 4.9696 | pending |
+| [1245sqJR…hiqkJb](https://assethub-polkadot.subscan.io/account/1245sqJR4L7J4NdF2CC4N5PTjhcr8kL1WgQdjx9MwYhiqkJb) | 58,618 | 4.0228 | pending |
+| [13JijKre…cFJxVX](https://assethub-polkadot.subscan.io/account/13JijKrenPPtrf77BVrtXuGowd7HiqPmihCeT8ZAojcFJxVX) | 55,000 | 3.7744 | pending |
+| [121kAu7r…csMmQL](https://assethub-polkadot.subscan.io/account/121kAu7rYh9qiPLGU5v4QwSgZ7ob1sr3S8HxVaBHeFcsMmQL) | 53,825 | 3.6938 | pending |
+| [14wpexXK…W9d1Qz](https://assethub-polkadot.subscan.io/account/14wpexXK5ACsah9KcF1Fcx5v1fqJfRVDvweKWZxwmuW9d1Qz) | 37,754 | 2.5909 | pending |
+| [12pkYMF4…1rmY3Z](https://assethub-polkadot.subscan.io/account/12pkYMF4PpAo4hGqgFSY7fDpaHwTVKpkXwuta16Pvx1rmY3Z) | 36,699 | 2.5185 | pending |
+| [13gxPWKr…5QZGsi](https://assethub-polkadot.subscan.io/account/13gxPWKr9swPYecKby8FgSRiuLZAUV9ebmrz5n8Wig5QZGsi) | 34,137 | 2.3427 | pending |
+| [16EaJrvP…8ZgZjE](https://assethub-polkadot.subscan.io/account/16EaJrvPAe2d6Qsv9rX6D1zBSvQdRGRPAzPdzGFZNz8ZgZjE) | 31,876 | 2.1875 | pending |
+| [13UVJyLn…hY3qMp](https://assethub-polkadot.subscan.io/account/13UVJyLnbVp8c4FQeiGhqK1rg8uUZTG77hjBd6Cf5ChY3qMp) | 30,242 | 2.0754 | pending |
+| [12GzZ75W…DNLjVE](https://assethub-polkadot.subscan.io/account/12GzZ75W7sCUtJrVJDE9cexFGVwFBsCLk5guxNN1BYDNLjVE) | 30,171 | 2.0705 | pending |
+| [1341q15r…L7kkF3](https://assethub-polkadot.subscan.io/account/1341q15re9GjocpNZy9m9EAVfPNkfib4d9jiWPR1w4L7kkF3) | 24,522 | 1.6828 | pending |
+| [14csKv3Y…eaufZ2](https://assethub-polkadot.subscan.io/account/14csKv3Y5YC54ZoVws1cgMPTtXxjDACrAa8xr7zEuVeaufZ2) | 22,415 | 1.5383 | pending |
+| [13bk6DQU…fKWYhb](https://assethub-polkadot.subscan.io/account/13bk6DQUfViVhXvxGwQdq5fCBKkj8XtLvUvJKi9UhrfKWYhb) | 18,332 | 1.2581 | pending |
+| [1etS2YDQ…RTtgJo](https://assethub-polkadot.subscan.io/account/1etS2YDQANjNKe3D7NUyBnVBNRrKDaDfunDarWV5zRTtgJo) | 18,317 | 1.2570 | pending |
+| [16EioRWe…nRF2MY](https://assethub-polkadot.subscan.io/account/16EioRWeX1sah8wtjCZVR3s6Ep2vyWa78XsjL3T76AnRF2MY) | 16,910 | 1.1605 | pending |
+| [12ZyR1L1…YBdqke](https://assethub-polkadot.subscan.io/account/12ZyR1L1o7brtD3SRZ6DG7JF3VTUUayouQa1ZJB7sZYBdqke) | 15,420 | 1.0582 | pending |
+| [15GmbHNW…J7BKaz](https://assethub-polkadot.subscan.io/account/15GmbHNWbdEGFNg5dWD9u9WJk5akWy3d41dFJ515ueJ7BKaz) | 15,386 | 1.0559 | pending |
+| [1s8uDFNc…RBeAga](https://assethub-polkadot.subscan.io/account/1s8uDFNcH2AUqFApWkkpxBBuf3dKjS7ATDc3nWKK7RBeAga) | 15,283 | 1.0488 | pending |
+| [16AB94BT…R8y6ao](https://assethub-polkadot.subscan.io/account/16AB94BTHh3rwXuGP7Fj2CeuJ5Qqycni93aJoeTsrHR8y6ao) | 13,566 | 0.9310 | pending |
+| [14V2DrPC…5DYFav](https://assethub-polkadot.subscan.io/account/14V2DrPCSCfKekCPbYV1qksGVmAPPrRsX5XcACHoLd5DYFav) | 8,734 | 0.5994 | pending |
+| [13B8Xxci…JafXKK](https://assethub-polkadot.subscan.io/account/13B8XxciMmABZEtKg3XSEbbE8zyKUzdxSUjYCrBtfFJafXKK) | 8,198 | 0.5626 | pending |
+| [13VkVcGj…tvCDPP](https://assethub-polkadot.subscan.io/account/13VkVcGjQ1G1e4FdyaDsVoTTos38TmWa4MX4rAwwThtvCDPP) | 7,067 | 0.4850 | pending |
+| [1shGn7pf…HRpRE7](https://assethub-polkadot.subscan.io/account/1shGn7pfi6sb53GHzhxdjKYc8j6rxnV5pHcA7kS1kHRpRE7) | 4,283 | 0.2939 | pending |
+| [1mYv9TPh…14CBd9](https://assethub-polkadot.subscan.io/account/1mYv9TPhCLXTKoYiyWF7KLEHEetnqTBDFQHHfuNY414CBd9) | 1,095 | 0.0751 | pending |
+| [14MwjP2k…9fJqLd](https://assethub-polkadot.subscan.io/account/14MwjP2kbdqFof9ntaJsZG4kZii1dMANgkRgTJTw8L9fJqLd) | 464 | 0.0318 | pending |
+| [14Ak8DQa…Wg97vK](https://assethub-polkadot.subscan.io/account/14Ak8DQaqEWGav813dhofFrTAjMuwju2kC3iwMPtRXWg97vK) | 435 | 0.0299 | pending |
+| [147yvdAh…LFwQAi](https://assethub-polkadot.subscan.io/account/147yvdAhuDAZLdQRrC4G1f7AXvf6crsYrj3GhCDdMFLFwQAi) | 302 | 0.0207 | pending |
+| [141u2ex2…fneuq1](https://assethub-polkadot.subscan.io/account/141u2ex2ktZPxCW4fVtnf4zUNo6iFixCahrfzjSf4qfneuq1) | 256 | 0.0175 | pending |
 
 ## fixes
 
-- `Restart=on-failure` on every BIRD unit fleet-wide. a segfault should self-heal in seconds.
-- filter the validator host's import. it needs a default + internal routes, not the full table —
-  that removes the class of malformed route that triggered this.
-- fix the edge: find why bkk00 advertised next-hop `10.155.112.0`, and stage RPKI/peering changes
-  so they can't reach validator hosts mid-flight.
-- real-time alerts next to grade: **BGP session/daemon state** + an **off-net reachability probe**
-  on the public address, so a dropped announcement pages in seconds instead of after grade erodes.
-- remote power-off is now last resort after this BMC jam. key-rotation failover worked cleanly and
-  is the primary tool for keeping the validator producing through a host problem.
-- keep a warm backup ready to take dot01's keys — future host issues are a minutes-long rotation,
-  not a wait on physical hands.
+- restart hardening on every bird host: a systemd drop-in with `Restart=on-failure`, `RestartSec=2s`,
+  and `StartLimitIntervalSec=0`. this fixes bkk12, which had `Restart=no`, and the rest of the fleet,
+  whose packaged unit uses `Restart=on-abort` with a start limit that gives up after five crashes in
+  ten seconds. bird should self-heal in seconds and keep retrying until the route settles.
+- bring bkk12's bird under the managed config. it had drifted to a hand-rolled unit with `Restart=no`
+  instead of the generated one, which is how the restart gap existed only there.
+- treat the BIRD 3.2.1 segfault as a bug, not just an operational event. we keep the core, will get a
+  symbolized backtrace, and will move the validators onto a patched build. a routing daemon must not
+  crash on a full-table reload.
+- stage edge changes so a full-table re-advertisement cannot hit validator hosts mid-change. RPKI and
+  peering changes on bkk00 get gated and damped toward the RR clients.
+- add real-time alerts independent of grade: a BGP session-state alert and an off-net reachability
+  probe on the /32, so an unrouted validator pages within seconds instead of after grade decays.
+- remote power-off is a last resort after this BMC jam. key-rotation failover worked cleanly and is
+  the primary tool for keeping the validator producing through a host problem.
+- keep a backup node warm and ready to take dot01's keys.
+
+## the networking reality
+
+Polkadot already has a clever mitigation for exactly this. it does not ship a whole proof of validity
+from one validator to another. each candidate's data is erasure coded into chunks, one per validator,
+and a node that needs to check a candidate reconstructs it by pulling small chunks from many
+validators at once, needing only a fraction of them to rebuild the whole. that sharded, many-to-one
+fetch is designed so no single link has to carry the full load.
+
+it helps, but it cannot beat physics or peering economics. reconstruction still means opening
+connections to validators spread across the world, and the paths we get from Bangkok are only as good
+as the transit between here and there. that is where it breaks: ISPs have little commercial incentive
+to maintain fast, well-peered global routes, especially into and out of Asia.
+
+the clearest way to show this is the biggest player. Hetzner is the single largest hosting provider
+in the Polkadot validator set. here is what one of their 1 Gbit servers in Europe actually delivers
+to the rest of the world, throughput measured in 10 MB chunks, sorted by latency:
+
+| location | ping | down (Mbit/s) | up (Mbit/s) | via |
+|---|--:|--:|--:|---|
+| Stockholm | 7.8 ms | 897.5 | 1004.6 | Telia Sweden |
+| Amsterdam | 27.6 ms | 282.0 | 146.8 | Sharktech |
+| London | 34.9 ms | 209.8 | 227.7 | YouFibre |
+| Frankfurt | 35.4 ms | 196.9 | 162.3 | TELE AG |
+| Paris | 39.9 ms | 191.4 | 198.7 | Scaleway |
+| New York | 102.4 ms | 75.3 | 71.5 | Clouvider |
+| Chicago | 113.1 ms | 64.0 | 50.5 | KamaTera |
+| Toronto | 116.3 ms | 62.4 | 62.8 | Bell Canada |
+| Dubai | 141.8 ms | 55.6 | 51.3 | du |
+| Vancouver | 160.4 ms | 29.6 | 45.5 | TELUS |
+| Los Angeles | 173.3 ms | 45.1 | 41.9 | Starry |
+| Singapore | 180.2 ms | 39.7 | 26.1 | Pacific Internet |
+| Bangkok | 197.2 ms | 38.8 | 36.9 | AIS Fibre |
+| São Paulo | 232.5 ms | 29.2 | 32.1 | Vtal |
+| Hong Kong | 258.2 ms | 18.7 | 28.0 | Sun Mobile |
+| Tokyo | 279.9 ms | 28.6 | 27.0 | Verizon Tokyo |
+| Sydney | 355.0 ms | 20.5 | 22.5 | Telstra |
+| Seoul | unreachable | n/a | n/a | n/a |
+
+read the bottom of that table. a 1 Gbit link that pushes ~900 Mbit to Stockholm and ~200 Mbit across
+Europe collapses to 20 to 40 Mbit into Asia, and cannot reach Seoul at all. that is not our hardware
+and not our config, it is the same provider most of the network runs on, and it still has almost no
+usable bandwidth to our region. validating from Asia means living on the wrong side of that gap.
+erasure-coded recovery softens it, carrying the full table to hand-pick peer paths softens it, IPv6
+and better transit will soften it more, but the honest truth is that the internet is not evenly
+global, and running a competitive validator from Bangkok is swimming against that.
+
+## the bigger picture
+
+we will be straight about the context. running validators from Thailand is hard. international
+connectivity out of Bangkok is expensive, and the economics of dot01 have been breakeven at best.
+that is part of why we run this lean, and part of why an edge change can turn into a night like this.
+we are actively sourcing better upstream transit to harden the network path under the validator.
+
+there is a network-layer tailwind coming too. much of what makes validation from here fragile is
+inter-validator reachability: our node fetches proofs of validity from peers across constrained
+international paths, and when those fetches time out we miss votes. this is exactly why we carry the
+full BGP table on the validator, the same design that exposed us to the BIRD crash. having every
+route lets us hand-pick the best path to each peer instead of taking whatever our upstreams' default
+routes hand us, so we can steer around a slow or dropping path to a specific validator and recover
+those proof fetches. it is a deliberate workaround, and it helps, but it is us compensating in
+software for a problem that belongs in the routing layer.
+
+that problem is IPv6 adoption. today under a fifth of Polkadot validators are reachable over IPv6, so
+most inter-validator traffic is forced onto congested IPv4. as the set adopts IPv6 this improves for
+everyone, and we have free IPv6 transit negotiated with Hurricane Electric, so we are set up to
+benefit early. better paths between validators mean fewer timed-out proof fetches and fewer missed
+votes, and less need to lean on the full-table workaround that bit us here.
+
+further out, JAM, the redesign that replaces the current relay-chain validation model, reworks this
+whole core-validation and data-availability layer, so this class of problem should ease at the
+protocol level rather than needing us to paper over it. it was initially eyed for around Q3 2026,
+though the migration timeline has since moved.
+
+the real fix is structural. we are building a staking-as-a-validator liquid staking product, where
+dot01's stash moves under the control of a smart contract instead of a single operator's hands. that
+decouples our nominators from one machine's uptime, lets the staked position stay liquid and compound,
+and is designed to lift effective reward rates for stakers with us to as high as 35%. it also turns an
+incident like tonight into a non-event for nominators, because the contract manages the validator
+rather than a hand-run failover at 2am. more on it as it ships.
