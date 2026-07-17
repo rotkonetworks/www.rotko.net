@@ -11,7 +11,7 @@ BKNIX 10G port and reconfiguring RPKI) re-advertised the full table to the valid
 3.2.1 segfaulted under it, and the bird unit had Restart=no, so the node's /32 was unreachable for
 about 4 hours. a later remote power-off jammed the BMC and needed physical hands. we kept dot01
 producing by moving its session keys to a backup node and later moved them back. Polkadot does not
-slash for downtime and no stake was affected.*
+slash for downtime and no stake was affected, and we have reimbursed the missed rewards to nominators in full.*
 
 ---
 
@@ -97,7 +97,7 @@ era of its yield, about 110 DOT in total (era 2232 as the reference), which woul
 
 ## reimbursement
 
-we run dot01 at 0% commission, and we cover our own mistakes. we are reimbursing the full era-2233
+we run dot01 at 0% commission, and we cover our own mistakes. we reimbursed the full era-2233
 reward to every nominator elected to back dot01 that era, out of our own funds. no nominator needs to
 do anything: the credit arrives at the same wallet your staking rewards do (your configured payee,
 which for some of you is a separate payout account).
@@ -125,43 +125,44 @@ nominator share = 110.49 DOT x nominator_stake / 1,610,072 DOT
 ```
 
 the 29 elected nominators sum to **109.77 DOT**. the remaining 0.72 DOT is our own self-bond's share,
-which we absorb. paid on Asset Hub.
+which we absorb.
 
-we will fund these over the coming week, out of our own funds. each payout transaction is linked on
-Subscan in the table below as it settles, so the reimbursement is fully verifiable on-chain. the
-`payout tx` column reads `pending` until a payment lands.
+**paid in full on 17 July 2026** in a single atomic Asset Hub batch:
+[extrinsic 0x9307a0…d3a904](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904). all 29 transfers plus the sweep of the leftover to the dot01
+stash executed together in one transaction, so the whole reimbursement is verifiable on-chain in one
+place. every row in the table below links to that extrinsic.
 
 | reward address | stake (DOT) | reimbursed (DOT) | payout tx |
 |---|--:|--:|---|
-| [12oC6EBv…jiyBru](https://assethub-polkadot.subscan.io/account/12oC6EBvXTce697K9z4vCKCd69F9XSiYJ5ps7RknJejiyBru) | 967,813 | 66.4174 | pending |
-| [13dmrnRU…SU6QNT](https://assethub-polkadot.subscan.io/account/13dmrnRUra9gTddwFX7cnSe4CgUBKn2j8Qg4kHiLAuSU6QNT) | 72,416 | 4.9696 | pending |
-| [1245sqJR…hiqkJb](https://assethub-polkadot.subscan.io/account/1245sqJR4L7J4NdF2CC4N5PTjhcr8kL1WgQdjx9MwYhiqkJb) | 58,618 | 4.0228 | pending |
-| [13JijKre…cFJxVX](https://assethub-polkadot.subscan.io/account/13JijKrenPPtrf77BVrtXuGowd7HiqPmihCeT8ZAojcFJxVX) | 55,000 | 3.7744 | pending |
-| [121kAu7r…csMmQL](https://assethub-polkadot.subscan.io/account/121kAu7rYh9qiPLGU5v4QwSgZ7ob1sr3S8HxVaBHeFcsMmQL) | 53,825 | 3.6938 | pending |
-| [14wpexXK…W9d1Qz](https://assethub-polkadot.subscan.io/account/14wpexXK5ACsah9KcF1Fcx5v1fqJfRVDvweKWZxwmuW9d1Qz) | 37,754 | 2.5909 | pending |
-| [12pkYMF4…1rmY3Z](https://assethub-polkadot.subscan.io/account/12pkYMF4PpAo4hGqgFSY7fDpaHwTVKpkXwuta16Pvx1rmY3Z) | 36,699 | 2.5185 | pending |
-| [13gxPWKr…5QZGsi](https://assethub-polkadot.subscan.io/account/13gxPWKr9swPYecKby8FgSRiuLZAUV9ebmrz5n8Wig5QZGsi) | 34,137 | 2.3427 | pending |
-| [16EaJrvP…8ZgZjE](https://assethub-polkadot.subscan.io/account/16EaJrvPAe2d6Qsv9rX6D1zBSvQdRGRPAzPdzGFZNz8ZgZjE) | 31,876 | 2.1875 | pending |
-| [13UVJyLn…hY3qMp](https://assethub-polkadot.subscan.io/account/13UVJyLnbVp8c4FQeiGhqK1rg8uUZTG77hjBd6Cf5ChY3qMp) | 30,242 | 2.0754 | pending |
-| [12GzZ75W…DNLjVE](https://assethub-polkadot.subscan.io/account/12GzZ75W7sCUtJrVJDE9cexFGVwFBsCLk5guxNN1BYDNLjVE) | 30,171 | 2.0705 | pending |
-| [1341q15r…L7kkF3](https://assethub-polkadot.subscan.io/account/1341q15re9GjocpNZy9m9EAVfPNkfib4d9jiWPR1w4L7kkF3) | 24,522 | 1.6828 | pending |
-| [14csKv3Y…eaufZ2](https://assethub-polkadot.subscan.io/account/14csKv3Y5YC54ZoVws1cgMPTtXxjDACrAa8xr7zEuVeaufZ2) | 22,415 | 1.5383 | pending |
-| [13bk6DQU…fKWYhb](https://assethub-polkadot.subscan.io/account/13bk6DQUfViVhXvxGwQdq5fCBKkj8XtLvUvJKi9UhrfKWYhb) | 18,332 | 1.2581 | pending |
-| [1etS2YDQ…RTtgJo](https://assethub-polkadot.subscan.io/account/1etS2YDQANjNKe3D7NUyBnVBNRrKDaDfunDarWV5zRTtgJo) | 18,317 | 1.2570 | pending |
-| [16EioRWe…nRF2MY](https://assethub-polkadot.subscan.io/account/16EioRWeX1sah8wtjCZVR3s6Ep2vyWa78XsjL3T76AnRF2MY) | 16,910 | 1.1605 | pending |
-| [12ZyR1L1…YBdqke](https://assethub-polkadot.subscan.io/account/12ZyR1L1o7brtD3SRZ6DG7JF3VTUUayouQa1ZJB7sZYBdqke) | 15,420 | 1.0582 | pending |
-| [15GmbHNW…J7BKaz](https://assethub-polkadot.subscan.io/account/15GmbHNWbdEGFNg5dWD9u9WJk5akWy3d41dFJ515ueJ7BKaz) | 15,386 | 1.0559 | pending |
-| [1s8uDFNc…RBeAga](https://assethub-polkadot.subscan.io/account/1s8uDFNcH2AUqFApWkkpxBBuf3dKjS7ATDc3nWKK7RBeAga) | 15,283 | 1.0488 | pending |
-| [16AB94BT…R8y6ao](https://assethub-polkadot.subscan.io/account/16AB94BTHh3rwXuGP7Fj2CeuJ5Qqycni93aJoeTsrHR8y6ao) | 13,566 | 0.9310 | pending |
-| [14V2DrPC…5DYFav](https://assethub-polkadot.subscan.io/account/14V2DrPCSCfKekCPbYV1qksGVmAPPrRsX5XcACHoLd5DYFav) | 8,734 | 0.5994 | pending |
-| [13B8Xxci…JafXKK](https://assethub-polkadot.subscan.io/account/13B8XxciMmABZEtKg3XSEbbE8zyKUzdxSUjYCrBtfFJafXKK) | 8,198 | 0.5626 | pending |
-| [13VkVcGj…tvCDPP](https://assethub-polkadot.subscan.io/account/13VkVcGjQ1G1e4FdyaDsVoTTos38TmWa4MX4rAwwThtvCDPP) | 7,067 | 0.4850 | pending |
-| [1shGn7pf…HRpRE7](https://assethub-polkadot.subscan.io/account/1shGn7pfi6sb53GHzhxdjKYc8j6rxnV5pHcA7kS1kHRpRE7) | 4,283 | 0.2939 | pending |
-| [1mYv9TPh…14CBd9](https://assethub-polkadot.subscan.io/account/1mYv9TPhCLXTKoYiyWF7KLEHEetnqTBDFQHHfuNY414CBd9) | 1,095 | 0.0751 | pending |
-| [14MwjP2k…9fJqLd](https://assethub-polkadot.subscan.io/account/14MwjP2kbdqFof9ntaJsZG4kZii1dMANgkRgTJTw8L9fJqLd) | 464 | 0.0318 | pending |
-| [14Ak8DQa…Wg97vK](https://assethub-polkadot.subscan.io/account/14Ak8DQaqEWGav813dhofFrTAjMuwju2kC3iwMPtRXWg97vK) | 435 | 0.0299 | pending |
-| [147yvdAh…LFwQAi](https://assethub-polkadot.subscan.io/account/147yvdAhuDAZLdQRrC4G1f7AXvf6crsYrj3GhCDdMFLFwQAi) | 302 | 0.0207 | pending |
-| [141u2ex2…fneuq1](https://assethub-polkadot.subscan.io/account/141u2ex2ktZPxCW4fVtnf4zUNo6iFixCahrfzjSf4qfneuq1) | 256 | 0.0175 | pending |
+| [12oC6EBv…jiyBru](https://assethub-polkadot.subscan.io/account/12oC6EBvXTce697K9z4vCKCd69F9XSiYJ5ps7RknJejiyBru) | 967,813 | 66.4174 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [13dmrnRU…SU6QNT](https://assethub-polkadot.subscan.io/account/13dmrnRUra9gTddwFX7cnSe4CgUBKn2j8Qg4kHiLAuSU6QNT) | 72,416 | 4.9696 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [1245sqJR…hiqkJb](https://assethub-polkadot.subscan.io/account/1245sqJR4L7J4NdF2CC4N5PTjhcr8kL1WgQdjx9MwYhiqkJb) | 58,618 | 4.0228 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [13JijKre…cFJxVX](https://assethub-polkadot.subscan.io/account/13JijKrenPPtrf77BVrtXuGowd7HiqPmihCeT8ZAojcFJxVX) | 55,000 | 3.7744 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [121kAu7r…csMmQL](https://assethub-polkadot.subscan.io/account/121kAu7rYh9qiPLGU5v4QwSgZ7ob1sr3S8HxVaBHeFcsMmQL) | 53,825 | 3.6938 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [14wpexXK…W9d1Qz](https://assethub-polkadot.subscan.io/account/14wpexXK5ACsah9KcF1Fcx5v1fqJfRVDvweKWZxwmuW9d1Qz) | 37,754 | 2.5909 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [12pkYMF4…1rmY3Z](https://assethub-polkadot.subscan.io/account/12pkYMF4PpAo4hGqgFSY7fDpaHwTVKpkXwuta16Pvx1rmY3Z) | 36,699 | 2.5185 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [13gxPWKr…5QZGsi](https://assethub-polkadot.subscan.io/account/13gxPWKr9swPYecKby8FgSRiuLZAUV9ebmrz5n8Wig5QZGsi) | 34,137 | 2.3427 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [16EaJrvP…8ZgZjE](https://assethub-polkadot.subscan.io/account/16EaJrvPAe2d6Qsv9rX6D1zBSvQdRGRPAzPdzGFZNz8ZgZjE) | 31,876 | 2.1875 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [13UVJyLn…hY3qMp](https://assethub-polkadot.subscan.io/account/13UVJyLnbVp8c4FQeiGhqK1rg8uUZTG77hjBd6Cf5ChY3qMp) | 30,242 | 2.0754 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [12GzZ75W…DNLjVE](https://assethub-polkadot.subscan.io/account/12GzZ75W7sCUtJrVJDE9cexFGVwFBsCLk5guxNN1BYDNLjVE) | 30,171 | 2.0705 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [1341q15r…L7kkF3](https://assethub-polkadot.subscan.io/account/1341q15re9GjocpNZy9m9EAVfPNkfib4d9jiWPR1w4L7kkF3) | 24,522 | 1.6828 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [14csKv3Y…eaufZ2](https://assethub-polkadot.subscan.io/account/14csKv3Y5YC54ZoVws1cgMPTtXxjDACrAa8xr7zEuVeaufZ2) | 22,415 | 1.5383 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [13bk6DQU…fKWYhb](https://assethub-polkadot.subscan.io/account/13bk6DQUfViVhXvxGwQdq5fCBKkj8XtLvUvJKi9UhrfKWYhb) | 18,332 | 1.2581 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [1etS2YDQ…RTtgJo](https://assethub-polkadot.subscan.io/account/1etS2YDQANjNKe3D7NUyBnVBNRrKDaDfunDarWV5zRTtgJo) | 18,317 | 1.2570 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [16EioRWe…nRF2MY](https://assethub-polkadot.subscan.io/account/16EioRWeX1sah8wtjCZVR3s6Ep2vyWa78XsjL3T76AnRF2MY) | 16,910 | 1.1605 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [12ZyR1L1…YBdqke](https://assethub-polkadot.subscan.io/account/12ZyR1L1o7brtD3SRZ6DG7JF3VTUUayouQa1ZJB7sZYBdqke) | 15,420 | 1.0582 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [15GmbHNW…J7BKaz](https://assethub-polkadot.subscan.io/account/15GmbHNWbdEGFNg5dWD9u9WJk5akWy3d41dFJ515ueJ7BKaz) | 15,386 | 1.0559 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [1s8uDFNc…RBeAga](https://assethub-polkadot.subscan.io/account/1s8uDFNcH2AUqFApWkkpxBBuf3dKjS7ATDc3nWKK7RBeAga) | 15,283 | 1.0488 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [16AB94BT…R8y6ao](https://assethub-polkadot.subscan.io/account/16AB94BTHh3rwXuGP7Fj2CeuJ5Qqycni93aJoeTsrHR8y6ao) | 13,566 | 0.9310 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [14V2DrPC…5DYFav](https://assethub-polkadot.subscan.io/account/14V2DrPCSCfKekCPbYV1qksGVmAPPrRsX5XcACHoLd5DYFav) | 8,734 | 0.5994 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [13B8Xxci…JafXKK](https://assethub-polkadot.subscan.io/account/13B8XxciMmABZEtKg3XSEbbE8zyKUzdxSUjYCrBtfFJafXKK) | 8,198 | 0.5626 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [13VkVcGj…tvCDPP](https://assethub-polkadot.subscan.io/account/13VkVcGjQ1G1e4FdyaDsVoTTos38TmWa4MX4rAwwThtvCDPP) | 7,067 | 0.4850 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [1shGn7pf…HRpRE7](https://assethub-polkadot.subscan.io/account/1shGn7pfi6sb53GHzhxdjKYc8j6rxnV5pHcA7kS1kHRpRE7) | 4,283 | 0.2939 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [1mYv9TPh…14CBd9](https://assethub-polkadot.subscan.io/account/1mYv9TPhCLXTKoYiyWF7KLEHEetnqTBDFQHHfuNY414CBd9) | 1,095 | 0.0751 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [14MwjP2k…9fJqLd](https://assethub-polkadot.subscan.io/account/14MwjP2kbdqFof9ntaJsZG4kZii1dMANgkRgTJTw8L9fJqLd) | 464 | 0.0318 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [14Ak8DQa…Wg97vK](https://assethub-polkadot.subscan.io/account/14Ak8DQaqEWGav813dhofFrTAjMuwju2kC3iwMPtRXWg97vK) | 435 | 0.0299 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [147yvdAh…LFwQAi](https://assethub-polkadot.subscan.io/account/147yvdAhuDAZLdQRrC4G1f7AXvf6crsYrj3GhCDdMFLFwQAi) | 302 | 0.0207 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
+| [141u2ex2…fneuq1](https://assethub-polkadot.subscan.io/account/141u2ex2ktZPxCW4fVtnf4zUNo6iFixCahrfzjSf4qfneuq1) | 256 | 0.0175 | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0x9307a064092a2ee1350f18c8225598584e8f0dfacd9f314f9d0eeba9e5d3a904) |
 
 ## fixes
 
