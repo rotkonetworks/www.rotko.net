@@ -233,8 +233,12 @@ global, and running a competitive validator from Bangkok is swimming against tha
 ## the bigger picture
 
 running validators from Thailand is hard. connectivity out of Bangkok is expensive and dot01 has been
-breakeven at best. that is why we run this lean, and part of why an edge change can turn into a night
-like this. we are sourcing better upstream transit to harden the path under the validator.
+breakeven at best. since the Polkadot infrastructure bounty wound down we have been trimming cost to
+fit. we dropped our 10 Gbit BKNIX port and saved about $1,000 a month, and that downscale, with the
+RPKI rework it required, is exactly what set off this incident. we are renegotiating our IP transit
+next, today $1,500 a month for 1 Gbit. validation needs at most ~400/400 Mbit, so right-sizing to
+that should bring our total under $2,000 a month while keeping the node well inside what it actually
+requires.
 
 the routing-layer fix is IPv6. today under a fifth of Polkadot validators are reachable over it, so
 most inter-validator traffic is forced onto congested IPv4. as the set adopts IPv6 the timed-out
