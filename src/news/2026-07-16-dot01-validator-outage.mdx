@@ -231,25 +231,14 @@ global, and running a competitive validator from Bangkok is swimming against tha
 
 ## the bigger picture
 
-we will be straight about the context. running validators from Thailand is hard. international
-connectivity out of Bangkok is expensive, and the economics of dot01 have been breakeven at best.
-that is part of why we run this lean, and part of why an edge change can turn into a night like this.
-we are actively sourcing better upstream transit to harden the network path under the validator.
+running validators from Thailand is hard. connectivity out of Bangkok is expensive and dot01 has been
+breakeven at best. that is why we run this lean, and part of why an edge change can turn into a night
+like this. we are sourcing better upstream transit to harden the path under the validator.
 
-there is a network-layer tailwind coming too. much of what makes validation from here fragile is
-inter-validator reachability: our node fetches proofs of validity from peers across constrained
-international paths, and when those fetches time out we miss votes. this is exactly why we carry the
-full BGP table on the validator, the same design that exposed us to the BIRD crash. having every
-route lets us hand-pick the best path to each peer instead of taking whatever our upstreams' default
-routes hand us, so we can steer around a slow or dropping path to a specific validator and recover
-those proof fetches. it is a deliberate workaround, and it helps, but it is us compensating in
-software for a problem that belongs in the routing layer.
-
-that problem is IPv6 adoption. today under a fifth of Polkadot validators are reachable over IPv6, so
-most inter-validator traffic is forced onto congested IPv4. as the set adopts IPv6 this improves for
-everyone, and we have free IPv6 transit negotiated with Hurricane Electric, so we are set up to
-benefit early. better paths between validators mean fewer timed-out proof fetches and fewer missed
-votes, and less need to lean on the full-table workaround that bit us here.
+the routing-layer fix is IPv6. today under a fifth of Polkadot validators are reachable over it, so
+most inter-validator traffic is forced onto congested IPv4. as the set adopts IPv6 the timed-out
+proof fetches ease for everyone, and we have free IPv6 transit negotiated with Hurricane Electric to
+benefit early, with less need for the full-table workaround that bit us here.
 
 further out, JAM, the redesign that replaces the current relay-chain validation model, reworks this
 whole core-validation and data-availability layer, so this class of problem should ease at the
