@@ -246,9 +246,12 @@ whole core-validation and data-availability layer, so this class of problem shou
 protocol level rather than needing us to paper over it. it was initially eyed for around Q3 2026,
 though the migration timeline has since moved.
 
-the real fix is structural. we are building a staking-as-a-validator liquid staking product, where
-dot01's stash moves under the control of a smart contract instead of a single operator's hands. that
-decouples our nominators from one machine's uptime, lets the staked position stay liquid and compound,
-and is designed to lift effective reward rates for stakers with us to as high as 35%. it also turns an
-incident like tonight into a non-event for nominators, because the contract manages the validator
-rather than a hand-run failover at 2am. more on it as it ships.
+the real fix is structural. we are building svDOT, a liquid staking token backed by validator
+self-stake across a fleet of contract-owned stashes on Asset Hub, launched from dot01's own stash. it
+does not make validator uptime or slashing risk disappear, a night like this still costs the pool
+rewards, but running a fleet of vaults spreads that across many validators instead of resting on one,
+the staked position stays liquid and compounds, and it upgrades the people who consistently back us,
+opening first to the wallets already nominating us and scaled by what they stake, from the ~3% a
+plain nominator earns to the validator self-stake reward rate. that is a curve we target at up to
+~35% for early participants, tapering toward ~10% as a vault fills to Polkadot's 100k DOT incentive
+cap. a full write-up is coming.
