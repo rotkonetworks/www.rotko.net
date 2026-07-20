@@ -10,9 +10,12 @@ export interface NodeClass {
 }
 
 export const hostingData = {
+  // Only classes the control plane can actually place on a distinct node.
+  // "Zen 4"/epyc9k mapped to the same node (bkk08) as Zen 3, so charging its
+  // 1.4× multiplier was a phantom upsell — dropped until bkk07 (real Zen 4) is
+  // wired as its own provisioning target with its own IPv4 pool.
   nodeClasses: [
     { id: 'epyc7k', label: 'Zen 3', cpu: 'AMD EPYC 7003', multiplier: 1.0 },
-    { id: 'epyc9k', label: 'Zen 4', cpu: 'AMD EPYC 9004', multiplier: 1.4 },
   ] as NodeClass[],
 
   // Per-core pricing. Shared = oversubscribed (fractional cores); dedicated =

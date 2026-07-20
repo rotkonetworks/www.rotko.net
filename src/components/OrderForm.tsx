@@ -25,9 +25,11 @@ const fmtAmount = (o: Order) =>
 type Status = 'idle' | 'sending' | 'sent' | 'awaiting' | 'active' | 'error'
 const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
-// Images we install. Proxmox is the default (turns a node into a VM host).
-export const OS_OPTIONS = ['Debian', 'Ubuntu', 'Proxmox', 'Arch Linux', 'NixOS', 'Talos']
-export const OS_DEFAULT = 'Ubuntu'
+// Images we install. Only expose OSes the backend actually has a template for —
+// offering ones it doesn't (Ubuntu/Proxmox/Arch/NixOS/Talos) let an order be
+// accepted and settled, then fail at provision. Add back here as templates land.
+export const OS_OPTIONS = ['Debian']
+export const OS_DEFAULT = 'Debian'
 
 interface OrderFormProps {
   title: string
@@ -51,9 +53,12 @@ const OrderForm: Component<OrderFormProps> = (props) => {
   const [hostname, setHostname] = createSignal('')
   const [sshKey, setSshKey] = createSignal('')
   const [os, setOs] = createSignal(props.osOptions?.includes(OS_DEFAULT) ? OS_DEFAULT : (props.osOptions?.[0] ?? ''))
-  // Public IPv4: ephemeral (free, released on destroy) or static (+$3/mo,
-  // reserved to your account, survives rebuilds).
-  const [ipv4Kind, setIpv4Kind] = createSignal<'ephemeral' | 'static'>('ephemeral')
+  // Public IPv4 — the single source of truth for the order (overrides whatever
+  // the build config set): none (IPv6-only), ephemeral (free, released on
+  // destroy), or static (+$3/mo, reserved to your account, survives rebuilds).
+  const [ipv4Kind, setIpv4Kind] = createSignal<'none' | 'ephemeral' | 'static'>(
+    (props.config as { ipv4?: boolean })?.ipv4 ? 'ephemeral' : 'none',
+  )
   const [notes, setNotes] = createSignal('')
   const [company, setCompany] = createSignal('') // honeypot
   const [status, setStatus] = createSignal<Status>('idle')
@@ -84,16 +89,36 @@ const OrderForm: Component<OrderFormProps> = (props) => {
   onCleanup(() => poll && clearInterval(poll))
 
   const startPolling = (id: string) => {
+    let ticks = 0
     poll = setInterval(async () => {
+      ticks++
       try {
         const o = await getOrder(id)
         setOrder(o)
         if (o.status === 'active') {
           setStatus('active')
           clearInterval(poll)
+          return
+        }
+        // Terminal failure: never leave the user staring at a false
+        // "provisioning continues…" — surface it and stop.
+        if (o.status === 'failed') {
+          setStatus('error')
+          setError(
+            `Provisioning failed for order ${o.id}. No recurring charge will start — ` +
+              `please try again or contact support if it persists.`,
+          )
+          clearInterval(poll)
+          return
         }
       } catch {
-        /* keep polling */
+        /* transient fetch error — keep polling */
+      }
+      // Safety stop (~5 min) so a stuck 'provisioning' can't spin forever.
+      if (ticks >= 75) {
+        setStatus('error')
+        setError('Still provisioning — check your dashboard in a minute; it may just be slow.')
+        clearInterval(poll)
       }
     }, 4000)
   }
@@ -105,7 +130,12 @@ const OrderForm: Component<OrderFormProps> = (props) => {
     if (props.osOptions) config.os = OS_ID[os()] ?? os().toLowerCase()
     if (sshKey().trim()) config.ssh_key = sshKey().trim()
     if (hostname().trim()) config.hostname = hostname().trim()
-    if (props.osOptions && ipv4Kind() === 'static') config.static_ipv4 = true
+    // IPv4 picker is authoritative for VM orders (reconciles with the build's
+    // ipv4 flag): none ⇒ IPv6-only, ephemeral ⇒ pool ipv4, static ⇒ reserved.
+    if (props.osOptions) {
+      config.ipv4 = ipv4Kind() === 'ephemeral'
+      config.static_ipv4 = ipv4Kind() === 'static'
+    }
     return createOrder({ product: props.product!, config, email: acct, method: payMethod() })
   }
 
@@ -116,16 +146,29 @@ const OrderForm: Component<OrderFormProps> = (props) => {
       const o = await buildOrder()
       setOrder(o)
       // Funded account → draw the credit line and provision now (no deposit).
-      if (useCredit() && availableCredit() >= o.price_usd_month) {
+      if (useCredit()) {
+        if (availableCredit() < o.price_usd_month) {
+          setStatus('error')
+          setError(
+            `Not enough credit for this build ($${o.price_usd_month.toFixed(0)}/mo; ` +
+              `$${availableCredit().toFixed(0)} available). Add funds, or switch to crypto below.`,
+          )
+          return
+        }
         try {
-          await settleOnCredit(o.id)
+          const r = await settleOnCredit(o.id)
+          if (!r.ok) throw new Error('Credit was declined for this order.')
           setSettledOnCredit(true)
-          setStatus('awaiting') // provisioning on credit; poll to active
+          setStatus('awaiting') // provisioning on credit; poll to active/failed
           startPolling(o.id)
           return
-        } catch {
-          // Credit didn't take (race / insufficient) → fall back to crypto.
-          setSettleMode('crypto')
+        } catch (e) {
+          // Don't silently drop to a crypto deposit — tell the user.
+          setStatus('error')
+          setError(
+            e instanceof Error ? e.message : 'Credit settlement failed. You can pay with crypto instead.',
+          )
+          return
         }
       }
       setStatus('awaiting')
@@ -274,7 +317,16 @@ const OrderForm: Component<OrderFormProps> = (props) => {
             <Show when={realFlow() && props.osOptions}>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Public IPv4</label>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" onClick={() => setIpv4Kind('none')}
+                    class="px-3 py-2 text-left rounded-md border transition-colors"
+                    classList={{
+                      'border-cyan-600 bg-cyan-600/15': ipv4Kind() === 'none',
+                      'border-gray-700 hover:border-gray-600': ipv4Kind() !== 'none',
+                    }}>
+                    <span class="block text-sm text-gray-200">None</span>
+                    <span class="block text-[11px] text-gray-500">IPv6-only · free</span>
+                  </button>
                   <button type="button" onClick={() => setIpv4Kind('ephemeral')}
                     class="px-3 py-2 text-left rounded-md border transition-colors"
                     classList={{
@@ -282,7 +334,7 @@ const OrderForm: Component<OrderFormProps> = (props) => {
                       'border-gray-700 hover:border-gray-600': ipv4Kind() !== 'ephemeral',
                     }}>
                     <span class="block text-sm text-gray-200">Ephemeral</span>
-                    <span class="block text-[11px] text-gray-500">free · released when the VM is destroyed</span>
+                    <span class="block text-[11px] text-gray-500">free · freed on destroy</span>
                   </button>
                   <button type="button" onClick={() => setIpv4Kind('static')}
                     class="px-3 py-2 text-left rounded-md border transition-colors"
@@ -290,8 +342,8 @@ const OrderForm: Component<OrderFormProps> = (props) => {
                       'border-cyan-600 bg-cyan-600/15': ipv4Kind() === 'static',
                       'border-gray-700 hover:border-gray-600': ipv4Kind() !== 'static',
                     }}>
-                    <span class="block text-sm text-gray-200">Static <span class="text-gray-500 font-mono">+$3/mo</span></span>
-                    <span class="block text-[11px] text-gray-500">reserved to your account · survives rebuilds</span>
+                    <span class="block text-sm text-gray-200">Static <span class="text-gray-500 font-mono">+$3</span></span>
+                    <span class="block text-[11px] text-gray-500">reserved · survives rebuilds</span>
                   </button>
                 </div>
               </div>
