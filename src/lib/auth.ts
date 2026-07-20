@@ -10,6 +10,7 @@
 // extensions — see notes inline.
 
 import { createSignal } from 'solid-js'
+import { shortAddress } from './ss58'
 
 const BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
 const STORAGE_KEY = 'rotko_session'
@@ -48,12 +49,14 @@ export function isSignedIn(): boolean {
   return session() !== null
 }
 
-/** Short, human label for the signed-in identity (e.g. "1pzeP…Xp4" or email). */
+/** Short, human label for the signed-in identity (e.g. "14iH…BfCL" or email).
+ *  Polkadot addresses are shown in canonical prefix-0 ("1…") form. */
 export function identityLabel(): string {
   const id = session()?.identity ?? ''
   const [kind, ...rest] = id.split(':')
   const val = rest.join(':')
   if (kind === 'email') return val
+  if (kind === 'polkadot') return shortAddress(val)
   if (val.length > 12) return `${val.slice(0, 6)}…${val.slice(-4)}`
   return val || id
 }
@@ -217,11 +220,25 @@ export interface Subscription {
 export interface AccountView {
   identity: string
   balance_usd: number
+  /** Spendable headroom = balance + credit_limit. */
+  available_usd: number
+  /** Net-terms credit line (0 for strictly-prepaid accounts). */
+  credit_limit_usd: number
+  /** Amount owed on invoice (positive when the balance is negative). */
+  owed_usd: number
   subscriptions: Subscription[]
 }
 
 export const getAccount = () => api<AccountView>('/v1/me/account')
 export const getMyOrders = () => api<any[]>('/v1/me/orders')
+
+/** Self-serve: activate a PendingPayment order on the account's credit line
+ *  (funded accounts — no crypto screen). */
+export const settleOnCredit = (orderId: string) =>
+  api<{ ok: boolean; order: string; provisioning?: boolean; already?: boolean }>(
+    `/v1/me/orders/${encodeURIComponent(orderId)}/settle-credit`,
+    { method: 'POST' },
+  )
 
 // ---------------------------------------------------------------------------
 // Notifications (in-app for everyone; also emailed when an email is on file)

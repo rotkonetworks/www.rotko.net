@@ -48,6 +48,9 @@ const DashboardPage: Component = () => {
     return Math.floor(((account()?.balance_usd ?? 0) / burn) * 30)
   }
 
+  // Net-terms accounts have a credit line; show credit/owed instead of runway.
+  const hasCredit = () => (account()?.credit_limit_usd ?? 0) > 0
+
   const card = 'rounded-xl border border-gray-800 bg-gray-900/40 p-6'
   const refresh = () => {
     refetchAcct()
@@ -126,22 +129,44 @@ const DashboardPage: Component = () => {
           </div>
         </Show>
 
-        {/* Balance + runway */}
+        {/* Balance / burn / (runway or credit) */}
         <div class="grid gap-5 md:grid-cols-3 mb-8">
-          <div class={card}>
-            <div class="text-sm text-gray-400">Balance</div>
-            <div class="mt-1 text-3xl font-semibold text-white">{money(account()?.balance_usd ?? 0)}</div>
-          </div>
+          <Show
+            when={hasCredit()}
+            fallback={
+              <div class={card}>
+                <div class="text-sm text-gray-400">Balance</div>
+                <div class="mt-1 text-3xl font-semibold text-white">{money(account()?.balance_usd ?? 0)}</div>
+              </div>
+            }
+          >
+            <div class={card}>
+              <div class="text-sm text-gray-400">Owed</div>
+              <div class="mt-1 text-3xl font-semibold text-white">{money(account()?.owed_usd ?? 0)}</div>
+              <div class="text-xs text-gray-500 mt-1">settled by invoice</div>
+            </div>
+          </Show>
           <div class={card}>
             <div class="text-sm text-gray-400">Monthly burn</div>
             <div class="mt-1 text-3xl font-semibold text-white">{money(monthlyBurn())}</div>
           </div>
-          <div class={card}>
-            <div class="text-sm text-gray-400">Runway</div>
-            <div class="mt-1 text-3xl font-semibold text-white">
-              <Show when={runwayDays() !== null} fallback="—">{runwayDays()} days</Show>
+          <Show
+            when={hasCredit()}
+            fallback={
+              <div class={card}>
+                <div class="text-sm text-gray-400">Runway</div>
+                <div class="mt-1 text-3xl font-semibold text-white">
+                  <Show when={runwayDays() !== null} fallback="—">{runwayDays()} days</Show>
+                </div>
+              </div>
+            }
+          >
+            <div class={card}>
+              <div class="text-sm text-gray-400">Available credit</div>
+              <div class="mt-1 text-3xl font-semibold text-white">{money(account()?.available_usd ?? 0)}</div>
+              <div class="text-xs text-gray-500 mt-1">of {money(account()?.credit_limit_usd ?? 0)} line</div>
             </div>
-          </div>
+          </Show>
         </div>
 
         {/* Account */}
@@ -155,8 +180,14 @@ const DashboardPage: Component = () => {
             <div>
               <div class="text-gray-500 text-xs mb-0.5">How billing works</div>
               <div class="text-gray-400">
-                Paying an order credits your prepaid balance; active services bill
-                against it each month. Pay with DOT, USDC, or USDt.
+                <Show
+                  when={hasCredit()}
+                  fallback={<>Paying an order credits your prepaid balance; active services bill against it each month. Pay with DOT, USDC, or USDt.</>}
+                >
+                  You're on net terms: services draw your credit line each month and
+                  the balance owed is settled by invoice. Pay an invoice in DOT, USDC
+                  or USDt to clear it.
+                </Show>
               </div>
             </div>
           </div>

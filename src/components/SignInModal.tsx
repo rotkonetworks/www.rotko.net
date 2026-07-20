@@ -1,13 +1,6 @@
 import { Component, createSignal, For, Show } from 'solid-js'
-import {
-  connectPolkadot,
-  signInEthereum,
-  signInSolana,
-  startEmailLogin,
-  type WalletAccount,
-} from '../lib/auth'
-
-const truncate = (a: string) => (a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a)
+import { connectPolkadot, startEmailLogin, type WalletAccount } from '../lib/auth'
+import { shortAddress } from '../lib/ss58'
 
 const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
@@ -16,7 +9,7 @@ interface Props {
   onSignedIn: () => void
 }
 
-// Sign-in modal: Polkadot / Ethereum / Solana wallets + email magic-link.
+// Sign-in modal: Polkadot wallet (primary) + email magic-link.
 const SignInModal: Component<Props> = (props) => {
   const [busy, setBusy] = createSignal<string | null>(null)
   const [error, setError] = createSignal('')
@@ -27,19 +20,6 @@ const SignInModal: Component<Props> = (props) => {
   // account, list them and let the user pick which identity to sign in as.
   const [pkAccounts, setPkAccounts] = createSignal<WalletAccount[] | null>(null)
   const [pkSignIn, setPkSignIn] = createSignal<((address: string) => Promise<unknown>) | null>(null)
-
-  const wallet = (id: string, fn: () => Promise<unknown>) => async () => {
-    setError('')
-    setBusy(id)
-    try {
-      await fn()
-      props.onSignedIn()
-    } catch (e: any) {
-      setError(e?.message ?? 'Sign-in failed')
-    } finally {
-      setBusy(null)
-    }
-  }
 
   const connectPk = async () => {
     setError('')
@@ -144,7 +124,7 @@ const SignInModal: Component<Props> = (props) => {
                   <span class="i-mdi-circle-multiple text-pink-400 text-xl" />
                   <span class="min-w-0">
                     <span class="block truncate text-gray-200">{acct.name || 'Account'}</span>
-                    <span class="block font-mono text-xs text-gray-500">{truncate(acct.address)}</span>
+                    <span class="block font-mono text-xs text-gray-500">{shortAddress(acct.address)}</span>
                   </span>
                   <Show when={busy() === acct.address}>
                     <span class="ml-auto text-xs text-gray-500">Signing…</span>
@@ -164,22 +144,20 @@ const SignInModal: Component<Props> = (props) => {
                 </div>
               }
             >
-              <button class={walletBtn} disabled={!!busy()} onClick={connectPk}>
+              <button
+                class="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-cyan-700/60 bg-cyan-600/10 hover:border-cyan-500 hover:bg-cyan-600/20 text-left text-sm text-white transition-colors disabled:opacity-50"
+                disabled={!!busy()}
+                onClick={connectPk}
+              >
                 <span class="i-mdi-circle-multiple text-pink-400 text-xl" />
-                <span>{busy() === 'polkadot' ? 'Connecting…' : 'Polkadot wallet'}</span>
+                <span class="font-medium">{busy() === 'polkadot' ? 'Connecting…' : 'Connect Polkadot wallet'}</span>
+                <span class="ml-auto text-gray-500">→</span>
               </button>
-              <button class={walletBtn} disabled={!!busy()} onClick={wallet('ethereum', signInEthereum)}>
-                <span class="i-mdi-ethereum text-indigo-300 text-xl" />
-                <span>{busy() === 'ethereum' ? 'Connecting…' : 'Ethereum wallet'}</span>
-              </button>
-              <button class={walletBtn} disabled={!!busy()} onClick={wallet('solana', signInSolana)}>
-                <span class="i-mdi-flash text-teal-300 text-xl" />
-                <span>{busy() === 'solana' ? 'Connecting…' : 'Solana wallet'}</span>
-              </button>
+              <p class="text-xs text-gray-500">Talisman, Polkadot.js, SubWallet or Nova.</p>
 
               <div class="flex items-center gap-3 py-1">
                 <div class="h-px flex-1 bg-gray-800" />
-                <span class="text-xs text-gray-600">or</span>
+                <span class="text-xs text-gray-600">or email a link</span>
                 <div class="h-px flex-1 bg-gray-800" />
               </div>
 

@@ -1,4 +1,4 @@
-import { Component, createSignal, Show, For, onCleanup } from 'solid-js'
+import { Component, createSignal, createResource, Show, For, onCleanup } from 'solid-js'
 import {
   apiConfigured,
   createOrder,
@@ -8,7 +8,9 @@ import {
   type PayMethod,
   type ProductType,
 } from '../lib/api'
-import { session } from '../lib/auth'
+import { session, isSignedIn, getAccount, settleOnCredit } from '../lib/auth'
+
+const money = (n: number) => '$' + (Number.isInteger(n) ? n : n.toFixed(2))
 
 // Payment rails offered at checkout. USDC default (stable, no price exposure).
 const PAY_METHODS: { id: PayMethod; label: string; decimals: number; note: string }[] = [
@@ -55,6 +57,20 @@ const OrderForm: Component<OrderFormProps> = (props) => {
   const [error, setError] = createSignal('')
   const [order, setOrder] = createSignal<Order | null>(null)
   const [payMethod, setPayMethod] = createSignal<PayMethod>('usdc_polkadot')
+  // How this order settles: 'credit' draws the account's credit line (funded
+  // accounts, no crypto screen); 'crypto' shows a one-time deposit address.
+  const [settleMode, setSettleMode] = createSignal<'credit' | 'crypto'>('credit')
+  const [settledOnCredit, setSettledOnCredit] = createSignal(false)
+
+  // Account credit (signed-in real flow only) → drives the "Deploy on credit" path.
+  const [account] = createResource(
+    () => (isSignedIn() ? session() : null),
+    () => getAccount().catch(() => null),
+  )
+  const availableCredit = () => account()?.available_usd ?? 0
+  const hasCredit = () => availableCredit() > 0
+  // Draw the line when the account can and the user hasn't switched to crypto.
+  const useCredit = () => hasCredit() && settleMode() === 'credit'
 
   const field =
     'w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-cyan-600 transition-colors outline-none'
@@ -79,19 +95,35 @@ const OrderForm: Component<OrderFormProps> = (props) => {
     }, 4000)
   }
 
-  const submitReal = async () => {
+  const buildOrder = () => {
     // A signed-in user's order is scoped to their account identity.
-    const account = session()?.identity ?? email().trim()
+    const acct = session()?.identity ?? email().trim()
     const config: Record<string, unknown> = { ...props.config }
     if (props.osOptions) config.os = OS_ID[os()] ?? os().toLowerCase()
     if (sshKey().trim()) config.ssh_key = sshKey().trim()
     if (hostname().trim()) config.hostname = hostname().trim()
+    return createOrder({ product: props.product!, config, email: acct, method: payMethod() })
+  }
 
+  const submitReal = async () => {
     setStatus('sending')
     setError('')
     try {
-      const o = await createOrder({ product: props.product!, config, email: account, method: payMethod() })
+      const o = await buildOrder()
       setOrder(o)
+      // Funded account → draw the credit line and provision now (no deposit).
+      if (useCredit() && availableCredit() >= o.price_usd_month) {
+        try {
+          await settleOnCredit(o.id)
+          setSettledOnCredit(true)
+          setStatus('awaiting') // provisioning on credit; poll to active
+          startPolling(o.id)
+          return
+        } catch {
+          // Credit didn't take (race / insufficient) → fall back to crypto.
+          setSettleMode('crypto')
+        }
+      }
       setStatus('awaiting')
       startPolling(o.id)
     } catch (err) {
@@ -165,8 +197,22 @@ const OrderForm: Component<OrderFormProps> = (props) => {
           </div>
         </Show>
 
-        {/* === Awaiting payment === */}
-        <Show when={status() === 'awaiting'}>
+        {/* === Provisioning on credit (no deposit) === */}
+        <Show when={status() === 'awaiting' && settledOnCredit()}>
+          <div class="p-6 space-y-4">
+            <div class="flex items-center gap-2 text-sm text-gray-200">
+              <span class="i-mdi-loading animate-spin text-cyan-400" /> Provisioning on your credit line…
+            </div>
+            <p class="text-xs text-gray-500">
+              {order() ? `${money(order()!.price_usd_month)}/mo` : ''} drawn from your account —
+              this can take a minute. You can close this; track it in your dashboard.
+            </p>
+            <button onClick={props.onClose} class="text-xs text-gray-500 hover:text-gray-300">Close — provisioning continues.</button>
+          </div>
+        </Show>
+
+        {/* === Awaiting payment (crypto) === */}
+        <Show when={status() === 'awaiting' && !settledOnCredit()}>
           <div class="p-6 space-y-4">
             <p class="text-sm text-gray-300">Send the exact amount to your one-time deposit address. We detect it on-chain and provision automatically.</p>
             <div class="rounded-lg border border-gray-800 bg-gray-900/40 p-4 space-y-3">
@@ -220,28 +266,52 @@ const OrderForm: Component<OrderFormProps> = (props) => {
               </div>
             </Show>
 
-            {/* Payment rail — USDC/USDT stable, DOT also accepted */}
+            {/* Settlement — credit line (funded accounts) or a crypto rail. */}
             <Show when={realFlow()}>
-              <div>
-                <label class="block text-sm text-gray-400 mb-1">Pay with</label>
-                <div class="grid grid-cols-3 gap-2">
-                  <For each={PAY_METHODS}>
-                    {(m) => (
-                      <button
-                        type="button"
-                        onClick={() => setPayMethod(m.id)}
-                        class="px-3 py-2 text-sm rounded-md border transition-colors"
-                        classList={{
-                          'border-cyan-600 bg-cyan-600/15 text-cyan-300': payMethod() === m.id,
-                          'border-gray-700 text-gray-300 hover:border-gray-600': payMethod() !== m.id,
-                        }}
-                      >
-                        {m.label}{m.note ? <span class="block text-[10px] text-gray-500">{m.note}</span> : null}
-                      </button>
-                    )}
-                  </For>
+              <Show
+                when={useCredit()}
+                fallback={
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <label class="block text-sm text-gray-400">Pay with</label>
+                      <Show when={hasCredit()}>
+                        <button type="button" onClick={() => setSettleMode('credit')}
+                          class="text-xs text-cyan-400 hover:text-cyan-300">Use credit instead</button>
+                      </Show>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                      <For each={PAY_METHODS}>
+                        {(m) => (
+                          <button
+                            type="button"
+                            onClick={() => setPayMethod(m.id)}
+                            class="px-3 py-2 text-sm rounded-md border transition-colors"
+                            classList={{
+                              'border-cyan-600 bg-cyan-600/15 text-cyan-300': payMethod() === m.id,
+                              'border-gray-700 text-gray-300 hover:border-gray-600': payMethod() !== m.id,
+                            }}
+                          >
+                            {m.label}{m.note ? <span class="block text-[10px] text-gray-500">{m.note}</span> : null}
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                }
+              >
+                <div class="rounded-lg border border-cyan-700/50 bg-cyan-600/10 p-4">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="flex items-center gap-2 text-sm text-cyan-200">
+                      <span class="i-mdi-credit-card-check-outline text-lg" /> Deploy on your credit line
+                    </span>
+                    <button type="button" onClick={() => setSettleMode('crypto')}
+                      class="text-xs text-gray-400 hover:text-gray-200">Pay with crypto instead</button>
+                  </div>
+                  <p class="text-xs text-gray-400 mt-2">
+                    {money(availableCredit())} available · billed monthly to your account, settled by invoice.
+                  </p>
                 </div>
-              </div>
+              </Show>
             </Show>
 
             <Show when={!session()}>
@@ -277,10 +347,20 @@ const OrderForm: Component<OrderFormProps> = (props) => {
 
             <button type="submit" disabled={status() === 'sending'}
               class="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm rounded-md bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors">
-              {status() === 'sending' ? 'Working…' : realFlow() ? `Pay with ${payInfo(payMethod()).label} →` : (props.submitLabel ?? 'Place order →')}
+              {status() === 'sending'
+                ? 'Working…'
+                : !realFlow()
+                  ? (props.submitLabel ?? 'Place order →')
+                  : useCredit()
+                    ? 'Deploy on credit →'
+                    : `Pay with ${payInfo(payMethod()).label} →`}
             </button>
             <p class="text-xs text-gray-500 text-center">
-              {realFlow() ? 'You pay in DOT on Asset Hub; we detect it and provision automatically.' : 'No charge yet, we confirm the build and pricing before provisioning.'}
+              {!realFlow()
+                ? 'No charge yet, we confirm the build and pricing before provisioning.'
+                : useCredit()
+                  ? 'Provisions now on your credit line; billed monthly and settled by invoice.'
+                  : 'You pay on Asset Hub; we detect it and provision automatically.'}
             </p>
           </form>
         </Show>
