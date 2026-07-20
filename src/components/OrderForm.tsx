@@ -51,6 +51,9 @@ const OrderForm: Component<OrderFormProps> = (props) => {
   const [hostname, setHostname] = createSignal('')
   const [sshKey, setSshKey] = createSignal('')
   const [os, setOs] = createSignal(props.osOptions?.includes(OS_DEFAULT) ? OS_DEFAULT : (props.osOptions?.[0] ?? ''))
+  // Public IPv4: ephemeral (free, released on destroy) or static (+$3/mo,
+  // reserved to your account, survives rebuilds).
+  const [ipv4Kind, setIpv4Kind] = createSignal<'ephemeral' | 'static'>('ephemeral')
   const [notes, setNotes] = createSignal('')
   const [company, setCompany] = createSignal('') // honeypot
   const [status, setStatus] = createSignal<Status>('idle')
@@ -102,6 +105,7 @@ const OrderForm: Component<OrderFormProps> = (props) => {
     if (props.osOptions) config.os = OS_ID[os()] ?? os().toLowerCase()
     if (sshKey().trim()) config.ssh_key = sshKey().trim()
     if (hostname().trim()) config.hostname = hostname().trim()
+    if (props.osOptions && ipv4Kind() === 'static') config.static_ipv4 = true
     return createOrder({ product: props.product!, config, email: acct, method: payMethod() })
   }
 
@@ -263,6 +267,33 @@ const OrderForm: Component<OrderFormProps> = (props) => {
               <div>
                 <label class="block text-sm text-gray-400 mb-1" for="o-ssh">SSH public key <span class="text-gray-600">(for login)</span></label>
                 <textarea id="o-ssh" class={field} rows="2" placeholder="ssh-ed25519 AAAA… you@host" value={sshKey()} onInput={(e) => setSshKey(e.currentTarget.value)} />
+              </div>
+            </Show>
+
+            {/* Public IPv4 — ephemeral (free) or static (+$3/mo). VM orders. */}
+            <Show when={realFlow() && props.osOptions}>
+              <div>
+                <label class="block text-sm text-gray-400 mb-1">Public IPv4</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setIpv4Kind('ephemeral')}
+                    class="px-3 py-2 text-left rounded-md border transition-colors"
+                    classList={{
+                      'border-cyan-600 bg-cyan-600/15': ipv4Kind() === 'ephemeral',
+                      'border-gray-700 hover:border-gray-600': ipv4Kind() !== 'ephemeral',
+                    }}>
+                    <span class="block text-sm text-gray-200">Ephemeral</span>
+                    <span class="block text-[11px] text-gray-500">free · released when the VM is destroyed</span>
+                  </button>
+                  <button type="button" onClick={() => setIpv4Kind('static')}
+                    class="px-3 py-2 text-left rounded-md border transition-colors"
+                    classList={{
+                      'border-cyan-600 bg-cyan-600/15': ipv4Kind() === 'static',
+                      'border-gray-700 hover:border-gray-600': ipv4Kind() !== 'static',
+                    }}>
+                    <span class="block text-sm text-gray-200">Static <span class="text-gray-500 font-mono">+$3/mo</span></span>
+                    <span class="block text-[11px] text-gray-500">reserved to your account · survives rebuilds</span>
+                  </button>
+                </div>
               </div>
             </Show>
 

@@ -240,6 +240,23 @@ export const settleOnCredit = (orderId: string) =>
     { method: 'POST' },
   )
 
+/** A static (reserved) IPv4 the account owns. `attached` = bound to a live VM. */
+export interface StaticIp {
+  addr: string
+  vmid: number | null
+  attached: boolean
+}
+
+/** The account's static (reserved) IPv4 addresses. */
+export const getMyIps = () => api<{ static: StaticIp[] }>('/v1/me/ips')
+
+/** Give up a detached static IPv4 reservation (billing stops). */
+export const releaseIp = (addr: string) =>
+  api<{ ok: boolean; released: string }>('/v1/me/ips/release', {
+    method: 'POST',
+    body: JSON.stringify({ addr }),
+  })
+
 // ---------------------------------------------------------------------------
 // Notifications (in-app for everyone; also emailed when an email is on file)
 // ---------------------------------------------------------------------------

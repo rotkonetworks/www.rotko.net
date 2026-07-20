@@ -8,6 +8,8 @@ import {
   getAccount,
   getMyOrders,
   getVms,
+  getMyIps,
+  releaseIp,
 } from '../lib/auth'
 import SignInModal from '../components/SignInModal'
 import VmCard from '../components/VmCard'
@@ -30,6 +32,19 @@ const DashboardPage: Component = () => {
   const [orders, { refetch: refetchOrders }] = createResource(session, () =>
     isSignedIn() ? getMyOrders() : Promise.resolve([]),
   )
+  const [ips, { refetch: refetchIps }] = createResource(session, () =>
+    isSignedIn() ? getMyIps().then((r) => r.static).catch(() => []) : Promise.resolve([]),
+  )
+
+  const doReleaseIp = async (addr: string) => {
+    if (!confirm(`Release ${addr}? It returns to the pool and billing stops.`)) return
+    try {
+      await releaseIp(addr)
+      refetchIps()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not release the address.')
+    }
+  }
 
   // Monthly price per VM, joined from the subscription list by vmid.
   const priceFor = (vmid: number): number | undefined => {
@@ -56,6 +71,7 @@ const DashboardPage: Component = () => {
     refetchAcct()
     refetchVms()
     refetchOrders()
+    refetchIps()
   }
 
   return (
@@ -210,6 +226,39 @@ const DashboardPage: Component = () => {
                     <span class="font-mono text-gray-300 shrink-0">
                       {money(s.monthly_micros / 1e6)}/mo
                     </span>
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+        </Show>
+
+        {/* Reserved (static) IPv4 */}
+        <Show when={(ips() ?? []).length}>
+          <div class={card + ' mb-8'}>
+            <h2 class="text-base font-semibold text-white mb-1">Reserved IPv4</h2>
+            <p class="text-xs text-gray-500 mb-4">Static addresses kept for your account across rebuilds ($3/mo each).</p>
+            <div class="divide-y divide-gray-800">
+              <For each={ips()}>
+                {(ip) => (
+                  <div class="py-3 text-sm flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                      <span class="font-mono text-gray-200">{ip.addr}</span>
+                      <span class="ml-2 text-xs text-gray-500">
+                        {ip.attached ? `attached · VM ${ip.vmid}` : 'detached'}
+                      </span>
+                    </div>
+                    <Show
+                      when={!ip.attached}
+                      fallback={<span class="text-xs text-gray-600">in use</span>}
+                    >
+                      <button
+                        onClick={() => doReleaseIp(ip.addr)}
+                        class="text-xs px-2.5 py-1 rounded-md border border-gray-700 text-gray-400 hover:border-red-700 hover:text-red-300 transition-colors"
+                      >
+                        Release
+                      </button>
+                    </Show>
                   </div>
                 )}
               </For>
