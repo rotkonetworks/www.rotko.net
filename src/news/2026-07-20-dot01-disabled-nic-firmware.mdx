@@ -1,0 +1,377 @@
+---
+title: "Post-Mortem: dot01 Disabled for Nine Hours by a NIC Firmware Hang"
+description: "The onboard Broadcom 25G NIC on dot01's ASRock Rack board hung for five seconds. That stall made the node miss three validation deadlines, which Polkadot's client must count as voting against valid blocks, and the penalty is disablement until era end. Unavoidable once the stall hit: the whole chain ran in 14 seconds. No stake slashed. Same-day emergency paging deployed, dot01's keys moved to new hardware on 22 July, and on 23 July the retired board's NIC crashed again, identically, with zero impact. Firmware we have waited on since 18 May remains undelivered."
+date: "2026-07-20"
+tags: ["validators", "incident", "post-mortem", "hardware", "polkadot"]
+draft: false
+---
+
+*tl;dr: dot01 (1ArdZ) was disabled on-chain from 09:22 to 18:36 Bangkok time on 20 July, era 2236.
+the onboard Broadcom 25G NIC on the host's ASRock Rack board hung and reset. the machine stalled for
+a few seconds, which was enough for three parachain validation checks to blow their hard deadline.
+the protocol treats a check that times out mid-execution as a vote that the block is invalid, all
+three blocks were fine, and a validator that votes invalid against valid blocks is disabled for the
+rest of the era (a 0% slash, auto re-enabled at the next era).
+once the stall happened the rest was mechanically unavoidable: the client is required to accuse on
+timeout, and the whole chain from stall to disablement ran in 14 seconds. no stake was slashed and
+the node itself was healthy within seconds. the real problem is that we cannot patch this NIC:
+firmware for it ships only through ASRock Rack, and we have been waiting on them since 18 May.
+same-day fixes: emergency paging on NIC flaps, disputes and non-voting validators, and dot01 is
+migrating off this machine entirely. the board itself is retired from validator duty for good. the
+era-2236 nominator shortfall is 46.78 DOT; after crediting a 74.29 DOT overpayment we made in our
+16 July reimbursement, the net new payout was 4.62 DOT to 63 of the 75 nominators, paid 22 July in
+one atomic Asset Hub batch (extrinsic 0xc26479…35e2d9). numbers below.
+update, 23 july: the same NIC hung again at 01:43, identical firmware failure, nine seconds to
+self-reset. impact this time: zero, because dot01's session keys had moved on-chain to the new
+machine the day before, and the paging we built after the first incident fired within seconds.
+one hang is bad luck. two identical hangs in 72 hours is a pattern, and it closes the case: this
+board never carries a validator again.*
+
+---
+
+## the node
+
+dot01 is our Polkadot active-set validator at 0% commission, running on our own hardware in Bangkok
+(bkk12, an ASRock Rack B650D4U3-2L2Q/BCM board with a Ryzen 9 7950X3D) with its /32 announced over
+BGP on AS142108. four days ago it had an unrelated outage, a BIRD segfault, covered in
+[its own post-mortem](/news/2026-07-16-dot01-validator-outage). this incident is different in kind:
+the node never went down and never lost its address. it was punished by the protocol for something
+its hardware did in a five second window.
+
+## what happened
+
+at 09:22:38 local the kernel logged the onboard Broadcom BCM57502 25G NIC failing internally and
+being reset by the driver:
+
+```
+bnxt_en 0000:02:00.0 enp2s0f0np0: hwrm_ring_free type 0 failed. rc:fffffffb err:1
+bnxt_en 0000:02:00.0 enp2s0f0np0: nic open fail (rc: fffffffb)
+bnxt_en 0000:02:00.0: resetting
+bnxt_en 0000:02:00.0: reset done
+bnxt_en 0000:02:00.0 enp2s0f0np0: NIC Link is Up, 25000 Mbps
+```
+
+link was back five seconds after the first error. the firmware hang and recovery stalled the machine
+briefly, and the stall landed at the worst possible moment. dot01 was approval-checking three
+parachain candidates, its assigned share of re-executing other validators' blocks to verify them.
+that execution runs against a wall clock, and all three execution workers blew the hard deadline
+during the stall:
+
+```
+execution worker exceeded lenient timeout for execution, child worker likely stalled
+Detected invalid candidate as an approval checker. reason=Timeout para_id=1004
+Detected invalid candidate as an approval checker. reason=Timeout para_id=3345
+Detected invalid candidate as an approval checker. reason=Timeout para_id=2034
+```
+
+## why a five second hang costs nine hours
+
+Polkadot's dispute system is deliberately unforgiving. an approval checker that cannot finish
+validating a block in time must vote invalid, no benefit of the doubt, because "I ran out of time"
+is indistinguishable from an attacker stalling. so at 09:22 dot01 formally accused three perfectly
+good parachain blocks of being invalid and opened three disputes.
+
+every other validator checking those blocks voted valid. dot01 lost all three disputes within
+seconds, and the penalty for voting invalid against a valid block is on-chain disablement for the
+remainder of the era: the network ignores everything the validator signs, its votes, its blocks,
+all of it. that is what our dashboards showed as a 100% missed vote ratio. the node was up, synced,
+and voting the whole time. the chain was discarding every vote by design.
+
+two things follow from the mechanics, and both are worth knowing if you run a validator:
+
+- **nothing on the machine fixes it.** we restarted the process and rebooted the host. neither
+  helps, because the disablement is chain state, not node state. rotating keys or failing over to
+  backup hardware does not help either, the penalty follows the validator identity. the only cure
+  is the era boundary, which on Polkadot comes once a day at 18:36 our time. dot01 was re-enabled
+  automatically at era 2237 with no action from us.
+- **no stake was slashed.** this offence class (against-valid dispute votes) carries a 0% slash.
+  the penalty is the disablement itself plus the lost era points. downtime, by contrast, is not an
+  offence at all, which is why the 16 July outage had no disablement drama: an offline node misses
+  its work silently, a live node that misses a deadline accuses someone, and accusations have
+  consequences.
+
+## why the client accused valid blocks instead of staying silent
+
+the natural question, the one we asked ourselves all afternoon: the node clearly suspected something
+was wrong locally, its own log says "child worker likely stalled". why sign an accusation instead of
+just staying silent?
+
+because a silent timeout would make one specific attack free. polkadot's execution budget is part of
+validity itself: a block that cannot be validated in time is invalid by definition, because
+accepting it would embed a block in history that syncing nodes cannot process. now imagine an
+attacker crafts exactly that, a compute bomb tuned to take 13 seconds against the 12 second budget.
+if timing out meant staying silent, every honest checker would time out and say nothing. the
+protocol would escalate to more checkers, who would also say nothing, forever. the attacker's own
+validators vote valid, and the bomb either finalizes or stalls finality indefinitely. worse, the
+attacker is never punished: slashing an invalid candidate's backers requires a dispute, a dispute
+requires an invalid vote, and a pure time bomb never lets an honest node finish executing, so in the
+silent world it has zero possible accusers by construction. bombing the network would be free and
+repeatable.
+
+so the client is obligated to accuse. from the inside, "this block is too slow" and "my machine was
+too slow" produce the identical observation: the timer expired and the work is not done. the client
+has no sensor for its own paralysis. it timed a sprinter while the sprinter's legs were being held,
+and reported the sprinter as slow. given that rule, everything after the stall was mechanical: three
+assignments in flight, three timeouts, three signed invalid votes, three lost disputes, disabled.
+the entire chain ran in 14 seconds. there is no operator action, no alert and no configuration that
+interrupts it, and no mercy process that undoes it before the era ends. the only prevention that
+exists is hardware that does not stall. which is the fix we are executing.
+
+we do think there is a gap worth fixing upstream, and we will take it to the polkadot forum with
+this incident as evidence: three unrelated parachain blocks timing out within the same three second
+window, simultaneous with a NIC reset in the kernel log, is a machine level signature, not three
+coincidental compute bombs. in that correlated case the client could safely no-show instead of
+accuse. a no-show costs nothing and escalates to other checkers, so security holds. the client
+already abstains on other locally ambiguous error classes; correlated hard timeouts should join
+that list. one isolated timeout: accuse. several at once during a hardware event: stay silent and
+let escalation cover it.
+
+## detection, again too slow
+
+we found this on a dashboard hours after it happened, not from a page. the dispute fired at 09:22
+and is plainly visible in the node's own journal ("Disabled offchain for voting invalid against a
+valid candidate") and in its prometheus counters (`polkadot_parachain_candidate_disputes_total`).
+we alerted on neither. the grade-based alerting we already knew was slow from the last incident is
+session-averaged, so a mid-era disablement decays into it instead of firing immediately.
+
+fixed the same day. four alerts are now live: any carrier flap on the 25G ports, sustained link
+down, any dispute activity observed on-chain, and a validator that holds active para-validator
+status while signing zero backing statements for 30 minutes. the hardware and not-voting alerts
+page at pushover emergency priority, which bypasses phone silent mode and re-alerts every 30
+seconds until acknowledged. today replayed against that alerting:
+
+```
+09:22:48  dot01 disabled on-chain
+09:24     NIC port flap pages (siren)
+10:07     validator-not-voting pages, confirming a disablement
+15:25     when we actually found out, via a dashboard
+```
+
+honesty about what that buys: for this incident class, nothing is prevented, the kill chain is 14
+seconds and awareness only compresses from six hours to two minutes. the value is knowing the root
+cause from dmesg immediately and running the response calmly inside the already-dead window. where
+the paging converts directly into DOT is the outage class: on 16 July the grade alert took about 4
+hours to fire while the node's address was unreachable. with the down-validator alert at emergency
+priority the page lands in minutes and the session keys fail over to a standby within the hour,
+turning a full-era loss into a fraction of one.
+
+## impact
+
+the era ran 18:36 on 19 July to 18:36 on 20 July. dot01 earned points normally until 09:22, about
+fifteen of twenty-four hours, and zero after. so nominators lose roughly 40% of one era's rewards,
+on the order of 45 DOT across everyone backing dot01 that era. no stake was touched, no funds were
+ever at risk, and the validator re-entered the set automatically at era 2237.
+
+## reimbursement
+
+same policy as four days ago: we run at 0% commission and we cover our own failures. both the
+era-2236 shortfall and a correction to our last reimbursement are now final on-chain.
+
+**the era-2236 shortfall.** the on-chain data shows dot01 was not zeroed for the era — it earned
+47,980 reward points and paid its nominators 64.42 DOT before the disablement took effect. a clean
+era for dot01 pays its nominators about 111.20 DOT (the average of eras 2234 and 2235, the two
+undisturbed eras just before this one). the gap, **46.78 DOT**, is the nominator shortfall we owe,
+split pro-rata across the 75 nominators by their era-2236 exposure.
+
+**a correction we owe you first.** when we wrote the [16 July
+post-mortem](/news/2026-07-16-dot01-validator-outage) we read the era wrong. a dashboard showed
+dot01 earning zero points in era 2233 and we reimbursed the full normal reward — 109.77 DOT to the
+29 nominators of that era — as if nothing had been paid. chain data says otherwise: dot01 actually
+earned 56,540 points in era 2233 and paid those nominators 75.46 DOT on-chain. the real shortfall
+that era was only 35.48 DOT, so our 109.77 DOT batch **overpaid by 74.29 DOT.** those nominators
+received both their on-chain reward and a full reimbursement on top of it. that is our mistake.
+
+**how we settle it.** we are not clawing anything back. instead we credit each nominator's 16 July
+overpayment against what they are owed for era 2236. for the twelve nominators who were also with us
+on 16 July and whose overpayment already exceeds their era-2236 shortfall, the net is zero — they
+are marked *covered*, and they keep the surplus. for everyone else the net is the era-2236 shortfall
+minus whatever credit applies. netted this way, the **new reimbursement is 4.62 DOT, paid to 63 of
+the 75 nominators.**
+
+**paid in full on 22 July 2026** from `1432Z5HvV36jPU6Zvbd1L3wGMgVfgReHUu15mRJJp3Xsdnsz` in a single
+atomic Asset Hub batch —
+[extrinsic 0xc26479…35e2d9](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9),
+63 `transferKeepAlive` transfers totalling 4.6202 DOT, all in block #18,512,146. the full
+un-truncated addresses live in that extrinsic. the reconciliation, per address:
+
+| reward address | era-2236 stake (DOT) | shortfall | 16 Jul overpay credit | net reimbursed | paid |
+|---|--:|--:|--:|--:|---|
+| [15PNHW8a…Ni6H3M](https://assethub-polkadot.subscan.io/account/15PNHW8a8jK5Fkb1KDGvU5WxGxBkAztfiYswJVH6qHNi6H3M) | 12,049 | 0.3370 | — | **0.3370** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [15TaBQh2…ZeLtDP](https://assethub-polkadot.subscan.io/account/15TaBQh2SmPmFyQMEsuzp3qgDeF63Bxtr1SpKZXbMtZeLtDP) | 7,116 | 0.1990 | — | **0.1990** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [15AXy4Zu…gxo57N](https://assethub-polkadot.subscan.io/account/15AXy4Zu93Gq2ChhL7U3gkaWmRygNnnQxHmQBdSL2bgxo57N) | 6,221 | 0.1740 | — | **0.1740** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14qWu3R1…ctrRnG](https://assethub-polkadot.subscan.io/account/14qWu3R1Pk19byb8rnt1BBoddGrsXxxYMaPsfpZSzUctrRnG) | 6,052 | 0.1693 | — | **0.1693** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14rNa1kb…tjiJvd](https://assethub-polkadot.subscan.io/account/14rNa1kbQ25LPZgHBRKdqWQ4vHyu21cYGZqNJatCQHtjiJvd) | 5,820 | 0.1628 | — | **0.1628** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12EhKYwy…BJxZYe](https://assethub-polkadot.subscan.io/account/12EhKYwyBjG2n8o1ysS1vmwAYgLmBq7YX44uk5A6WgBJxZYe) | 5,733 | 0.1603 | — | **0.1603** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [13rvde6c…gDsVuT](https://assethub-polkadot.subscan.io/account/13rvde6c4BoTUbcdhNrNSw3yS6eoeUzZcNHhezDAf1gDsVuT) | 5,192 | 0.1452 | — | **0.1452** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [157sNBPj…Lsy5F8](https://assethub-polkadot.subscan.io/account/157sNBPjSHACtnbUShgYBvFe5JhCvxHwrPeUxtwWzoLsy5F8) | 5,181 | 0.1449 | — | **0.1449** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [16JJnVCC…w9tpq1](https://assethub-polkadot.subscan.io/account/16JJnVCCAm6JKts8VHpZfi8yr3aqnFHvcYtS6eECj7w9tpq1) | 5,147 | 0.1440 | — | **0.1440** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1t9xTLbq…As382x](https://assethub-polkadot.subscan.io/account/1t9xTLbquNtbrdmhQjrCja1r1mY6TB8F3EkoFyfRgAs382x) | 5,038 | 0.1409 | — | **0.1409** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [16MuZmJQ…AzBe8m](https://assethub-polkadot.subscan.io/account/16MuZmJQEsRNZUfY53uAcQ5PBVM6d4wzM4439e83qWAzBe8m) | 5,000 | 0.1398 | — | **0.1398** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [125L8AqW…dwD5Pk](https://assethub-polkadot.subscan.io/account/125L8AqWM9nCaGgDmb8xm6eH6MREcJ5W7uYivP2x8mdwD5Pk) | 5,000 | 0.1398 | — | **0.1398** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1CdDYA7a…otUKqC](https://assethub-polkadot.subscan.io/account/1CdDYA7accbLjxs5Vmzjpk2wWxmR1zkQfVEhpEWmAotUKqC) | 4,876 | 0.1364 | — | **0.1364** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [13UVJyLn…pomujQ](https://assethub-polkadot.subscan.io/account/13UVJyLnbVp8c4FQeiGS6HUGZeEH6uAEP2ng59WpcNpomujQ) | 55,013 | 1.5386 | −1.4046 | **0.1340** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1413TZDw…atFUGG](https://assethub-polkadot.subscan.io/account/1413TZDwqMNoSRganXAo32puXJiJ8o6UDMBnEc4GrHatFUGG) | 4,500 | 0.1259 | — | **0.1259** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [154ZQEoZ…E9TVzW](https://assethub-polkadot.subscan.io/account/154ZQEoZEDSvcWNPLboiQkzrSDyE6Tq8TkkBWeygTBE9TVzW) | 4,193 | 0.1173 | — | **0.1173** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1kBRvVbs…Cw5e1r](https://assethub-polkadot.subscan.io/account/1kBRvVbsQVy3YskT8WhfuhxP1pFJu6Vo68sM3ewufCw5e1r) | 3,844 | 0.1075 | — | **0.1075** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1kk5WAAT…NnvHtC](https://assethub-polkadot.subscan.io/account/1kk5WAATqy1b66FptFbJGFi24g4wiHbLnuuGsAgqFNnvHtC) | 3,500 | 0.0979 | — | **0.0979** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [15VHxAin…JSX3GK](https://assethub-polkadot.subscan.io/account/15VHxAiniacdjWt9PvYckmdvWzmupDzSXuSuKWFJQiJSX3GK) | 3,465 | 0.0969 | — | **0.0969** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [151aR1po…YPTXbA](https://assethub-polkadot.subscan.io/account/151aR1po46qJCSowp3YeuXbFrPwcCZCgnUppD1sedwYPTXbA) | 2,681 | 0.0750 | — | **0.0750** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [16Ez8tob…bSjFjz](https://assethub-polkadot.subscan.io/account/16Ez8tobpUWgHevLwgn83MSx3GgfySxz4BUPPDe5DsbSjFjz) | 2,670 | 0.0747 | — | **0.0747** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [168KFUVo…HTGwAE](https://assethub-polkadot.subscan.io/account/168KFUVo3xDemGPD8iu9DvZLyyGx4BKzXJREXdqN6eHTGwAE) | 2,470 | 0.0691 | — | **0.0691** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1omtjNzg…sKzexE](https://assethub-polkadot.subscan.io/account/1omtjNzgaa49DCievZTbcASFCErct8asxQ6LWuZbLsKzexE) | 2,388 | 0.0668 | — | **0.0668** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [168ByA2V…ErzfbK](https://assethub-polkadot.subscan.io/account/168ByA2V8sgPthkzFCK9YNj3rFAsTVQzC1qDXH1g9PErzfbK) | 2,334 | 0.0653 | — | **0.0653** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12s2hSEo…MaPuzs](https://assethub-polkadot.subscan.io/account/12s2hSEojcd8uv29qFWgw96nNkiKNpqRhqviahpE1uMaPuzs) | 2,332 | 0.0652 | — | **0.0652** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14zcUziB…1cJs77](https://assethub-polkadot.subscan.io/account/14zcUziBPJPzAXQUqgC67NyoqsHwUCZ3U4ifWRcKpp1cJs77) | 2,290 | 0.0640 | — | **0.0640** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14yLA5Bh…xho2Rp](https://assethub-polkadot.subscan.io/account/14yLA5BhcecL13WBQhBtkXj9bfpEFWayXz8ciX9B8Vxho2Rp) | 2,235 | 0.0625 | — | **0.0625** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [166u76KZ…zrpa64](https://assethub-polkadot.subscan.io/account/166u76KZvwdF15VZaG8C8XG1K7fiBTenfAwXBd8kDzrpa64) | 2,188 | 0.0612 | — | **0.0612** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14mceEmi…YSS2fN](https://assethub-polkadot.subscan.io/account/14mceEmiSqJZDoRJ5GjNVgRDbWTMUvk8pZs8jEBvXdYSS2fN) | 2,116 | 0.0592 | — | **0.0592** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [13v1RkeU…MrTSwp](https://assethub-polkadot.subscan.io/account/13v1RkeUz9i3BXm6RjVDzc8GUjcAJwPUFdWQnZbVmNMrTSwp) | 2,008 | 0.0562 | — | **0.0562** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14fzYkqb…ndc1zg](https://assethub-polkadot.subscan.io/account/14fzYkqbHPybVRXWpZ1BnvamcdEjWQPddzKHekPwybndc1zg) | 1,999 | 0.0559 | — | **0.0559** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [15RauYZH…T25A1K](https://assethub-polkadot.subscan.io/account/15RauYZHYicN3QsU9aNwafEzeZBe4QHEoJgDAAiyAKT25A1K) | 1,870 | 0.0523 | — | **0.0523** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12MkaXD1…V9Gu9x](https://assethub-polkadot.subscan.io/account/12MkaXD1nmH8ehYdZJ9bogng3nCGosCV4R2AXEE43NV9Gu9x) | 1,739 | 0.0486 | — | **0.0486** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14CCbWmU…JJG3QS](https://assethub-polkadot.subscan.io/account/14CCbWmUCgR4oSGoqsqPpwzqXR4UBdsLTCPKKC91E7JJG3QS) | 1,660 | 0.0464 | — | **0.0464** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [124N5MKi…X3Uh9D](https://assethub-polkadot.subscan.io/account/124N5MKia8M7uZ3Wzz5AWJ2vsSiUF34GdTP61nPwaJX3Uh9D) | 1,573 | 0.0440 | — | **0.0440** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14XTtswg…yczsnD](https://assethub-polkadot.subscan.io/account/14XTtswgtcencrrP3HJhRniyPrz11nkBEHUtyjAJfxyczsnD) | 1,479 | 0.0414 | — | **0.0414** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [16hnn39f…1jNkyi](https://assethub-polkadot.subscan.io/account/16hnn39frnQiK16xxWtX3wGU8FTGddPuDESo5HBGMY1jNkyi) | 1,458 | 0.0408 | — | **0.0408** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1hvQdvcx…eV9bzt](https://assethub-polkadot.subscan.io/account/1hvQdvcxQs5so9tfoKBaCYoqUN8DyR936ZR2RPsXZeV9bzt) | 1,369 | 0.0383 | — | **0.0383** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [16i22dYV…BVrYTE](https://assethub-polkadot.subscan.io/account/16i22dYVFaxeN2weAhYGVPSfJzbFgJdggSoN7VCKeQBVrYTE) | 1,300 | 0.0364 | — | **0.0364** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14JBevzw…mqV3dM](https://assethub-polkadot.subscan.io/account/14JBevzwEzc4dzDBL3BRppGwXc3h2ayj9q4f3C4xG1mqV3dM) | 1,281 | 0.0358 | — | **0.0358** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [162BdWUs…FjNA85](https://assethub-polkadot.subscan.io/account/162BdWUs6Bs7MZ7ETgUhycfV9UjoCPjwgBFKxscF32FjNA85) | 1,264 | 0.0353 | — | **0.0353** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1WdtRaPr…rQJEDu](https://assethub-polkadot.subscan.io/account/1WdtRaPrr1i6gs6MNE6kZKd5vnu5eN5jE3zG4s6qarQJEDu) | 1,230 | 0.0344 | — | **0.0344** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12refmYq…7v7idv](https://assethub-polkadot.subscan.io/account/12refmYqGb6jDDePBpZa4u7rTkTMBVqvfPfd9vLEK47v7idv) | 1,167 | 0.0326 | — | **0.0326** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [13Lijefs…jU9Nez](https://assethub-polkadot.subscan.io/account/13LijefsziKQ69XJF2ycgyjjsWP3pfpb7ABDcdNzpQjU9Nez) | 1,151 | 0.0322 | — | **0.0322** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12ep3GdP…MPqFpH](https://assethub-polkadot.subscan.io/account/12ep3GdPLaTDM6DTgt2cH7FSo2qzeap4wihLjVADWyMPqFpH) | 1,128 | 0.0316 | — | **0.0316** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [16e4jtrw…7v7xL4](https://assethub-polkadot.subscan.io/account/16e4jtrwUobSbtvvx6PchYyPzVWyUxUr14iexyJeYt7v7xL4) | 1,104 | 0.0309 | — | **0.0309** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12GHQheW…jw3x61](https://assethub-polkadot.subscan.io/account/12GHQheWk3LDMhfj5F8qbCxUwPGwm2nPnJkymfxDX3jw3x61) | 1,084 | 0.0303 | — | **0.0303** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [153o8Jjg…QphbJ3](https://assethub-polkadot.subscan.io/account/153o8JjgpjLvcFUYia6jrKPUqdJpkCJD1Y4TkBKGvUQphbJ3) | 1,000 | 0.0280 | — | **0.0280** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1RoXn7ks…EpVbN8](https://assethub-polkadot.subscan.io/account/1RoXn7ksw9yF74JrFpmR96c5c2a8YJdiJQRnVRmeNEpVbN8) | 1,000 | 0.0280 | — | **0.0280** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14MwF3yX…eUZovV](https://assethub-polkadot.subscan.io/account/14MwF3yX3iE8ixgyPkmbTqY9yhomUxQ3TSpLM9pp2YeUZovV) | 1,000 | 0.0280 | — | **0.0280** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [14mHTHBR…z5KtK6](https://assethub-polkadot.subscan.io/account/14mHTHBRMM4EhwqTYP4K7FHFRKmfZ1XtQrMys2XkVUz5KtK6) | 1,000 | 0.0280 | — | **0.0280** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12pejhxH…SrcJZo](https://assethub-polkadot.subscan.io/account/12pejhxHoHdXo5qsnDZeJtjpQLW7TaULNTSUyEkJVXSrcJZo) | 1,000 | 0.0280 | — | **0.0280** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [15kPd6ao…TXqp6y](https://assethub-polkadot.subscan.io/account/15kPd6aoDonpCFg5fqTRqwwBDkSYMWQMtzUKzmf538TXqp6y) | 984 | 0.0275 | — | **0.0275** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1sEV9LhS…8aTsUk](https://assethub-polkadot.subscan.io/account/1sEV9LhSF512utgDVfhW8jSC2Jnj5V1SCxVTFQ1V88aTsUk) | 925 | 0.0259 | — | **0.0259** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12BG2FcD…HAaiSo](https://assethub-polkadot.subscan.io/account/12BG2FcDMEATQ3uYJFWSskCZetgkQntfnJyEgAkJQUHAaiSo) | 851 | 0.0238 | — | **0.0238** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [145GgA5j…5MPDY5](https://assethub-polkadot.subscan.io/account/145GgA5jVnmBd5ooWB6oUJLKKYaFgZjPEa9QJHKqMN5MPDY5) | 815 | 0.0228 | — | **0.0228** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1xUnoYKn…aoTQY7](https://assethub-polkadot.subscan.io/account/1xUnoYKnT3hKFEq7ixjwEjN3brouEmyN32P7Puwp9aoTQY7) | 800 | 0.0224 | — | **0.0224** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [1ouumqWY…CMTavx](https://assethub-polkadot.subscan.io/account/1ouumqWYzUPrd3Jaogzku7gBixnoTijre6QZJ7vJvCMTavx) | 789 | 0.0221 | — | **0.0221** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [15dMVrDF…NYfHzW](https://assethub-polkadot.subscan.io/account/15dMVrDFUqzqeJVihHWDgoG1nrxnJxqJCYXGKFEqiXNYfHzW) | 770 | 0.0215 | — | **0.0215** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [13yE9sfh…p7idL8](https://assethub-polkadot.subscan.io/account/13yE9sfhbSax6nc6gkPzi1PEyHbDQoBdXv29gyk5FHp7idL8) | 745 | 0.0208 | — | **0.0208** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12BpBgCk…Aw8fK6](https://assethub-polkadot.subscan.io/account/12BpBgCknNCNvvvDnVSbmCwmuiyfsg7v41TnZ3BHXZAw8fK6) | 627 | 0.0175 | — | **0.0175** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12qm2wv2…etCQbH](https://assethub-polkadot.subscan.io/account/12qm2wv2qfXAgVf79PNEfQUHbGp224LbXNcrwoiJtgetCQbH) | 353 | 0.0099 | — | **0.0099** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [15WyC969…hebVNN](https://assethub-polkadot.subscan.io/account/15WyC969WnemEu9zj1t9Xmh7f9nnueSZM157BixW31hebVNN) | 255 | 0.0071 | — | **0.0071** | [✓ paid](https://assethub-polkadot.subscan.io/extrinsic/0xc264791fe32e1b952c4f608b93232f0c792241779f22eeb0a31e96544235e2d9) |
+| [12oC6EBv…jiyBru](https://assethub-polkadot.subscan.io/account/12oC6EBvXTce697K9z4vCKCd69F9XSiYJ5ps7RknJejiyBru) | 1,286,949 | 35.9925 | −44.9508 | 0 | _covered_ |
+| [13JijKre…cFJxVX](https://assethub-polkadot.subscan.io/account/13JijKrenPPtrf77BVrtXuGowd7HiqPmihCeT8ZAojcFJxVX) | 55,000 | 1.5382 | −2.5545 | 0 | _covered_ |
+| [13gxPWKr…5QZGsi](https://assethub-polkadot.subscan.io/account/13gxPWKr9swPYecKby8FgSRiuLZAUV9ebmrz5n8Wig5QZGsi) | 39,653 | 1.1090 | −1.5855 | 0 | _covered_ |
+| [12GzZ75W…DNLjVE](https://assethub-polkadot.subscan.io/account/12GzZ75W7sCUtJrVJDE9cexFGVwFBsCLk5guxNN1BYDNLjVE) | 30,171 | 0.8438 | −1.4013 | 0 | _covered_ |
+| [16EioRWe…nRF2MY](https://assethub-polkadot.subscan.io/account/16EioRWeX1sah8wtjCZVR3s6Ep2vyWa78XsjL3T76AnRF2MY) | 16,910 | 0.4729 | −0.7854 | 0 | _covered_ |
+| [12ZyR1L1…YBdqke](https://assethub-polkadot.subscan.io/account/12ZyR1L1o7brtD3SRZ6DG7JF3VTUUayouQa1ZJB7sZYBdqke) | 15,701 | 0.4391 | −0.7162 | 0 | _covered_ |
+| [13B8Xxci…JafXKK](https://assethub-polkadot.subscan.io/account/13B8XxciMmABZEtKg3XSEbbE8zyKUzdxSUjYCrBtfFJafXKK) | 10,403 | 0.2909 | −0.3808 | 0 | _covered_ |
+| [1mYv9TPh…14CBd9](https://assethub-polkadot.subscan.io/account/1mYv9TPhCLXTKoYiyWF7KLEHEetnqTBDFQHHfuNY414CBd9) | 1,095 | 0.0306 | −0.0509 | 0 | _covered_ |
+| [14MwjP2k…9fJqLd](https://assethub-polkadot.subscan.io/account/14MwjP2kbdqFof9ntaJsZG4kZii1dMANgkRgTJTw8L9fJqLd) | 464 | 0.0130 | −0.0215 | 0 | _covered_ |
+| [14Ak8DQa…Wg97vK](https://assethub-polkadot.subscan.io/account/14Ak8DQaqEWGav813dhofFrTAjMuwju2kC3iwMPtRXWg97vK) | 435 | 0.0122 | −0.0202 | 0 | _covered_ |
+| [147yvdAh…LFwQAi](https://assethub-polkadot.subscan.io/account/147yvdAhuDAZLdQRrC4G1f7AXvf6crsYrj3GhCDdMFLFwQAi) | 302 | 0.0084 | −0.0140 | 0 | _covered_ |
+| [141u2ex2…fneuq1](https://assethub-polkadot.subscan.io/account/141u2ex2ktZPxCW4fVtnf4zUNo6iFixCahrfzjSf4qfneuq1) | 256 | 0.0071 | −0.0119 | 0 | _covered_ |
+
+the shortfall pools are the nominator portion only; our own 10,539 DOT bond earns and loses
+alongside yours and we do not reimburse ourselves. every figure above is recomputable from
+`staking.erasStakersPaged`, `erasRewardPoints`, and `erasValidatorReward` for eras 2231–2236 on
+Polkadot Asset Hub.
+
+
+## the hardware reality
+
+this is the part that actually needs fixing, and it is not the protocol's fault and not really the
+NIC silicon's fault either. it is a supply chain problem.
+
+the BCM57502 ports on this board are onboard, with an ASRock subsystem ID (`14e4:1752`, subsystem
+`1849:1752`). that means firmware for them ships only through ASRock Rack's board packages, not from
+Broadcom directly. the firmware running today is 229.0.121.0, Broadcom package 22.9, what the board
+shipped with; it even reports `/pkg N/A`, an OEM image with no standard package metadata.
+
+the fix is not hypothetical, and that is what makes the wait indefensible. Broadcom has since
+shipped NetXtreme-E firmware all the way to 233.1.135.7 (package 23.3, mid-2025), four
+package releases newer than ours, and its release notes explicitly list the BCM57502 as a supported
+controller and call out "various stability and error-recovery improvements" in exactly the HWRM and
+reset path that failed us; the matching mainline `bnxt_en` driver is 1.10.3-233.0.152.2. so a fix
+for this class of firmware hang has existed publicly for the better part of a year. we cannot simply
+apply it, because the onboard part carries ASRock's subsystem ID and Broadcom's generic package may
+refuse to flash an OEM device. so we have now asked ASRock Rack, in writing and naming the version,
+for exactly one of three things: the ASRock-signed image at 233.x for this board; written
+authorization to flash Broadcom's generic 233.x package onto the onboard NIC; or written
+confirmation that no fixed firmware exists, so we can justify replacing the hardware. we first
+asked on 18 May. two months on, nothing has been delivered, and there is no other legitimate path:
+Broadcom will not hand firmware for a board vendor's subsystem ID to an end customer.
+
+and this is not our first ASRock Rack platform problem. bkk04 (ksm03) went through months of memory
+training and voltage regulation issues that took a BIOS update they did eventually ship, plus a
+datacenter visit, to resolve. bkk12's BMC jammed on a remote power-off four days ago and needed
+smart hands. now bkk12's onboard NIC firmware has hung at 25G under a validator's very ordinary
+traffic load. a server board vendor that cannot ship NIC firmware updates for a shipping product in
+four months is not a vendor we can leave in the critical path of a validator that gets publicly
+punished for a five second stall.
+
+## where dot01 runs now
+
+![dot01 validator network topology — bkk12's dual 25 Gbit route-reflected uplinks versus bkk03's interim single 1 Gbit link](/images/dot01-bkk03-migration.png)
+
+we have moved dot01 into an LXC container on bkk03, a benchmarked Ryzen 9 9950X host, and demoted
+bkk12 to non-critical duty until its board is replaced. the move is complete on-chain: new session
+keys were generated inside the bkk03 container and registered on Asset Hub on 22 july
+(`stakingRcClient.setKeys` via our staking proxy, block 18517529), active from the second session
+boundary after inclusion. bkk12 no longer holds live validator keys. the new host passes all six
+`polkadot benchmark machine` checks with the live node running, runs the parachain workers in
+secure validator mode inside an unprivileged container, and carries the hardened systemd profile
+from parity's reference unit. bkk03 is an interim home, and the reason is networking, not
+compute. bkk12 carries the full routing table from both route reflectors over dual 25 Gbit links,
+which gives the validator direct, redundant control of its path to transit. bkk03 currently hangs
+off our aggregation switches on a single 1 Gbit link: enough bandwidth to validate, but without that
+dual-homed redundancy.
+
+two end states, whichever comes first: ASRock ships the firmware fix, we flash bkk12, and dot01
+moves back; or we do the physical work to give bkk03 a proper redundant uplink and keep it there.
+until then dot01 runs on bkk03, just without the routing redundancy we prefer.
+
+full transparency on current status: as of era 2238 dot01 is outside the active set. this is not a
+consequence of the incident mechanics above (no slash, no chill, the bond is untouched) but of the
+per-era stake election: our largest nominator splits 1.4M DOT across three validators, the
+election solution reallocated that split away from us, and our independent backing alone sits
+below the current ~1.15M entry bar. that nominator still lists us, unchanged, as they have since
+era 1733. the node stands ready on bkk03 with registered keys and re-enters whenever a solution
+splits the stake our way again or our independent backing grows. if you nominate us and are
+reading this: this is exactly when it counts.
+
+## the board answers for itself
+
+at 01:43 on 23 july, three days after the incident and one day after the key move, the same NIC
+failed again on bkk12: `hwrm ring alloc failure`, driver init failure, controller reset, link
+restored after nine seconds. spontaneous, under light non-validator load, no config changes in
+between. the emergency paging built after the first incident fired within seconds, and the total
+production impact was zero, because there was no longer a validator on the machine to hurt.
+
+we could not have asked for cleaner evidence. the first hang cost nine hours of rewards and this
+post. the second one, on retired hardware, cost nothing and proved the retirement was not an
+overreaction. any future where this board carries latency-critical duty again requires the 233.x
+firmware in hand and a soak test it has now failed twice.
+
+## fixes
+
+- same-day: emergency-priority paging on NIC flaps, link down, dispute activity and non-voting
+  validators, independent of grade averages, loud enough to wake the operator. proven live on
+  23 july: page arrived within seconds of the recurrence
+- done, 22 july: dot01 moved to a benchmarked, hardened container on bkk03 with new session keys
+  registered on-chain; bkk12 demoted to non-critical duty until its board is replaced
+- planned physical maintenance on bkk12, targeted for the end of July, to try to end the NIC
+  flapping that is the likely root cause of this outage and the fund loss it caused. the procedure:
+  flash the latest BIOS on-site (30.01, dated 1 July 2026), then immediately read the NIC firmware
+  with `bnxtnvm -dev enp2s0f0np0 device_info`. a BIOS flash almost never touches the onboard NIC's
+  separate NVM, so we expect it to still report 229.0.121.0 (package 22.9); if it does, that
+  confirms we are stuck waiting on ASRock Rack's separately-delivered NIC package (which they have
+  not answered) or on swapping in a discrete card. if it jumps to 233.x, we are fixed for free. we
+  would rather know than hope
+- discrete, vendor-direct-firmware NICs for validator hosts
+- upstream: take the correlated-timeout no-show proposal to the polkadot forum with this
+  incident's logs as evidence
+- keep pressing ASRock Rack, now naming the exact fix: Broadcom NetXtreme-E firmware 233.x
+  (233.1.135.7) for the onboard BCM57502, or written authorization to flash Broadcom's generic
+  package ourselves, or written confirmation that no fix exists. first requested 18 May; said so
+  publicly this time
