@@ -1,0 +1,53 @@
+---
+title: "Rotko Networks Operates Flare Validators in Partnership with Sceptre"
+description: "Four Flare validators, an FTSO data provider, and FDC attestation infrastructure — operated on our own bare-metal network in partnership with Sceptre, the largest liquid-staking protocol on Flare. 660M FLR staked, 100% uptime, full reward eligibility."
+date: "2026-07-22"
+tags: ["validators", "flare", "ftso", "partnership", "infrastructure"]
+draft: true
+---
+
+*tl;dr: we operate four Flare validators, an FTSO price oracle, and FDC attestation
+infrastructure in partnership with [Sceptre](https://sceptre.fi), the largest liquid-staking
+protocol on Flare (~2.3B FLR TVL). 660M FLR is already staked to our nodes. 100% uptime,
+full reward eligibility, everything verifiable on-chain.*
+
+## what we run
+
+Flare validation is more than block production. A validator only earns — for itself and its
+delegators — if its entity also submits accurate FTSO price feeds every voting round and
+serves Flare Data Connector attestations. We operate the full stack:
+
+- **4 validators** on dedicated bare-metal in our own racks (AS142108)
+- **FTSO data provider** — 63 price feeds, anchor + fast-updates, sourced in part from
+  on-chain DEX data via our own chain indexers
+- **FDC attestation** — verifier infrastructure for BTC, DOGE, XRP, ETH and Songbird
+- Full monitoring: reward eligibility, feed accuracy, uptime, release tracking
+
+Node IDs, for anyone who wants receipts:
+
+| validator | NodeID |
+|-----------|--------|
+| val-flare-01 | `NodeID-LwpTuHwv3BdGhT1y7RcPY1t4rx494uExo` |
+| val-flare-02 | `NodeID-436aEkcwxBo9Z5Ud9Rr7mWEgHnjDu78NR` |
+| val-flare-03 | `NodeID-QK6w1Ryp8kfgPBYSyNgHbRTjEhYfLkyBE` |
+| val-flare-04 | `NodeID-C3cwgDrgNHRCpqd7GGBZ6qhcBFNmKh3a3` |
+
+## the partnership
+
+[Sceptre](https://sceptre.fi) runs sFLR, the largest liquid-staking token on Flare. Through
+this partnership, Sceptre's stake secures protocol-aligned validators instead of paying fees
+to unaffiliated third-party operators — the validator-layer rewards flow back to the protocol.
+Holder yield is unchanged; the protocol underneath it gets stronger every epoch.
+
+660M FLR is staked to our validators today: two nodes at the 300M cap each, plus our two
+original validators. All four pass every reward condition (staking, FTSO anchor feeds,
+fast-updates, FDC) with zero strikes.
+
+## why it matters for Flare
+
+Every independent, high-uptime validator with its own FTSO pipeline makes the network's price
+oracle harder to manipulate and its consensus more decentralized. We source feeds from our own
+indexers rather than repeating aggregator APIs, which adds genuine signal diversity to the
+median.
+
+If you want your stake on infrastructure run this way — or want us to run yours — talk to us.
