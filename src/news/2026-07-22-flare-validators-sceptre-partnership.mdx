@@ -43,6 +43,21 @@ Holder yield is unchanged; the protocol underneath it gets stronger every epoch.
 original validators. All four pass every reward condition (staking, FTSO anchor feeds,
 fast-updates, FDC) with zero strikes.
 
+## stable rewards by design
+
+On Flare, staking rewards are not unconditional. Under the FSP incentive rules (FIP.10), an
+entity that fails any protocol requirement — FTSO anchor accuracy, fast-updates volume, FDC
+attestation rate, validator uptime — loses passes, and with no passes left a single bad epoch
+**burns the rewards across every stream** for that epoch. Delegating to a validator means
+inheriting the operational quality of whoever runs its FTSO and FDC pipeline.
+
+That is the point of this partnership: the validators, the price feeds, and the attestation
+infrastructure are operated as one monitored system — reward eligibility, feed accuracy, and
+uptime are alerted on around the clock, and client versions are tracked against upstream
+releases automatically. The result is what a staking protocol actually needs from its
+validator layer: not the occasional lucky epoch, but **predictable, uninterrupted reward
+eligibility, every epoch**.
+
 ## why it matters for Flare
 
 Every independent, high-uptime validator with its own FTSO pipeline makes the network's price
