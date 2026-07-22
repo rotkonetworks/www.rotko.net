@@ -43,6 +43,13 @@ Holder yield is unchanged; the protocol underneath it gets stronger every epoch.
 original validators. All four pass every reward condition (staking, FTSO anchor feeds,
 fast-updates, FDC) with zero strikes.
 
+The structure also carries a yield edge no third-party arrangement can offer: a validator's
+self-bond pays no delegation fee — it earns the **full** staking reward, where delegated stake
+keeps 80%. Because the protocol funds the self-bond of these validators, those fee-free
+rewards accrue back to sFLR instead of to an outside operator. Per FLR, the self-bonded slice
+earns 25% more than the same FLR would as a plain delegation, and the edge grows with every
+node added.
+
 ## stable rewards by design
 
 On Flare, staking rewards are not unconditional. Under the FSP incentive rules (FIP.10), an
