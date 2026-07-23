@@ -46,8 +46,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  // Ride the session token (same localStorage key as lib/auth) so authenticated
+  // order creation is attributed to the signed-in wallet/email account. Without
+  // it the backend sees no session and rejects a wallet identity as "not an email".
+  try {
+    const token = JSON.parse(localStorage.getItem('rotko_session') || 'null')?.token
+    if (token) headers['Authorization'] = `Bearer ${token}`
+  } catch {}
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...init,
   })
   if (!res.ok) {

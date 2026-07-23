@@ -54,7 +54,7 @@ const OrderForm: Component<OrderFormProps> = (props) => {
   const [sshKey, setSshKey] = createSignal('')
   const [os, setOs] = createSignal(props.osOptions?.includes(OS_DEFAULT) ? OS_DEFAULT : (props.osOptions?.[0] ?? ''))
   // Public IPv4 — the single source of truth for the order (overrides whatever
-  // the build config set): none (IPv6-only), ephemeral (free, released on
+  // the build config set): none (IPv6-only), ephemeral (+$3/mo, released on
   // destroy), or static (+$3/mo, reserved to your account, survives rebuilds).
   const [ipv4Kind, setIpv4Kind] = createSignal<'none' | 'ephemeral' | 'static'>(
     (props.config as { ipv4?: boolean })?.ipv4 ? 'ephemeral' : 'none',
@@ -313,7 +313,7 @@ const OrderForm: Component<OrderFormProps> = (props) => {
               </div>
             </Show>
 
-            {/* Public IPv4 — ephemeral (free) or static (+$3/mo). VM orders. */}
+            {/* Public IPv4 — ephemeral or static, both +$3/mo. VM orders. */}
             <Show when={realFlow() && props.osOptions}>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Public IPv4</label>
@@ -333,8 +333,8 @@ const OrderForm: Component<OrderFormProps> = (props) => {
                       'border-cyan-600 bg-cyan-600/15': ipv4Kind() === 'ephemeral',
                       'border-gray-700 hover:border-gray-600': ipv4Kind() !== 'ephemeral',
                     }}>
-                    <span class="block text-sm text-gray-200">Ephemeral</span>
-                    <span class="block text-[11px] text-gray-500">free · freed on destroy</span>
+                    <span class="block text-sm text-gray-200">Ephemeral <span class="text-gray-500 font-mono">+$3</span></span>
+                    <span class="block text-[11px] text-gray-500">freed on destroy</span>
                   </button>
                   <button type="button" onClick={() => setIpv4Kind('static')}
                     class="px-3 py-2 text-left rounded-md border transition-colors"

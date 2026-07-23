@@ -17,6 +17,31 @@ import NotificationBell from '../components/NotificationBell'
 
 const money = (n: number) => '$' + (Number.isInteger(n) ? n : n.toFixed(2))
 
+const fmtDate = (s?: string) => {
+  if (!s) return ''
+  const d = new Date(s)
+  return isNaN(d.getTime())
+    ? s
+    : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+// Invoice-ready spec line items from an order's build config. Empty for
+// non-VM products (colo, etc.) which carry a different config shape.
+const orderSpecs = (config: any): string[] => {
+  const c = config ?? {}
+  if (c.vcpu == null) return []
+  const ipv4 = c.static_ipv4 ? 'static IPv4' : c.ipv4 ? 'ephemeral IPv4' : 'IPv6-only'
+  return [
+    `${c.vcpu} vCPU${Number(c.vcpu) < 1 ? ' (shared)' : ''}`,
+    `${c.ram_gb} GB RAM`,
+    c.extra_nvme_gb ? `+${c.extra_nvme_gb} GB NVMe` : null,
+    `${c.traffic_tb ?? 1} TB traffic`,
+    ipv4,
+    c.node_class ? `node: ${c.node_class}` : null,
+    c.os ? `OS: ${c.os}` : null,
+  ].filter(Boolean) as string[]
+}
+
 // Customer control panel: per-VM cards (the centerpiece), plus balance/runway
 // and orders, scoped to the signed-in account. Data comes from /v1/me/* with
 // the session token.
@@ -91,12 +116,6 @@ const DashboardPage: Component = () => {
         >
           <div class="flex items-center gap-3 text-sm">
             <NotificationBell />
-            <a
-              href="/console/demo"
-              class="px-3.5 py-2 rounded-md border border-cyan-700/60 text-cyan-300 hover:bg-cyan-600/15 transition-colors"
-            >
-              Try a live shell →
-            </a>
             <a
               href="/hosting"
               class="px-3.5 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
@@ -288,6 +307,25 @@ const DashboardPage: Component = () => {
                       <span class="text-gray-200">{o.product} · {money(o.price_usd_month)}/mo</span>
                       <span class="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">{o.status}</span>
                     </div>
+                    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                      <span class="font-mono">{o.id}</span>
+                      <Show when={o.created_at}><span>· {fmtDate(o.created_at)}</span></Show>
+                      <Show when={o.vmid}><span>· VM {o.vmid}</span></Show>
+                      <Show when={o.txid}>
+                        <span>· paid <span class="font-mono">{String(o.txid).slice(0, 10)}…</span></span>
+                      </Show>
+                    </div>
+                    <Show when={orderSpecs(o.config).length}>
+                      <div class="mt-2 flex flex-wrap gap-1.5">
+                        <For each={orderSpecs(o.config)}>
+                          {(s) => (
+                            <span class="text-xs px-2 py-0.5 rounded bg-gray-800/60 text-gray-300 border border-gray-700/60">
+                              {s}
+                            </span>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
                     <Show when={o.status === 'pending_payment' && o.payment?.destination}>
                       <div class="mt-2 text-xs text-gray-500">
                         Pay <span class="font-mono text-cyan-400">{o.payment.amount}</span> to{' '}
