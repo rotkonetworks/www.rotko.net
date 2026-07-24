@@ -11,6 +11,7 @@ import {
   getMyIps,
   releaseIp,
 } from '../lib/auth'
+import { toPolkadotAddress } from '../lib/ss58'
 import SignInModal from '../components/SignInModal'
 import VmCard from '../components/VmCard'
 import NotificationBell from '../components/NotificationBell'
@@ -210,7 +211,14 @@ const DashboardPage: Component = () => {
           <div class="grid sm:grid-cols-2 gap-4 text-sm">
             <div>
               <div class="text-gray-500 text-xs mb-0.5">Identity</div>
-              <div class="text-gray-200 font-mono break-all">{session()?.identity}</div>
+              <div class="text-gray-200 font-mono break-all">
+                {(() => {
+                  const id = session()?.identity ?? ''
+                  const [kind, ...rest] = id.split(':')
+                  const val = rest.join(':')
+                  return kind === 'polkadot' ? `polkadot:${toPolkadotAddress(val)}` : id
+                })()}
+              </div>
             </div>
             <div>
               <div class="text-gray-500 text-xs mb-0.5">How billing works</div>
