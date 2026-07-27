@@ -13,7 +13,7 @@ Deploy a VM, colocate your hardware, or connect to archive RPC, on AS142108 and 
 - Network Capacity: 12G
 - Physical Cores: 728
 - Total RAM: 3TB
-- Uptime Target: 99.84%
+- Uptime Target: 99.9%
 
 ### Hardware
 - 2x MikroTik CCR2216: Edge routing, full BGP tables
@@ -95,4 +95,4 @@ Key facts:
 - Philosophy: Linux-only, open source, no vendor lock-in
 - Contact via email or the form at rotko.net/contact
 
-Generated: 2026-07-12T22:09:38.491Z
+Generated: 2026-07-20T08:11:29.983Z

@@ -18,6 +18,7 @@ export const STAKING_NETWORKS: StakingNetwork[] = [
   { id: 'polkadot', name: 'Polkadot', token: 'DOT', validators: ROTKO_VALIDATORS.polkadot?.length || 0 },
   { id: 'kusama', name: 'Kusama', token: 'KSM', validators: ROTKO_VALIDATORS.kusama?.length || 0 },
   { id: 'paseo', name: 'Paseo', token: 'PAS', validators: ROTKO_VALIDATORS.paseo?.length || 0 },
+  { id: 'flare', name: 'Flare', token: 'FLR', validators: ROTKO_VALIDATORS.flare?.length || 0 },
   { id: 'penumbra', name: 'Penumbra', token: 'UM', validators: ROTKO_VALIDATORS.penumbra?.length || 0 },
 ]
 

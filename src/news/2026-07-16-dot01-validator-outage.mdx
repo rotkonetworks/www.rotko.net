@@ -91,11 +91,21 @@ Polkadot does not slash for downtime. an offline validator is disabled for the r
 (dot01 sits at validator index 21 in the relay's disabled set for era 2233), earns no points, and
 re-enters automatically at the next era. its validate intention and session keys stayed intact
 throughout, so it resumes at era 2234 with no action needed. dot01 earned normal points before the
-incident, 84,840 in era 2231 and 82,520 in era 2232, and 0 in era 2233. the forgone reward is one
-era of its yield, about 110 DOT in total (era 2232 as the reference), which would have gone to the
+incident, 84,840 in era 2231 and 82,520 in era 2232, and — because it was disabled part-way through,
+not for the whole era — a reduced 56,540 in era 2233 (see the correction under reimbursement; we
+first read this as 0). the forgone reward is the gap to a normal era, which would have gone to the
 29 nominators elected to back it that era. no stake was ever touched.
 
 ## reimbursement
+
+**Correction (21 July 2026):** this reimbursement overpaid. we wrote below that dot01 "scored 0 in
+era 2233," but on-chain data shows it actually earned 56,540 points that era and paid its nominators
+75.46 DOT on-chain — it was disabled part-way through, not for the whole era. by reimbursing the full
+normal reward on top of that, our 109.77 DOT batch overpaid the 29 nominators by **74.29 DOT.** we
+are not clawing anything back; we credit each nominator's overpayment against what they are owed for
+the [20 July outage](/news/2026-07-20-dot01-disabled-nic-firmware), which nets the two events out.
+the original sizing below is left intact as the record of what we did. lesson: read the era's points
+from chain storage, not a dashboard, before sizing a reimbursement.
 
 we run dot01 at 0% commission, and we cover our own mistakes. we reimbursed the full era-2233
 reward to every nominator elected to back dot01 that era, out of our own funds. no nominator needs to

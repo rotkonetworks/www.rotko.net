@@ -27,6 +27,12 @@ export const ROTKO_VALIDATORS: Record<string, { address: string; name: string }[
     { address: '15dbNAcR6qoKv65mkq4EUVzvtxZg1gA7JrVa1ywkkF37VgdX', name: 'ROTKO NETWORKS/05' },
     { address: '12EgzZggXfmuZS4q88wxWcwU3hj4v2yH2dEaBfvMTfGpkQ6c', name: 'ROTKO NETWORKS/06' },
   ],
+  flare: [
+    { address: 'NodeID-LwpTuHwv3BdGhT1y7RcPY1t4rx494uExo', name: 'rotko.net/val-flare-01' },
+    { address: 'NodeID-436aEkcwxBo9Z5Ud9Rr7mWEgHnjDu78NR', name: 'rotko.net/val-flare-02' },
+    { address: 'NodeID-QK6w1Ryp8kfgPBYSyNgHbRTjEhYfLkyBE', name: 'rotko.net/val-flare-03' },
+    { address: 'NodeID-C3cwgDrgNHRCpqd7GGBZ6qhcBFNmKh3a3', name: 'rotko.net/val-flare-04' },
+  ],
   penumbra: [
     { address: 'penumbravalid1ar6hyxmvy0em86nclqgxc4qlauj9ct747g4dsx8tn6wthg9nuvrq099640', name: 'rotko.net' },
   ],
