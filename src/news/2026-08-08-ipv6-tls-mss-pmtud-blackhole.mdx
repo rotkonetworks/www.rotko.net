@@ -1,0 +1,113 @@
+---
+title: "Post-Mortem: slow IPv6 TLS, and why ping said everything was fine"
+description: "Our IPv6 RPC endpoints had TLS handshakes bouncing to 700ms while IPv4 stayed flat. The cause wasn't RPKI or transit — it was jumbo frames leaking a huge MSS into the TCP handshake, and a PMTUD black hole on IPv6. It stayed hidden for days because ICMP ping and TCP hash to different paths."
+date: "2026-08-08"
+tags: ["ipv6", "networking", "pmtud", "mss", "tls", "post-mortem", "bgp", "anycast", "ecmp"]
+draft: false
+---
+
+*tl;dr: IPv6 TLS handshakes to our anycast RPC endpoints bounced between ~290ms and ~740ms;
+IPv4 was flat. Root cause: the anycast hosts run a jumbo (9000) MTU fabric, so the kernel
+advertised **MSS 8940**. On IPv6 paths with a smaller MTU, the big TLS flight needed PMTUD;
+ICMPv6 "Packet Too Big" is frequently filtered, and the hosts had `tcp_mtu_probing=0`, so
+every lost PTB cost a full retransmit timeout. Fix: enable `tcp_mtu_probing` and clamp the
+advertised MSS to 1220. It stayed hidden because **ping and TCP hash onto different ECMP
+paths**, so every basic check looked healthy.*
+
+---
+
+## Symptom
+
+IPv6 clients saw TLS handshakes to our anycast endpoints swing from a clean ~290ms to
+~740ms and back, intermittently. IPv4 to the same hostnames was rock-steady. Total failures
+were rare — it was **latency variance**, not an outage, which made it easy to dismiss and
+hard to pin.
+
+## The false leads (worth writing down)
+
+Two real problems surfaced first and neither was the cause:
+
+1. **RPKI maxLength.** We found a genuine bug — a `/32`-maxLength ROA while announcing
+   `/48`/`/40` more-specifics, making them RPKI-invalid. Real, worth fixing
+   ([write-up](/news/2026-08-08-ipv6-rpki-maxlength-anycast)) — but *not* the symptom: when
+   we measured, only the valid aggregate was in the table, so there was nothing invalid to
+   drop, and the latency persisted after we fixed it.
+2. **A broken transit leg on the monitoring box.** Our probe box sat behind a provider
+   whose own IPv6 backbone had one bad ECMP leg. It was mangling *our* measurements. We
+   moved monitoring to a clean vantage before trusting any number again.
+
+Lesson zero: **the first real bug you find is not necessarily the one causing your
+symptom**, and **fix your measurement vantage before you trust your measurements.**
+
+## Why every check said "healthy"
+
+This is the part that cost us days. **Ping was green the entire time.**
+
+ICMP echo has no L4 ports, so a router's ECMP hash reduces to `(src IP, dst IP)` — a
+constant. Every ping therefore follows the *same* path, and that path happened to be a good
+one. A TCP connection hashes on the full 5-tuple **including the source port**, which
+changes on every connection, so TCP sessions are sprayed across every ECMP leg — and some
+of those legs carried the fault. So ping showed 0% loss while a fraction of TCP handshakes
+stalled. **Ping cannot see a per-flow problem, because ping is a single flow.**
+
+If you take one thing from this: **monitor with real TCP + TLS over rotating source ports,
+not ICMP.**
+
+## Root cause
+
+Our anycast hosts run a jumbo-frame internal fabric — `vmbr2`, where the anycast VIPs live,
+is **MTU 9000**. So the kernel advertised **MSS 8940** in the SYN-ACK. There was **no MSS
+clamp**, and **`net.ipv4.tcp_mtu_probing = 0`**.
+
+Now walk an IPv6 client whose path MTU is below 1500 (extremely common on v6 — tunnels,
+1280-MTU segments, PPPoE-style access):
+
+1. The server sends a large TLS ServerHello + certificate flight in big segments.
+2. A segment exceeds a link's MTU; that router should return an **ICMPv6 Packet Too Big**.
+3. On IPv6, PTB is *frequently* filtered by overzealous firewalls.
+4. With `tcp_mtu_probing=0`, the kernel has **no fallback** — it just keeps retransmitting
+   the too-big segment until it times out.
+
+Each lost PTB = one retransmit timeout ≈ +300ms. That's the bounce. IPv4 mostly dodged it
+because v4 paths are more uniformly 1500 and ICMP PTB is less commonly filtered.
+
+Ping, again, never saw it: ICMP echo is small and single-flow. Only the large,
+multi-segment, port-varying TLS flights tripped it.
+
+## The fix
+
+Two host-side changes on every anycast node, both reversible:
+
+```bash
+# 1) let the kernel recover from a PMTUD black hole by probing instead of stalling
+sysctl -w net.ipv4.tcp_mtu_probing=1
+sysctl -w net.ipv4.tcp_base_mss=1220
+
+# 2) clamp the advertised MSS so the TLS flight fits any v6 path >= 1280,
+#    on the incoming SYN (controls server -> client segment size)
+ip6tables -t mangle -A PREROUTING -p tcp --tcp-flags SYN,RST SYN \
+  -d <anycast-vip> -j TCPMSS --set-mss 1220
+```
+
+Clamp on the **incoming SYN** (`PREROUTING`, `-d VIP`): the MSS in the SYN-ACK controls
+*client→server* segments, but the oversized flight is *server→client*, sized by the
+**client's** advertised MSS. Shrink that and the server's outbound segments fit.
+
+Do **not** just lower the interface MTU — that breaks the jumbo fabric the BGP/storage
+plane depends on. Clamp the MSS for the internet-facing VIPs instead.
+
+## Result
+
+IPv6 TLS went from **290→740ms bouncing** to **flat ~294ms, zero spikes** across 40
+consecutive samples — the clean 3×RTT baseline for the path. It helps every IPv6 client,
+not just the monitor.
+
+## Lessons
+
+- **Never let a jumbo interface MTU leak into the MSS of an internet-facing service.** Clamp
+  it. IPv6 is far less forgiving of PMTUD failure than IPv4.
+- **Enable `tcp_mtu_probing`** on anything terminating TLS to the public internet. It's the
+  safety net for the filtered-PTB reality of the modern internet.
+- **Ping lies about per-flow faults.** Monitor with real TCP + TLS over varied 5-tuples.
+- **Separate confounds before diagnosing.** A bad measurement vantage and an unrelated-but-
+  real bug (our RPKI maxLength) can keep you chasing the wrong thing for days.

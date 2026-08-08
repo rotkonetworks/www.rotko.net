@@ -1,110 +1,65 @@
 ---
-title: "Post-Mortem: RPKI maxLength and the IPv6 Anycast Coin-Flip"
-description: "Our RPKI ROA had maxLength /32 while we announced /48 IPv6 more-specifics, so the more-specifics were RPKI-invalid. The networks that enforce ROV dropped them. ECMP spread the damage across flows and ICMP hid it completely, so ping stayed at 0% loss while ~40% of TCP handshakes hung. The fix was to originate only the RPKI-valid /40."
+title: "RPKI maxLength: the ROA field that quietly invalidates your more-specifics"
+description: "A short guide to RPKI ROA maxLength. Set it too short and your more-specific BGP announcements become RPKI-invalid — dropped by every network that enforces route origin validation, while the covering aggregate still works and hides the problem."
 date: "2026-08-08"
-tags: ["networking", "bgp", "rpki", "anycast", "ipv6", "incident", "post-mortem"]
+tags: ["rpki", "bgp", "roa", "route-origin-validation", "networking", "ipv6"]
 draft: false
 ---
 
-*tl;dr: our IPv6 anycast VIP `2401:a860:1081::` was reachable to most of the internet but intermittently
-unreachable for the networks that enforce RPKI origin validation. the cause was a ROA mistake: our ROA
-for `2401:a860::/32` had maxLength `/32`, but we were announcing `/48` more-specifics, which made them
-RPKI-invalid. drop-invalid networks (AWS being the big one) discarded traffic that resolved via them.
-ECMP scattered TCP connections across paths so only a fraction hit a dropping router, turning a clean
-failure into a ~40% coin-flip. ICMP has no ports, so ping's hash was constant and always took a good
-path — every basic reachability check looked perfectly healthy. we fixed it by raising the ROA
-maxLength to `/40`, withdrawing the `/48`, and originating the RPKI-valid `/40` end-to-end.*
+*Most RPKI mistakes are one field: **maxLength**. Get it wrong and your more-specific
+prefixes are RPKI-invalid — silently discarded by every drop-invalid network — while the
+covering aggregate keeps working and hides it. Here's how it works and how to check yours.*
 
 ---
 
-## symptom
+## What maxLength actually means
 
-IPv6 clients saw intermittent connection hangs to our anycast services. a connection would either come
-up fast (~29&nbsp;ms, normal for SG&nbsp;→&nbsp;BKK) or hang and time out with no response. IPv4 to the
-same hostname was flawless. from a probe box on real transit (Hetzner Singapore) the split was stark:
+A ROA (Route Origin Authorization) says: *"AS X may originate prefix P, for any
+more-specific up to length L."* That `L` is **maxLength**.
+
+If you publish a ROA for `2401:a860::/32` with **maxLength = /32**, then:
+
+- `2401:a860::/32` from your AS → **valid**
+- `2401:a860:1000::/40` from your AS → **invalid (`invalid_length`)** — longer than maxLength
+- `2401:a860:1081::/48` from your AS → **invalid (`invalid_length`)**
+
+RPKI origin validation doesn't care that *you* originate the more-specific. It's longer
+than the ROA permits, so it's invalid. Networks running **drop-invalid** (a growing set —
+AWS, many Tier-1s and IXPs) will **discard** it.
+
+## Why it hides
+
+Here's the trap: the covering aggregate is still valid. If you announce both
+`2401:a860::/32` (valid) and a more-specific `/48` (invalid), traffic to an address inside
+the `/48` still reaches you — via the `/32` — on the networks that dropped the `/48`. So
+the prefix "works," but your **traffic-engineering / anycast-site more-specific silently
+doesn't propagate** to the enforcing half of the internet. It looks intermittent and
+route-dependent, which is exactly what makes it hard to spot.
+
+## How to check yours
+
+RIPEstat's RPKI validation endpoint tells you in one request:
 
 ```
-v6 to VIP: ok=15 hang=10 (of 25)     # bimodal: fast, or dead
-v4 to VIP: ok=25 hang=0  (of 25)     # perfect
+https://stat.ripe.net/data/rpki-validation/data.json?resource=AS<your-asn>&prefix=<prefix>
 ```
 
-packet capture on a hung flow showed the SYN retransmitted three times with **no SYN-ACK ever
-returning** — the connection was being black-holed somewhere on the path, not refused.
+Check *every length you actually announce*, not just the aggregate. If a more-specific
+comes back `invalid` with reason `invalid_length`, your maxLength is too short.
 
-## why every check said "healthy"
+## The rule
 
-this is the part that cost us the most time. **ping was clean the entire incident:**
+- **Set maxLength to the longest prefix you actually originate** — no shorter.
+- **Never announce anything longer than your maxLength.** One wrong digit and that
+  prefix is invalid everywhere ROV is enforced.
+- **Keep the covering aggregate valid** as a safety net during any ROA change — validators
+  refresh on their own timers (roughly 10–60 min + repository propagation), so a maxLength
+  update is not instant.
 
-```
-3 packets transmitted, 3 received, 0% packet loss
-rtt min/avg/max = 28.85/28.90/28.96 ms
-```
-
-the reason is ECMP hashing. ICMP echo has no L4 ports, so a router's ECMP hash reduces to just
-`(src IP, dst IP)` — a constant. every ping therefore follows the exact same path, and that path
-happened to be a healthy one. a TCP connection hashes on the full 5-tuple including the source port,
-which changes every connection, so TCP sessions get sprayed across all the ECMP legs. only the ones
-that hashed onto a dropping router failed. that is what produced the ~40% coin-flip instead of a clean
-outage — and it is why ping, curl-once, and any single-flow health check all looked fine while real
-traffic bled.
-
-we had ECMP on to load-balance across the anycast nodes. it did not cause the drop, but it spread the
-damage thin enough that the failure was invisible to everything except a high-volume TCP probe.
-
-## root cause
-
-when we set up RPKI, the ROA for `2401:a860::/32` was created with **maxLength `/32`**. but the anycast
-site was announcing a `/48` more-specific. any announcement longer than the ROA's maxLength is
-`invalid_length`, so the `/48` was **RPKI-invalid**.
-
-most of the internet does not enforce ROV, so those networks carried the `/48` fine — which is exactly
-why the problem looked intermittent rather than dead. but the networks that *do* run drop-invalid
-(AWS, and an enforcing hop on the Hetzner path we were probing from) discarded any packet that reached
-them via the invalid route. the current, published state makes the mistake obvious — the more-specific
-is invalid, only the covering `/32` is valid:
-
-- `/48` origin AS142108 — **invalid (invalid_length)**:
-  [`stat.ripe.net/data/rpki-validation/…prefix=2401:a860:1081::/48`](https://stat.ripe.net/data/rpki-validation/data.json?resource=AS142108&prefix=2401:a860:1081::/48)
-- only `2401:a860::/32` was ever in the DFZ:
-  [`stat.ripe.net/data/announced-prefixes/…resource=AS142108`](https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS142108)
-- the VIP resolved only via the covering `/32`:
-  [`stat.ripe.net/data/routing-status/…resource=2401:a860:1081::/128`](https://stat.ripe.net/data/routing-status/data.json?resource=2401:a860:1081::/128)
-
-a TCP `mtr` to port 443 confirmed the drop location — loss landed on the enforcing network's ECMP
-router-pair, never reaching the VIP, while ICMP to the same target was clean.
-
-## the fix
-
-the rule is simple: **never announce a prefix longer than your ROA maxLength.** we corrected both sides
-of the mismatch.
-
-- raised the ROA maxLength `/32` → `/40` at APNIC.
-- stopped originating the `/48`; the site now announces the RPKI-valid `/40` `2401:a860:1000::/40`.
-- the hosts originate the `/40` in BIRD; both edge routers originate it to transit (address-list +
-  blackhole aggregate), and the edge filters reject anything longer than `/40` outbound.
-- the VIP `/128` stays internal and forwards to the anycast nodes as before.
-
-the `/40` is now RPKI-valid and globally visible:
-
-- `/40` origin AS142108 — **valid**:
-  [`stat.ripe.net/data/rpki-validation/…prefix=2401:a860:1000::/40`](https://stat.ripe.net/data/rpki-validation/data.json?resource=AS142108&prefix=2401:a860:1000::/40)
-- seen by 200+ RIS peers worldwide:
-  [`stat.ripe.net/data/looking-glass/…resource=2401:a860:1000::/40`](https://stat.ripe.net/data/looking-glass/data.json?resource=2401:a860:1000::/40)
-
-after the change, enforcers keep dropping only until their RPKI caches roll over to the new maxLength —
-that runs on their relying-party refresh timers (roughly 10–60 minutes plus repository propagation),
-not on ours. the `/32` is valid under both the old and new maxLength, so it stays a safety net for the
-VIP during that convergence window.
-
-## lessons
-
-- **your ROA maxLength is a hard ceiling on what you can safely announce.** one wrong number is a
-  partial outage for every network that enforces ROV.
-- **RPKI failures are invisible to ICMP and to single-flow checks.** ping has a constant hash and will
-  happily ride the one good ECMP leg forever. monitor with real TCP + TLS handshakes over rotating
-  source ports, not ping.
-- **ECMP is great for HA but hides partial-failure modes.** a route dropped on one leg only shows up on
-  the fraction of flows that hash onto it. our monitoring now varies the 5-tuple so a one-leg drop
-  actually registers.
-- two small misconfigurations compounded perfectly: the ROA ceiling created a dropping path, and ECMP
-  made sure only some flows ever touched it.
+We tripped exactly this — a `/32`-maxLength ROA while announcing `/48` and `/40`
+more-specifics — and fixed it by publishing a ROA that covers the `/40` and originating
+the RPKI-valid `/40`. Worth knowing: in our own incident this turned out to be a *latent
+correctness bug*, not the user-visible symptom we were chasing (that was an IPv6 MTU
+problem — [separate write-up](/news/2026-08-08-ipv6-tls-mss-pmtud-blackhole)). Two lessons
+for the price of one: fix your RPKI maxLength regardless, and don't assume the first real
+bug you find is the one causing your symptom.
