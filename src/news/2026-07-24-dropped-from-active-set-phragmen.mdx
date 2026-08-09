@@ -1,0 +1,108 @@
+---
+title: "dot01 Dropped From the Active Set: It Was Not Our Nominators, It Was the Election Math"
+description: "dot01 fell out of the Polkadot active set on era 2238. On-chain investigation from our own archive node shows why: 99.9% of our nominators still back us — 1.67M DOT of intent against a 1.15M cutoff — but the Phragmén election optimizer distributed our largest nominators' stake onto the other validators they also nominate. Support did not leave; allocation did. This is exactly the problem our rDOT contract-owned stash is built to solve."
+date: "2026-07-24"
+tags: ["validators", "polkadot", "staking", "phragmen", "rdot", "transparency"]
+draft: false
+---
+
+*tl;dr: dot01 (1ArdZ) is currently outside the Polkadot active set, since era 2238. this is not a
+slash, not a chill, and not our nominators leaving. we pulled the numbers from our own Polkadot
+archive node: of the 65 nominators backing us the last era we were in, 64 still nominate us today,
+1.67M DOT of intent, against an election cutoff of about 1.15M. by intent we should be comfortably
+in. we are out because the Phragmén election optimizer spread our largest nominators' stake across
+the other validators they also nominate, leaving our assigned exposure below the line. it can flip
+back on any era. the durable fix is more stake we control directly, which is exactly what our rDOT
+contract-owned stash is being built to provide: pooling supporter DOT into validator self-stake in a
+trust-minimized way. live standing at [costake.rotko.net/validator-status.html](https://costake.rotko.net/validator-status.html).*
+
+---
+
+## what happened
+
+At the era 2238 boundary the daily validator election ran, as it does every era, and dot01 was not
+among the 600 elected. It has stayed out since. Rewards stop while a validator is out of the set:
+no era points, no staker rewards, no self-stake incentive. Nothing is slashed, nothing is chilled,
+the bond is untouched, and the node is healthy. It is simply not being used.
+
+The obvious first assumption, the one we made out loud for an hour, was that a large nominator had
+pulled its stake. It is the normal cause, and it is what happened to us on 16 July when a programme
+de-nominated after an incident. So we checked. And the chain said we were wrong.
+
+## what the chain actually says
+
+We queried our own Polkadot Asset Hub archive node directly, no third-party explorer in the loop.
+The method: take every nominator that was actually backing dot01 in era 2237, the last era we were
+elected, and check each one's current nomination targets on-chain today.
+
+    era 2237 backers:      65 nominators, 1,675,207 DOT
+    still nominate us:     64 nominators, 1,674,112 DOT   (99.9%)
+    actually dropped us:    1 nominator,      1,095 DOT   (0.07%)
+
+Ninety-nine point nine percent of the stake that backed us still lists us. One small nominator, a
+thousand DOT, removed us. Our support did not leave. Against a current election cutoff near 1.15M
+DOT, 1.67M of standing intent should put us well inside the set.
+
+So why are we out.
+
+## how a validator can have the votes and still lose the seat
+
+Polkadot does not simply sum the stake pointed at a validator. It runs a
+[Phragmén](https://wiki.polkadot.network/docs/learn-phragmen) election that distributes each
+nominator's stake across the validators they nominate, optimizing to make the *least-backed* elected
+validator as well-backed as possible. That is good for network security. It also means the stake a
+nominator points at you is not the stake you are assigned.
+
+Our largest backer nominates three validators, us among them, with 1.4M DOT. In era 2237 the
+election solution happened to assign the bulk of that to dot01. In era 2238 a shift elsewhere in the
+global stake graph made the optimizer score better by pouring that nominator's weight into its other
+two validators instead, and dot01's assigned exposure fell below the cutoff. The nominator did not
+change anything. The optimizer did. On the next era, or any era, it can swing back just as
+arbitrarily.
+
+This is a known property of the system, not a bug and not a failure on anyone's part. But for a
+validator whose backing is concentrated in a few large, multi-target nominators, it means active-set
+membership is decided by an optimizer's tie-breaking, not by how much support you actually have. That
+is a bad position to depend on, and it is ours today.
+
+## the durable fix: stake we control
+
+The lesson is blunt. Borrowed backing, even loyal borrowed backing, is allocated by math we do not
+control. The way off that treadmill is stake the validator controls directly: self-stake. The
+post-AHM economics reward it heavily. The validator self-stake incentive is a real, separate slice
+of every era's issuance, distributed by the square root of self-stake up to a 30k DOT optimum, and it
+is paid to our stash every era regardless of the election tie-breaking that governs nominator
+allocation.
+
+We are not going to solve this by asking supporters to nominate us more exclusively, which just
+pushes the same fragile optimization around. We are building the thing that removes the dependency:
+**rDOT, a contract-owned validator stash.**
+
+The design, which has been in development and security review for weeks and is unrelated to this
+week's incident except that this week proves why it matters:
+
+- Supporters deposit DOT into a pool contract and receive rDOT, a liquid shares token, in return.
+- The pool allocates that DOT into validator stashes that *are* smart contracts: keyless accounts
+  whose only ability to act is through a fixed, whitelisted set of staking calls. There is no
+  custody hatch, no arbitrary dispatch, no path for an operator to move principal anywhere but back
+  to the pool or treasury.
+- Each stash bonds the pooled DOT as its own self-stake. That converts supporter capital from
+  fragile, optimizer-allocated nomination into hard self-stake that counts fully and earns the
+  self-stake incentive, in a trust-minimized way where the contract, not us, holds the funds.
+
+In other words: the same supporters who want to back dot01 can back it with capital that actually
+lands where it is pointed, because the stash is a contract they can verify rather than a promise they
+have to trust. That is the difference between 1.67M DOT of intent that an optimizer can scatter and
+self-stake that cannot be reallocated away from us.
+
+## transparency
+
+We built a live page against our archive node so this is never a black box again:
+[costake.rotko.net/validator-status.html](https://costake.rotko.net/validator-status.html). It shows,
+refreshed every ten minutes, whether dot01 is in the set, the standing nominator intent versus the
+current cutoff, and the full list of who backs us and how their stake is split across their other
+validators. If we are out, you can see exactly by how much and why.
+
+If you nominate dot01 and are reading this: your support is intact and it is appreciated, and this is
+precisely the moment it counts. And if you would rather your DOT land as self-stake that cannot be
+optimized away, rDOT is what we are building for you.
