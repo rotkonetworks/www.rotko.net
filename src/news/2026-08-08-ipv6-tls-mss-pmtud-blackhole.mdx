@@ -12,7 +12,8 @@ advertised **MSS 8940**. On IPv6 paths with a smaller MTU, the big TLS flight ne
 ICMPv6 "Packet Too Big" is frequently filtered, and the hosts had `tcp_mtu_probing=0`, so
 every lost PTB cost a full retransmit timeout. Fix: enable `tcp_mtu_probing` and clamp the
 advertised MSS to 1220. It stayed hidden because **ping and TCP hash onto different ECMP
-paths**, so every basic check looked healthy.*
+paths**, so every basic check looked healthy — and even after the fix the dashboard kept
+lying, because a runaway process was starving the single-core probe box.*
 
 ---
 
@@ -102,6 +103,23 @@ IPv6 TLS went from **290→740ms bouncing** to **flat ~294ms, zero spikes** acro
 consecutive samples — the clean 3×RTT baseline for the path. It helps every IPv6 client,
 not just the monitor.
 
+## The twist: the fix worked, but the monitor kept lying
+
+Direct measurements were flat — and yet the dashboard *kept* spiking to ~700ms for another
+hour. We nearly re-opened the whole investigation.
+
+The probe box was a **single-core VM**, and an **orphaned `grep -r … /`** — a filesystem-wide
+search that had escaped an SSH session — had been pegging that one core at 96% for **23
+hours**. The prober usually got scheduled fine, but when its 5-minute run collided with the
+CPU hog on the single core, it was descheduled mid-measurement and recorded its own
+**scheduling delay as network latency**. Run back-to-back it was flat; run on the timer,
+under contention, it spiked. Killing the grep dropped the very next sample from 711ms to
+288ms — matching the wire exactly.
+
+So the symptom had **two independent causes stacked**: a real IPv6 MTU black hole *and* a
+starved measurement box. Fixing the first didn't clear the graph, which is exactly what
+kept it feeling unsolved.
+
 ## Lessons
 
 - **Never let a jumbo interface MTU leak into the MSS of an internet-facing service.** Clamp
@@ -111,3 +129,6 @@ not just the monitor.
 - **Ping lies about per-flow faults.** Monitor with real TCP + TLS over varied 5-tuples.
 - **Separate confounds before diagnosing.** A bad measurement vantage and an unrelated-but-
   real bug (our RPKI maxLength) can keep you chasing the wrong thing for days.
+- **Your probe measures wall-clock, which includes its own wait-for-CPU.** A saturated
+  monitoring box inflates the very numbers it reports. Right-size and isolate your
+  monitoring — and when a metric and a direct measurement disagree, suspect the measurer.
